@@ -1,2 +1,1 @@
-# Florence_project_FE
-Bootcamp Final Project GitHub Repository
+클론하고 npm install 하세요
