@@ -1,30 +1,21 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+// 라우터 뷰를 사용하기 위한 설정
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="min-h-screen bg-ivory text-dark-gray">
+    <router-view />
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<style>
+body {
+  margin: 0;
+  font-family: 'Noto Sans KR', 'Roboto', sans-serif;
+  font-weight: 400;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
 }
 </style>
