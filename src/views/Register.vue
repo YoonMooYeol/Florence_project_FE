@@ -8,9 +8,13 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const formData = reactive({
+  username: '',
   name: '',
   email: '',
   phone_number: '',
+  phone_part1: '',
+  phone_part2: '',
+  phone_part3: '',
   password: '',
   password_confirm: '',
   gender: '',
@@ -19,6 +23,7 @@ const formData = reactive({
 })
 
 const errors = reactive({
+  username: '',
   name: '',
   email: '',
   phone_number: '',
@@ -33,8 +38,45 @@ const isSubmitting = ref(false)
 const showSuccessMessage = ref(false)
 const registeredUser = ref(null)
 
+// 전화번호 부분이 변경될 때 전체 전화번호 업데이트
+const updatePhoneNumber = () => {
+  // 숫자만 남기기
+  formData.phone_part1 = formData.phone_part1.replace(/\D/g, '')
+  formData.phone_part2 = formData.phone_part2.replace(/\D/g, '')
+  formData.phone_part3 = formData.phone_part3.replace(/\D/g, '')
+  
+  if (formData.phone_part1 && formData.phone_part2 && formData.phone_part3) {
+    formData.phone_number = `${formData.phone_part1}-${formData.phone_part2}-${formData.phone_part3}`
+  } else {
+    formData.phone_number = ''
+  }
+}
+
+// 기존 전화번호가 있을 경우 각 부분으로 나누기
+const initPhoneParts = () => {
+  if (formData.phone_number && formData.phone_number.includes('-')) {
+    const parts = formData.phone_number.split('-')
+    if (parts.length === 3) {
+      formData.phone_part1 = parts[0]
+      formData.phone_part2 = parts[1]
+      formData.phone_part3 = parts[2]
+    }
+  }
+}
+
+// 컴포넌트 마운트 시 초기화
+initPhoneParts()
+
 const validateForm = () => {
   let isValid = true
+  
+  // 사용자명 검증
+  if (!formData.username.trim()) {
+    errors.username = '사용자명을 입력해주세요'
+    isValid = false
+  } else {
+    errors.username = ''
+  }
   
   // 이름 검증
   if (!formData.name.trim()) {
@@ -121,6 +163,13 @@ const registerApi = async (userData) => {
   }
 }
 
+// 각 필드 입력 시 해당 필드의 오류 메시지 초기화
+const clearFieldError = (field) => {
+  if (errors[field]) {
+    errors[field] = ''
+  }
+}
+
 const handleSubmit = async () => {
   errors.form = ''
   
@@ -131,11 +180,15 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   
   try {
-    // 비밀번호 확인 필드는 API에 보내지 않음
-    const { password_confirm, ...userData } = formData
+    // 비밀번호 확인 필드도 API에 포함하여 전송
+    // const { password_confirm, ...userData } = formData
+    const userData = { ...formData }
+    
+    // phone_part 필드들은 API에 보내지 않음
+    const { phone_part1, phone_part2, phone_part3, ...dataToSend } = userData
     
     // API 호출
-    const response = await registerApi(userData)
+    const response = await registerApi(dataToSend)
     
     // 응답 데이터 저장
     registeredUser.value = response
@@ -145,10 +198,10 @@ const handleSubmit = async () => {
     
     console.log('회원가입 성공:', response)
     
-    // 3초 후 로그인 페이지로 이동
-    setTimeout(() => {
-      router.push('/login')
-    }, 3000)
+    // 자동 리다이렉트 제거
+    // setTimeout(() => {
+    //   router.push('/login')
+    // }, 3000)
   } catch (error) {
     console.error('회원가입 오류:', error)
     
@@ -161,15 +214,22 @@ const handleSubmit = async () => {
       } else {
         // 필드별 에러 메시지 처리
         const fieldErrors = error.response.data
+        let hasFieldErrors = false
+        
         Object.keys(fieldErrors).forEach(field => {
           if (errors[field] !== undefined) {
             errors[field] = Array.isArray(fieldErrors[field]) 
               ? fieldErrors[field][0] 
               : fieldErrors[field]
+            hasFieldErrors = true
           }
         })
         
-        errors.form = '입력 정보를 확인해주세요.'
+        if (hasFieldErrors) {
+          errors.form = '입력 정보를 확인해주세요.'
+        } else {
+          errors.form = '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.'
+        }
       }
     } else {
       errors.form = '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.'
@@ -187,20 +247,37 @@ const goToLogin = () => {
 <template>
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
     <div class="w-full max-w-md">
-      <!-- 헤더 -->
-      <div class="mb-8 text-center">
-        <h1 class="text-3xl font-bold text-dark-gray">하트비트</h1>
-        <p class="mt-2 text-dark-gray">회원가입</p>
-      </div>
+
       
-      <!-- 성공 메시지 -->
-      <div v-if="showSuccessMessage" class="p-4 mb-6 text-center text-green-700 bg-green-100 rounded-md">
-        <p class="font-medium">회원가입이 완료되었습니다!</p>
-        <p class="mt-1 text-sm">잠시 후 로그인 페이지로 이동합니다...</p>
-        <div v-if="registeredUser" class="mt-3 text-left text-xs bg-white p-3 rounded">
-          <p><strong>이름:</strong> {{ registeredUser.name }}</p>
-          <p><strong>이메일:</strong> {{ registeredUser.email }}</p>
-          <p><strong>전화번호:</strong> {{ registeredUser.phone_number }}</p>
+      <!-- 성공 메시지 모달 -->
+      <div v-if="showSuccessMessage" class="fixed inset-0 flex items-center justify-center z-50">
+        <!-- 배경 오버레이 -->
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        
+        <!-- 모달 컨텐츠 -->
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 z-10 relative">
+          <div class="flex justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">회원가입이 완료되었습니다!</h2>
+          <p class="text-center text-gray-600 mb-6">아래 버튼을 클릭하여 로그인 페이지로 이동하세요.</p>
+          
+          <div v-if="registeredUser" class="bg-gray-50 p-4 rounded-md mb-6">
+            <p class="mb-2"><strong>이름:</strong> {{ registeredUser.name }}</p>
+            <p class="mb-2"><strong>이메일:</strong> {{ registeredUser.email }}</p>
+            <p><strong>전화번호:</strong> {{ registeredUser.phone_number }}</p>
+          </div>
+          
+          <div class="text-center">
+            <button 
+              @click="goToLogin" 
+              class="px-6 py-2 bg-point-yellow text-dark-gray font-medium rounded-md hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-colors"
+            >
+              로그인 페이지로 이동
+            </button>
+          </div>
         </div>
       </div>
       
@@ -211,12 +288,27 @@ const goToLogin = () => {
       
       <!-- 회원가입 폼 -->
       <form @submit.prevent="handleSubmit" class="p-6 bg-white rounded-lg shadow-md">
+        <!-- 사용자명 -->
+        <div class="mb-4">
+          <label for="username" class="block mb-2 text-sm font-medium text-dark-gray">아이디</label>
+          <input
+            id="username"
+            v-model="formData.username"
+            @input="clearFieldError('username')"
+            type="text"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            placeholder="사용자명을 입력하세요"
+          />
+          <p v-if="errors.username" class="mt-1 text-sm text-red-600">{{ errors.username }}</p>
+        </div>
+        
         <!-- 이름 -->
         <div class="mb-4">
           <label for="name" class="block mb-2 text-sm font-medium text-dark-gray">이름</label>
           <input
             id="name"
             v-model="formData.name"
+            @input="clearFieldError('name')"
             type="text"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="이름을 입력하세요"
@@ -230,6 +322,7 @@ const goToLogin = () => {
           <input
             id="email"
             v-model="formData.email"
+            @input="clearFieldError('email')"
             type="email"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="이메일을 입력하세요"
@@ -239,14 +332,38 @@ const goToLogin = () => {
         
         <!-- 전화번호 -->
         <div class="mb-4">
-          <label for="phone_number" class="block mb-2 text-sm font-medium text-dark-gray">전화번호</label>
-          <input
-            id="phone_number"
-            v-model="formData.phone_number"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="000-0000-0000"
-          />
+          <label class="block mb-2 text-sm font-medium text-dark-gray">전화번호</label>
+          <div class="flex space-x-2">
+            <input
+              id="phone_part1"
+              v-model="formData.phone_part1"
+              @input="updatePhoneNumber(); clearFieldError('phone_number')"
+              type="text"
+              maxlength="3"
+              class="w-1/4 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="010"
+            />
+            <span class="flex items-center">-</span>
+            <input
+              id="phone_part2"
+              v-model="formData.phone_part2"
+              @input="updatePhoneNumber(); clearFieldError('phone_number')"
+              type="text"
+              maxlength="4"
+              class="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="0000"
+            />
+            <span class="flex items-center">-</span>
+            <input
+              id="phone_part3"
+              v-model="formData.phone_part3"
+              @input="updatePhoneNumber(); clearFieldError('phone_number')"
+              type="text"
+              maxlength="4"
+              class="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="0000"
+            />
+          </div>
           <p v-if="errors.phone_number" class="mt-1 text-sm text-red-600">{{ errors.phone_number }}</p>
         </div>
         
@@ -256,6 +373,7 @@ const goToLogin = () => {
           <input
             id="password"
             v-model="formData.password"
+            @input="clearFieldError('password'); formData.password_confirm && clearFieldError('password_confirm')"
             type="password"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 입력하세요"
@@ -269,6 +387,7 @@ const goToLogin = () => {
           <input
             id="password_confirm"
             v-model="formData.password_confirm"
+            @input="clearFieldError('password_confirm')"
             type="password"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 다시 입력하세요"
@@ -284,6 +403,7 @@ const goToLogin = () => {
               <input
                 type="radio"
                 v-model="formData.gender"
+                @change="clearFieldError('gender')"
                 value="male"
                 class="w-4 h-4 text-point-yellow border-gray-300 focus:ring-point-yellow"
               />
@@ -293,6 +413,7 @@ const goToLogin = () => {
               <input
                 type="radio"
                 v-model="formData.gender"
+                @change="clearFieldError('gender')"
                 value="female"
                 class="w-4 h-4 text-point-yellow border-gray-300 focus:ring-point-yellow"
               />
@@ -320,6 +441,7 @@ const goToLogin = () => {
           <input
             id="address"
             v-model="formData.address"
+            @input="clearFieldError('address')"
             type="text"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="주소를 입력하세요"

@@ -13,7 +13,7 @@ const goToLogin = () => {
     <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
       <div class="text-center">
         <h1 class="text-3xl font-bold text-dark-gray">하트비트</h1>
-        <p class="mt-2 text-dark-gray">고요한 어둠 속에게 빛을 기다리는 작은 심장</p>
+        <p class="mt-2 text-dark-gray">고요한 어둠 속에서 빛을 기다리는 작은 심장</p>
       </div>
       
       <div class="mt-8 space-y-4">
