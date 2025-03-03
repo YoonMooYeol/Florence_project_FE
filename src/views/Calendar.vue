@@ -21,21 +21,16 @@ const modalManager = useModalManager()
 
 // 날짜 클릭 핸들러
 const handleDateClick = (info) => {
-  console.log(`캘린더에서 날짜 클릭: ${info.dateStr}`)
-  console.log('일일 일정 모달만 열립니다.')
   modalManager.openDayEventsModal(info.dateStr)
 }
 
 // 이벤트 클릭 핸들러
 const handleEventClick = (info) => {
   const eventId = info.event.id
-  console.log(`캘린더에서 이벤트 클릭: ${eventId}`)
   
   const eventObj = calendarStore.events.find(e => e.id === eventId)
   if (eventObj) {
     const dateStr = normalizeDate(eventObj.start)
-    console.log(`해당 이벤트의 날짜: ${dateStr}`)
-    console.log('일일 일정 모달만 열립니다.')
     
     // 먼저 현재 표시된 모든 모달 닫기
     modalManager.closeDayEventsModal()
@@ -43,9 +38,6 @@ const handleEventClick = (info) => {
     // 그런 다음 선택된 날짜를 설정하고 일일 일정 모달 열기
     calendarStore.setSelectedDate(dateStr)
     modalManager.openDayEventsModal(dateStr)
-    
-    // 중요: 여기서는 아직 이벤트 상세 모달을 열지 않음
-    // 사용자가 일일 일정 모달에서 해당 이벤트를 클릭할 때만 열림
   }
 }
 
@@ -107,10 +99,10 @@ const handleFabClick = () => {
       :date="calendarStore.selectedDate"
       :events="calendarStore.eventsForSelectedDate"
       :llm-summary="calendarStore.llmSummaryForSelectedDate"
-      @close="() => { console.log('Calendar.vue: 일일 일정 모달 닫기 이벤트'); modalManager.closeDayEventsModal(); }"
-      @add-event="() => { console.log('Calendar.vue: 일정 추가 버튼 클릭 이벤트'); modalManager.openAddEventModal(); }"
-      @view-event="(event) => { console.log('Calendar.vue: 일정 상세 보기 클릭 이벤트', event); modalManager.openEventDetailModal(event); }"
-      @view-llm-summary="(summary) => { console.log('Calendar.vue: LLM 요약 보기 클릭 이벤트', summary); modalManager.openLLMDetailModal(summary); }"
+      @close="modalManager.closeDayEventsModal"
+      @add-event="modalManager.openAddEventModal"
+      @view-event="modalManager.openEventDetailModal"
+      @view-llm-summary="modalManager.openLLMDetailModal"
     />
     
     <!-- 일정 상세 모달 -->
@@ -149,7 +141,7 @@ const handleFabClick = () => {
   --color-point: #FFD600;
 }
 
-/* FullCalendar 커스텀 스타일 */
+/* FullCalendar 기본 스타일 */
 .fc {
   font-family: 'Noto Sans KR', 'Roboto', sans-serif;
   border: none;
@@ -159,7 +151,7 @@ const handleFabClick = () => {
   background-color: rgba(255, 214, 0, 0.1) !important;
 }
 
-/* 이벤트 스타일 개선 */
+/* 이벤트 스타일 */
 .fc-daygrid-event {
   padding: 2px 4px;
   border-radius: 4px;
@@ -179,7 +171,7 @@ const handleFabClick = () => {
   z-index: 60;
 }
 
-/* 이벤트 스타일 개선 */
+/* 이벤트 스타일 */
 .fc-daygrid-event {
   border-radius: 4px !important;
   padding: 2px 6px !important;
@@ -200,7 +192,7 @@ const handleFabClick = () => {
   min-height: 22px !important;
 }
 
-/* 모달 스타일 개선 */
+/* 모달 스타일 */
 .modal-container {
   background-color: rgba(0, 0, 0, 0.5) !important;
   backdrop-filter: blur(2px) !important;
@@ -234,7 +226,7 @@ const handleFabClick = () => {
   background-color: #FFFEF8 !important;
 }
 
-/* 일정 상세 모달 내부 요소 스타일 */
+/* 일정 상세 모달 내부 요소 */
 .event-detail-field {
   margin-bottom: 12px !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
@@ -252,7 +244,7 @@ const handleFabClick = () => {
   font-size: 1.05rem !important;
 }
 
-/* 일정 상세 모달 버튼 스타일 */
+/* 모달 버튼 스타일 */
 .event-detail-actions {
   display: flex !important;
   justify-content: flex-end !important;
@@ -284,9 +276,9 @@ const handleFabClick = () => {
   padding-bottom: 16px !important;
 }
 
-/* 일정 상세 모달 특별 스타일 */
+/* 일정 상세 모달 스타일 */
 .event-detail-modal {
-  z-index: 70 !important; /* 일정 상세 모달이 일일 일정 모달 위에 표시되도록 z-index 증가 */
+  z-index: 70 !important;
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -297,7 +289,7 @@ const handleFabClick = () => {
   justify-content: center !important;
 }
 
-/* 커스텀 이벤트 콘텐츠 스타일 */
+/* 커스텀 이벤트 콘텐츠 */
 .custom-event-content {
   font-size: 0.8rem;
   font-weight: 500;
@@ -320,7 +312,7 @@ const handleFabClick = () => {
   height: auto !important;
 }
 
-/* 이벤트 메인 컨텐츠 스타일 */
+/* 이벤트 메인 콘텐츠 */
 .fc-event-main {
   padding: 1px 3px !important;
   display: block !important;
@@ -331,7 +323,7 @@ const handleFabClick = () => {
   text-overflow: ellipsis !important;
 }
 
-/* 이벤트 컨테이너 스타일 개선 */
+/* 이벤트 컨테이너 */
 .fc-daygrid-event-harness {
   margin: 1px 0 !important;
   width: 100% !important;
@@ -340,7 +332,7 @@ const handleFabClick = () => {
   height: auto !important;
 }
 
-/* 날짜 바디 영역 조정 */
+/* 날짜 바디 영역 */
 .fc-daygrid-day-events {
   padding: 0 2px !important;
   margin-top: 2px !important;
@@ -349,7 +341,7 @@ const handleFabClick = () => {
   min-height: 25px !important;
 }
 
-/* 종일 이벤트 스타일 */
+/* 종일 이벤트 */
 .fc-daygrid-block-event {
   margin: 2px 0 !important;
   width: 90% !important;
@@ -357,7 +349,7 @@ const handleFabClick = () => {
   margin-right: auto !important;
 }
 
-/* dot 이벤트 스타일 숨기기 및 변환 */
+/* dot 이벤트 스타일 */
 .fc-daygrid-dot-event {
   display: block !important;
   padding: 2px 6px !important;
@@ -378,7 +370,7 @@ const handleFabClick = () => {
   background-color: rgba(0, 0, 0, 0.02) !important;
 }
 
-/* 이벤트 "더보기" 링크 스타일 */
+/* 이벤트 "더보기" 링크 */
 .fc-daygrid-more-link {
   font-size: 0.8rem !important;
   color: #3182ce !important;
@@ -401,14 +393,14 @@ const handleFabClick = () => {
   min-height: 80px;
 }
 
-/* 날짜 상단 영역 스타일 강제 재정의 - 좌측 정렬 보장 */
+/* 날짜 상단 영역 스타일 */
 .fc-daygrid-day-top {
   justify-content: flex-start !important;
   flex-direction: row !important;
   padding: 2px 0 0 4px !important;
 }
 
-/* 날짜와 LLM 표시 컨테이너 스타일 */
+/* 날짜와 LLM 표시 컨테이너 */
 .day-cell-content {
   display: flex !important;
   flex-direction: row !important;
@@ -417,14 +409,14 @@ const handleFabClick = () => {
   width: auto !important;
 }
 
-/* 날짜 셀 전체 구조 조정 */
+/* 날짜 셀 전체 구조 */
 .fc-daygrid-day-frame {
   display: flex !important;
   flex-direction: column !important;
   padding: 2px !important;
 }
 
-/* 날짜 숫자 스타일 강제 재정의 */
+/* 날짜 숫자 스타일 */
 .fc-daygrid-day-number {
   font-size: 0.9rem !important;
   padding: 0 !important;
@@ -454,21 +446,21 @@ const handleFabClick = () => {
   display: inline !important;
 }
 
-/* a 태그 인라인 스타일 강제 적용 */
+/* a 태그 인라인 스타일 */
 .fc a {
   text-decoration: none !important;
   min-width: auto !important;
   display: inline !important;
 }
 
-/* 특별히 날짜 셀의 패딩을 더 명시적으로 설정 */
+/* 날짜 셀 패딩 설정 */
 .fc .fc-daygrid-day-top a {
   display: inline !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
-/* 요일 헤더 영역 완전히 숨기기 */
+/* 요일 헤더 영역 숨기기 */
 .fc-col-header {
   height: 0 !important;
   line-height: 0 !important;

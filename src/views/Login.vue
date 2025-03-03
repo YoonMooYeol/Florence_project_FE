@@ -5,20 +5,24 @@ import axios from 'axios'
 
 const router = useRouter()
 
+// 폼 데이터 관리
 const formData = reactive({
   email: '',
   password: '',
   rememberMe: false
 })
 
+// 유효성 검사 오류 메시지
 const errors = reactive({
   email: '',
   password: '',
   form: ''
 })
 
+// 제출 상태 관리
 const isSubmitting = ref(false)
 
+// 폼 유효성 검사 함수
 const validateForm = () => {
   let isValid = true
   
@@ -50,8 +54,6 @@ const saveLoginState = (userData) => {
     localStorage.setItem('userName', userData.name)
     localStorage.setItem('userId', userData.user_id)
     localStorage.setItem('isPregnant', userData.is_pregnant)
-    
-    // 토큰 저장
     localStorage.setItem('accessToken', userData.tokens.access)
     localStorage.setItem('refreshToken', userData.tokens.refresh)
   } else {
@@ -60,8 +62,6 @@ const saveLoginState = (userData) => {
     sessionStorage.setItem('userName', userData.name)
     sessionStorage.setItem('userId', userData.user_id)
     sessionStorage.setItem('isPregnant', userData.is_pregnant)
-    
-    // 토큰 저장
     sessionStorage.setItem('accessToken', userData.tokens.access)
     sessionStorage.setItem('refreshToken', userData.tokens.refresh)
     
@@ -85,9 +85,6 @@ const checkSavedLogin = () => {
   if (savedRememberMe === 'true' && savedEmail && accessToken) {
     formData.email = savedEmail
     formData.rememberMe = true
-    
-    // 토큰이 유효한지 확인하고 자동 로그인 처리도 가능
-    // 여기서는 이메일만 자동 입력하는 기능만 구현
   }
 }
 
@@ -97,15 +94,12 @@ checkSavedLogin()
 // 로그인 API 호출 함수
 const loginApi = async (email, password) => {
   try {
-    // 실제 API 호출
     const response = await axios.post('http://127.0.0.1:8000/v1/accounts/login/', {
       email,
       password
     })
-    
     return response.data
   } catch (error) {
-    console.error('API 호출 오류:', error)
     throw error
   }
 }
@@ -124,8 +118,6 @@ const handleSubmit = async () => {
     // 로그인 API 호출
     const userData = await loginApi(formData.email, formData.password)
     
-    console.log('로그인 성공:', userData)
-    
     // 로그인 정보와 토큰 저장
     saveLoginState(userData)
     
@@ -137,23 +129,23 @@ const handleSubmit = async () => {
       router.push('/')
     }, 1000)
   } catch (error) {
-    console.error('로그인 오류:', error)
     errors.form = '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.'
   } finally {
     isSubmitting.value = false
   }
 }
 
+// 페이지 이동 함수들
 const goToRegister = () => {
   router.push('/register')
 }
 
 const goToFindId = () => {
-  console.log('아이디 찾기')
+  // 아이디 찾기 구현 예정
 }
 
 const goToFindPassword = () => {
-  console.log('비밀번호 찾기')
+  // 비밀번호 찾기 구현 예정
 }
 </script>
 
@@ -173,7 +165,7 @@ const goToFindPassword = () => {
       
       <!-- 로그인 폼 -->
       <form @submit.prevent="handleSubmit" class="p-6 bg-white rounded-lg shadow-md">
-        <!-- 이메일 -->
+        <!-- 이메일 입력 -->
         <div class="mb-4">
           <label for="email" class="block mb-2 text-sm font-medium text-dark-gray">이메일</label>
           <input
@@ -186,7 +178,7 @@ const goToFindPassword = () => {
           <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email }}</p>
         </div>
         
-        <!-- 비밀번호 -->
+        <!-- 비밀번호 입력 -->
         <div class="mb-4">
           <label for="password" class="block mb-2 text-sm font-medium text-dark-gray">비밀번호</label>
           <input
@@ -211,8 +203,9 @@ const goToFindPassword = () => {
           </label>
         </div>
         
-        <!-- 버튼 -->
+        <!-- 버튼 섹션 -->
         <div class="flex flex-col space-y-3">
+          <!-- 로그인 버튼 -->
           <button
             type="submit"
             class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
@@ -231,7 +224,7 @@ const goToFindPassword = () => {
             </div>
             
             <div class="flex flex-col space-y-3">
-              <!-- 구글 로그인 -->
+              <!-- 소셜 로그인 버튼 -->
               <button
                 type="button"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
@@ -242,7 +235,6 @@ const goToFindPassword = () => {
                 <span>구글 계정으로 로그인</span>
               </button>
               
-              <!-- 카카오 로그인 -->
               <button
                 type="button"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-800 bg-[#FEE500] border border-[#FEE500] rounded-md shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
@@ -253,7 +245,6 @@ const goToFindPassword = () => {
                 <span>카카오 계정으로 로그인</span>
               </button>
               
-              <!-- 네이버 로그인 -->
               <button
                 type="button"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-[#03C75A] border border-[#03C75A] rounded-md shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
@@ -264,7 +255,6 @@ const goToFindPassword = () => {
                 <span>네이버 계정으로 로그인</span>
               </button>
               
-              <!-- 애플 로그인 -->
               <button
                 type="button"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-black border border-black rounded-md shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"

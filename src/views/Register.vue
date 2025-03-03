@@ -7,6 +7,7 @@ import axios from 'axios'
 const router = useRouter()
 const userStore = useUserStore()
 
+// 폼 데이터 관리
 const formData = reactive({
   username: '',
   name: '',
@@ -22,6 +23,7 @@ const formData = reactive({
   address: ''
 })
 
+// 유효성 검사 오류 메시지
 const errors = reactive({
   username: '',
   name: '',
@@ -34,6 +36,7 @@ const errors = reactive({
   form: ''
 })
 
+// 상태 관리 변수
 const isSubmitting = ref(false)
 const showSuccessMessage = ref(false)
 const registeredUser = ref(null)
@@ -67,6 +70,7 @@ const initPhoneParts = () => {
 // 컴포넌트 마운트 시 초기화
 initPhoneParts()
 
+// 폼 유효성 검사 함수
 const validateForm = () => {
   let isValid = true
   
@@ -158,7 +162,6 @@ const registerApi = async (userData) => {
     const response = await axios.post('http://127.0.0.1:8000/v1/accounts/register/', userData)
     return response.data
   } catch (error) {
-    console.error('API 호출 오류:', error)
     throw error
   }
 }
@@ -170,6 +173,7 @@ const clearFieldError = (field) => {
   }
 }
 
+// 회원가입 처리 함수
 const handleSubmit = async () => {
   errors.form = ''
   
@@ -180,12 +184,8 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   
   try {
-    // 비밀번호 확인 필드도 API에 포함하여 전송
-    // const { password_confirm, ...userData } = formData
-    const userData = { ...formData }
-    
-    // phone_part 필드들은 API에 보내지 않음
-    const { phone_part1, phone_part2, phone_part3, ...dataToSend } = userData
+    // API에 보낼 데이터 준비
+    const { phone_part1, phone_part2, phone_part3, ...dataToSend } = formData
     
     // API 호출
     const response = await registerApi(dataToSend)
@@ -195,16 +195,7 @@ const handleSubmit = async () => {
     
     // 성공 메시지 표시
     showSuccessMessage.value = true
-    
-    console.log('회원가입 성공:', response)
-    
-    // 자동 리다이렉트 제거
-    // setTimeout(() => {
-    //   router.push('/login')
-    // }, 3000)
   } catch (error) {
-    console.error('회원가입 오류:', error)
-    
     // 서버에서 오는 에러 메시지 처리
     if (error.response && error.response.data) {
       if (typeof error.response.data === 'string') {
@@ -239,6 +230,7 @@ const handleSubmit = async () => {
   }
 }
 
+// 로그인 페이지로 이동
 const goToLogin = () => {
   router.push('/login')
 }
@@ -247,8 +239,6 @@ const goToLogin = () => {
 <template>
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
     <div class="w-full max-w-md">
-
-      
       <!-- 성공 메시지 모달 -->
       <div v-if="showSuccessMessage" class="fixed inset-0 flex items-center justify-center z-50">
         <!-- 배경 오버레이 -->
@@ -288,7 +278,7 @@ const goToLogin = () => {
       
       <!-- 회원가입 폼 -->
       <form @submit.prevent="handleSubmit" class="p-6 bg-white rounded-lg shadow-md">
-        <!-- 사용자명 -->
+        <!-- 사용자명 입력 -->
         <div class="mb-4">
           <label for="username" class="block mb-2 text-sm font-medium text-dark-gray">아이디</label>
           <input
@@ -302,7 +292,7 @@ const goToLogin = () => {
           <p v-if="errors.username" class="mt-1 text-sm text-red-600">{{ errors.username }}</p>
         </div>
         
-        <!-- 이름 -->
+        <!-- 이름 입력 -->
         <div class="mb-4">
           <label for="name" class="block mb-2 text-sm font-medium text-dark-gray">이름</label>
           <input
@@ -316,7 +306,7 @@ const goToLogin = () => {
           <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name }}</p>
         </div>
         
-        <!-- 이메일 -->
+        <!-- 이메일 입력 -->
         <div class="mb-4">
           <label for="email" class="block mb-2 text-sm font-medium text-dark-gray">이메일</label>
           <input
@@ -330,7 +320,7 @@ const goToLogin = () => {
           <p v-if="errors.email" class="mt-1 text-sm text-red-600">{{ errors.email }}</p>
         </div>
         
-        <!-- 전화번호 -->
+        <!-- 전화번호 입력 -->
         <div class="mb-4">
           <label class="block mb-2 text-sm font-medium text-dark-gray">전화번호</label>
           <div class="flex space-x-2">
@@ -367,7 +357,7 @@ const goToLogin = () => {
           <p v-if="errors.phone_number" class="mt-1 text-sm text-red-600">{{ errors.phone_number }}</p>
         </div>
         
-        <!-- 비밀번호 -->
+        <!-- 비밀번호 입력 -->
         <div class="mb-4">
           <label for="password" class="block mb-2 text-sm font-medium text-dark-gray">비밀번호</label>
           <input
@@ -381,7 +371,7 @@ const goToLogin = () => {
           <p v-if="errors.password" class="mt-1 text-sm text-red-600">{{ errors.password }}</p>
         </div>
         
-        <!-- 비밀번호 확인 -->
+        <!-- 비밀번호 확인 입력 -->
         <div class="mb-4">
           <label for="password_confirm" class="block mb-2 text-sm font-medium text-dark-gray">비밀번호 확인</label>
           <input
@@ -395,7 +385,7 @@ const goToLogin = () => {
           <p v-if="errors.password_confirm" class="mt-1 text-sm text-red-600">{{ errors.password_confirm }}</p>
         </div>
         
-        <!-- 성별 -->
+        <!-- 성별 선택 -->
         <div class="mb-4">
           <label class="block mb-2 text-sm font-medium text-dark-gray">성별</label>
           <div class="flex space-x-4">
@@ -435,7 +425,7 @@ const goToLogin = () => {
           </label>
         </div>
         
-        <!-- 주소 -->
+        <!-- 주소 입력 -->
         <div class="mb-6">
           <label for="address" class="block mb-2 text-sm font-medium text-dark-gray">주소</label>
           <input
@@ -449,8 +439,9 @@ const goToLogin = () => {
           <p v-if="errors.address" class="mt-1 text-sm text-red-600">{{ errors.address }}</p>
         </div>
         
-        <!-- 버튼 -->
+        <!-- 버튼 섹션 -->
         <div class="flex flex-col space-y-3">
+          <!-- 회원가입 버튼 -->
           <button
             type="submit"
             class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
@@ -460,6 +451,7 @@ const goToLogin = () => {
             <span v-else>회원가입</span>
           </button>
           
+          <!-- 로그인 링크 -->
           <div class="text-center mt-4">
             <a 
               href="#" 
