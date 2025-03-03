@@ -30,21 +30,17 @@ const newMessage = ref('')
 // 메시지 전송 함수 (실제 구현은 나중에)
 const sendMessage = () => {
   if (!newMessage.value.trim()) return
-  
   // UI 데모용 메시지 추가
   const now = new Date()
   const hours = now.getHours().toString().padStart(2, '0')
   const minutes = now.getMinutes().toString().padStart(2, '0')
-  
   messages.value.push({
     id: messages.value.length + 1,
     sender: 'user',
     content: newMessage.value,
     time: `${hours}:${minutes}`
   })
-  
   newMessage.value = ''
-  
   // 스크롤을 맨 아래로 이동 (실제 구현 시)
   setTimeout(() => {
     const chatContainer = document.querySelector('.chat-messages')
@@ -65,15 +61,15 @@ const sendMessage = () => {
     <!-- 대화 메시지 영역 -->
     <div class="flex-1 p-4 overflow-y-auto chat-messages pb-16">
       <div class="flex flex-col space-y-4">
-        <div 
-          v-for="message in messages" 
-          :key="message.id" 
+        <div
+          v-for="message in messages"
+          :key="message.id"
           class="flex"
           :class="message.sender === 'user' ? 'justify-end' : 'justify-start'"
         >
           <!-- 봇 메시지 -->
-          <div 
-            v-if="message.sender === 'bot'" 
+          <div
+            v-if="message.sender === 'bot'"
             class="flex max-w-[80%]"
           >
             <div class="w-8 h-8 bg-point-yellow rounded-full flex items-center justify-center mr-2 flex-shrink-0">
@@ -88,10 +84,9 @@ const sendMessage = () => {
               <div class="text-xs text-gray-500 mt-1 ml-1">{{ message.time }}</div>
             </div>
           </div>
-          
           <!-- 사용자 메시지 -->
-          <div 
-            v-else 
+          <div
+            v-else
             class="flex flex-col items-end max-w-[80%]"
           >
             <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
@@ -118,7 +113,7 @@ const sendMessage = () => {
           class="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-point-yellow"
           @keyup.enter="sendMessage"
         >
-        <button 
+        <button
           class="p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
           @click="sendMessage"
         >
@@ -152,4 +147,4 @@ const sendMessage = () => {
   height: calc(100vh - 180px);
   padding-bottom: 60px;
 }
-</style> 
+</style>

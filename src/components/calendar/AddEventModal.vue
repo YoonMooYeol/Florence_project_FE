@@ -249,13 +249,7 @@ const saveEvent = () => {
       <!-- 모달 푸터 -->
       <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-end">
         <button
-          class="px-4 py-2 bg-white text-dark-gray border border-gray-300 rounded-full mr-2 hover:bg-gray-100 transition-colors font-medium"
-          @click="closeModal"
-        >
-          취소
-        </button>
-        <button
-          class="px-4 py-2 bg-point text-dark-gray rounded-full hover:bg-yellow-500 transition-colors font-medium"
+          class="px-6 py-2 bg-point text-dark-gray rounded-full hover:bg-yellow-500 transition-colors font-medium"
           @click="saveEvent"
         >
           저장

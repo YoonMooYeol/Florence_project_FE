@@ -44,20 +44,19 @@ export function useModalManager () {
   // 일정 추가 모달 열기
   const openAddEventModal = () => {
     console.log('useModalManager: 일정 추가 모달 열기')
-    // 일정 추가 모달 표시
-    showAddEventModal.value = true
-
-    // 다른 상세 모달은 닫기 (일일 일정 모달은 유지)
+    // 모든 모달 닫기
+    showDayEventsModal.value = false
     showEventDetailModal.value = false
     showLLMDetailModal.value = false
+    // 일정 추가 모달만 표시
+    showAddEventModal.value = true
   }
 
   // 일정 추가 모달 닫기
   const closeAddEventModal = () => {
     console.log('useModalManager: 일정 추가 모달 닫기')
     showAddEventModal.value = false
-    // 일일 일정 모달로 돌아가기
-    showDayEventsModal.value = true
+    // 일일 일정 모달로 돌아가지 않음
   }
 
   // 일정 상세 모달 열기
@@ -107,7 +106,7 @@ export function useModalManager () {
     console.log('useModalManager: 일정 저장:', newEvent)
     calendarStore.addEvent(newEvent)
     closeAddEventModal()
-    // closeAddEventModal에서 일일 일정 모달로 돌아감
+    // 일일 일정 모달로 돌아가지 않음
   }
 
   // 일정 삭제
