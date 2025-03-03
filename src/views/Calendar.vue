@@ -27,14 +27,14 @@ const handleDateClick = (info) => {
 // 이벤트 클릭 핸들러
 const handleEventClick = (info) => {
   const eventId = info.event.id
-  
+
   const eventObj = calendarStore.events.find(e => e.id === eventId)
   if (eventObj) {
     const dateStr = normalizeDate(eventObj.start)
-    
+
     // 먼저 현재 표시된 모든 모달 닫기
     modalManager.closeDayEventsModal()
-    
+
     // 그런 다음 선택된 날짜를 설정하고 일일 일정 모달 열기
     calendarStore.setSelectedDate(dateStr)
     modalManager.openDayEventsModal(dateStr)
@@ -42,9 +42,9 @@ const handleEventClick = (info) => {
 }
 
 // 캘린더 설정 가져오기
-const { 
-  calendarRef, 
-  calendarOptions, 
+const {
+  calendarRef,
+  calendarOptions,
   updateCurrentDate,
   prevMonth,
   nextMonth,
@@ -71,28 +71,28 @@ const handleFabClick = () => {
 <template>
   <div class="min-h-screen bg-ivory">
     <!-- 상단 헤더 -->
-    <CalendarHeader 
-      :current-year="calendarStore.currentYear" 
+    <CalendarHeader
+      :current-year="calendarStore.currentYear"
       :current-month="calendarStore.currentMonth"
       @prev-month="prevMonth"
       @next-month="nextMonth"
       @today="goToToday"
     />
-    
+
     <!-- 캘린더 -->
     <div class="px-4 pb-24 pt-2 bg-ivory">
-      <FullCalendar 
+      <FullCalendar
         ref="calendarRef"
         :options="calendarOptions"
       />
     </div>
-    
+
     <!-- 하단 네비게이션 바 -->
     <BottomNavBar active-tab="calendar" />
-    
+
     <!-- 추가 버튼 (우측 하단 고정) -->
     <FloatingActionButton @click="handleFabClick" />
-    
+
     <!-- 일일 일정 모달 -->
     <DayEventsModal
       :show="modalManager.showDayEventsModal.value"
@@ -104,7 +104,7 @@ const handleFabClick = () => {
       @view-event="modalManager.openEventDetailModal"
       @view-llm-summary="modalManager.openLLMDetailModal"
     />
-    
+
     <!-- 일정 상세 모달 -->
     <EventDetailModal
       :show="modalManager.showEventDetailModal.value"
@@ -112,7 +112,7 @@ const handleFabClick = () => {
       @close="modalManager.closeEventDetailModal"
       @delete="modalManager.deleteEvent"
     />
-    
+
     <!-- LLM 대화 요약 상세 모달 -->
     <LLMSummaryModal
       :show="modalManager.showLLMDetailModal.value"
@@ -120,7 +120,7 @@ const handleFabClick = () => {
       @close="modalManager.closeLLMDetailModal"
       @delete="modalManager.deleteLLMSummary"
     />
-    
+
     <!-- 일정 등록 모달 -->
     <AddEventModal
       :show="modalManager.showAddEventModal.value"
@@ -480,4 +480,4 @@ const handleFabClick = () => {
   padding: 0 !important;
   border: none !important;
 }
-</style> 
+</style>

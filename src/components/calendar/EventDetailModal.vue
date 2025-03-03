@@ -44,55 +44,92 @@ const deleteEvent = () => {
 </script>
 
 <template>
-  <div v-if="show" class="fixed inset-0 flex items-center justify-center detail-modal p-4 pointer-events-none">
+  <div
+    v-if="show"
+    class="fixed inset-0 flex items-center justify-center detail-modal p-4 pointer-events-none"
+  >
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden pointer-events-auto">
       <!-- 모달 헤더 -->
       <div class="bg-point px-6 py-4 flex justify-between items-center">
-        <h3 class="text-lg font-bold text-dark-gray">일정 상세</h3>
-        <button @click="closeModal" class="text-dark-gray hover:text-gray-700">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <h3 class="text-lg font-bold text-dark-gray">
+          일정 상세
+        </h3>
+        <button
+          class="text-dark-gray hover:text-gray-700"
+          @click="closeModal"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
-      
+
       <!-- 모달 내용 -->
       <div class="p-6 bg-ivory">
         <div class="space-y-4">
           <div>
-            <h4 class="text-sm font-medium text-gray-500 mb-1">일정 제목</h4>
-            <p class="text-lg font-bold text-dark-gray">{{ event.title }}</p>
+            <h4 class="text-sm font-medium text-gray-500 mb-1">
+              일정 제목
+            </h4>
+            <p class="text-lg font-bold text-dark-gray">
+              {{ event.title }}
+            </p>
           </div>
-          
+
           <div>
-            <h4 class="text-sm font-medium text-gray-500 mb-1">날짜</h4>
-            <p class="text-dark-gray">{{ formatDate(event.start) }}</p>
+            <h4 class="text-sm font-medium text-gray-500 mb-1">
+              날짜
+            </h4>
+            <p class="text-dark-gray">
+              {{ formatDate(event.start) }}
+            </p>
           </div>
-          
+
           <div v-if="!event.allDay">
-            <h4 class="text-sm font-medium text-gray-500 mb-1">시간</h4>
-            <p class="text-dark-gray">{{ formatTime(event.start) }} - {{ formatTime(event.end) }}</p>
+            <h4 class="text-sm font-medium text-gray-500 mb-1">
+              시간
+            </h4>
+            <p class="text-dark-gray">
+              {{ formatTime(event.start) }} - {{ formatTime(event.end) }}
+            </p>
           </div>
-          
+
           <div v-else>
-            <h4 class="text-sm font-medium text-gray-500 mb-1">시간</h4>
-            <p class="text-dark-gray">종일</p>
+            <h4 class="text-sm font-medium text-gray-500 mb-1">
+              시간
+            </h4>
+            <p class="text-dark-gray">
+              종일
+            </p>
           </div>
-          
+
           <div>
-            <h4 class="text-sm font-medium text-gray-500 mb-1">메모</h4>
+            <h4 class="text-sm font-medium text-gray-500 mb-1">
+              메모
+            </h4>
             <p class="text-dark-gray bg-white p-3 rounded-lg border border-gray-200">
               {{ event.description || '일정에 관한 상세 메모가 여기에 표시됩니다.' }}
             </p>
           </div>
         </div>
       </div>
-      
+
       <!-- 모달 푸터 -->
       <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-end">
-        <button 
-          @click="deleteEvent" 
+        <button
           class="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
+          @click="deleteEvent"
         >
           삭제
         </button>
@@ -102,13 +139,13 @@ const deleteEvent = () => {
 </template>
 
 <style scoped>
-.bg-point { 
-  background-color: #FFD600; 
+.bg-point {
+  background-color: #FFD600;
 }
-.bg-ivory { 
-  background-color: #FFFAE0; 
+.bg-ivory {
+  background-color: #FFFAE0;
 }
-.text-dark-gray { 
-  color: #353535; 
+.text-dark-gray {
+  color: #353535;
 }
-</style> 
+</style>

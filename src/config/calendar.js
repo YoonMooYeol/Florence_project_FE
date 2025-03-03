@@ -1,4 +1,3 @@
-
 // 한국어 로케일 설정
 export const koLocale = {
   code: 'ko',
@@ -21,4 +20,4 @@ export const koLocale = {
 export const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
 
 // 요일 배열
-export const weekdays = ['일', '월', '화', '수', '목', '금', '토'] 
+export const weekdays = ['일', '월', '화', '수', '목', '금', '토']
