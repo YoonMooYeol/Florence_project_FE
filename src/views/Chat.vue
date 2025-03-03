@@ -63,7 +63,7 @@ const sendMessage = () => {
     </div>
 
     <!-- 대화 메시지 영역 -->
-    <div class="flex-1 p-4 overflow-y-auto chat-messages">
+    <div class="flex-1 p-4 overflow-y-auto chat-messages pb-16">
       <div class="flex flex-col space-y-4">
         <div 
           v-for="message in messages" 
@@ -104,7 +104,7 @@ const sendMessage = () => {
     </div>
 
     <!-- 메시지 입력 영역 -->
-    <div class="bg-white p-3 border-t border-gray-200">
+    <div class="bg-white p-3 border-t border-gray-200 fixed bottom-16 left-0 right-0 z-10">
       <div class="flex items-center">
         <button class="p-2 text-gray-500 rounded-full hover:bg-gray-100 mr-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,6 +149,7 @@ const sendMessage = () => {
 }
 
 .chat-messages {
-  height: calc(100vh - 130px);
+  height: calc(100vh - 180px);
+  padding-bottom: 60px;
 }
 </style> 
