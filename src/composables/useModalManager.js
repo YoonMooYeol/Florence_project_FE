@@ -120,9 +120,19 @@ export function useModalManager () {
   // LLM 요약 삭제
   const deleteLLMSummary = (date) => {
     console.log('useModalManager: LLM 요약 삭제:', date)
-    calendarStore.deleteLLMSummary(date)
+    // 먼저 LLM 모달만 닫기
     showLLMDetailModal.value = false
-    // 일일 일정 모달은 이미 표시되어 있음
+    // 약간의 지연 후 나머지 작업 수행
+    setTimeout(() => {
+      // LLM 요약 삭제
+      calendarStore.deleteLLMSummary(date)
+      // LLM 요약 상태 업데이트
+      calendarStore.setSelectedLLMSummary(null)
+      // 이벤트 방출 - 외부 컴포넌트(Calendar.vue)에서 감지할 수 있도록
+      document.dispatchEvent(new CustomEvent('llm-summary-deleted', { detail: { date } }))
+      // 일정 모달은 그대로 유지 (닫지 않음)
+      // 선택된 날짜 설정은 이미 되어 있으므로 다시 설정할 필요 없음
+    }, 100)
   }
 
   return {

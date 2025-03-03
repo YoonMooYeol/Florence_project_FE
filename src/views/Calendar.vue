@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import { useCalendarStore } from '@/store/calendar'
 import { useCalendarConfig } from '@/composables/useCalendarConfig'
@@ -57,6 +57,39 @@ onMounted(() => {
   setTimeout(() => {
     updateCurrentDate()
   }, 100)
+  
+  // LLM 요약 삭제 이벤트 리스너
+  document.addEventListener('llm-summary-deleted', (event) => {
+    console.log('Calendar: LLM 요약 삭제 이벤트 감지됨')
+    if (calendarRef.value) {
+      // 다른 뷰로 이동하지 않고 현재 뷰에서 업데이트만 수행
+      const calendarApi = calendarRef.value.getApi()
+      
+      // 현재 뷰의 시작 날짜와 끝 날짜를 확인
+      const view = calendarApi.view
+      const deletedDate = event.detail?.date
+      
+      // refetchEvents 대신 더 부드러운 방식 사용
+      calendarApi.refetchEvents()
+      
+      // 삭제된 날짜의 날짜 셀만 업데이트하기 위한 접근
+      if (deletedDate) {
+        // 날짜 요소에 접근하여 LLM 표시 업데이트
+        // 가능한 한 최소한의 DOM 업데이트 수행
+        setTimeout(() => {
+          // ARIA 상태를 변경하여 미묘한 리렌더링 촉발
+          calendarApi.render()
+        }, 10)
+      }
+    }
+  })
+})
+
+// 컴포넌트 언마운트 시 이벤트 리스너 제거
+onUnmounted(() => {
+  document.removeEventListener('llm-summary-deleted', () => {
+    console.log('Calendar: LLM 요약 삭제 이벤트 리스너 제거됨')
+  })
 })
 
 // 플로팅 액션 버튼 클릭 핸들러
