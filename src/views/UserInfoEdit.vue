@@ -12,8 +12,12 @@ const userInfo = ref({
   isPregnant: true,
   dueDate: '2025-06-15',
   pregnancyWeek: 12,
-  babyNickname: '콩콩이'
+  babyNickname: '콩콩이',
+  highRisk: false
 })
+
+// 현재 주차 옵션
+const weekOptions = Array.from({ length: 40 }, (_, i) => i + 1)
 
 // 수정된 정보를 저장하는 함수 (실제 구현은 나중에)
 const saveUserInfo = () => {
@@ -94,33 +98,6 @@ const goBack = () => {
             type="tel"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
           >
-        </div>
-
-        <!-- 임신 정보 섹션 -->
-        <div v-if="userInfo.isPregnant" class="mb-4">
-          <h3 class="text-lg font-medium text-dark-gray mb-3">임신 정보</h3>
-          
-          <!-- 출산 예정일 -->
-          <div class="mb-4">
-            <label for="dueDate" class="block mb-2 text-sm font-medium text-dark-gray">출산 예정일</label>
-            <input
-              id="dueDate"
-              v-model="userInfo.dueDate"
-              type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            >
-          </div>
-          
-          <!-- 태명 -->
-          <div class="mb-4">
-            <label for="babyNickname" class="block mb-2 text-sm font-medium text-dark-gray">태명</label>
-            <input
-              id="babyNickname"
-              v-model="userInfo.babyNickname"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            >
-          </div>
         </div>
       </div>
 

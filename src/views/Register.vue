@@ -228,6 +228,20 @@ const handleSubmit = async () => {
 const goToLogin = () => {
   router.push('/login')
 }
+
+// 임신 정보 등록 페이지로 이동
+const goToPregnancyInfoRegister = () => {
+  router.push('/pregnancy-info-register')
+}
+
+// 회원가입 성공 후 페이지 이동
+const navigateAfterRegistration = () => {
+  if (formData.is_pregnant) {
+    goToPregnancyInfoRegister()
+  } else {
+    goToLogin()
+  }
+}
 </script>
 
 <template>
@@ -263,7 +277,7 @@ const goToLogin = () => {
             회원가입이 완료되었습니다!
           </h2>
           <p class="text-center text-gray-600 mb-6">
-            아래 버튼을 클릭하여 로그인 페이지로 이동하세요.
+            아래 버튼을 클릭하여 {{ formData.is_pregnant ? '임신 정보를 등록' : '로그인 페이지로 이동' }}하세요.
           </p>
 
           <div
@@ -282,9 +296,9 @@ const goToLogin = () => {
           <div class="text-center">
             <button
               class="px-6 py-2 bg-point-yellow text-dark-gray font-medium rounded-md hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-colors"
-              @click="goToLogin"
+              @click="navigateAfterRegistration"
             >
-              로그인 페이지로 이동
+              {{ formData.is_pregnant ? '임신 정보 등록하기' : '로그인 페이지로 이동' }}
             </button>
           </div>
         </div>
