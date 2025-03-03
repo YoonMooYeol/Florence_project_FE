@@ -20,6 +20,31 @@ const routes = [
     path: '/calendar',
     name: 'Calendar',
     component: () => import('../views/Calendar.vue')
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/Profile.vue')
+  },
+  {
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('../views/Chat.vue')
+  },
+  {
+    path: '/user-info-edit',
+    name: 'UserInfoEdit',
+    component: () => import('../views/UserInfoEdit.vue')
+  },
+  {
+    path: '/pregnancy-info-register',
+    name: 'PregnancyInfoRegister',
+    component: () => import('../views/PregnancyInfoRegister.vue')
+  },
+  {
+    path: '/pregnancy-info-edit',
+    name: 'PregnancyInfoEdit',
+    component: () => import('../views/PregnancyInfoEdit.vue')
   }
 ]
 
@@ -28,4 +53,4 @@ const router = createRouter({
   routes
 })
 
-export default router 
+export default router
