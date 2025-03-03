@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { normalizeDate, isSameDay } from '@/utils/dateUtils'
 
 // 캘린더 스토어 정의
 export const useCalendarStore = defineStore('calendar', () => {
@@ -147,11 +148,8 @@ export const useCalendarStore = defineStore('calendar', () => {
     if (!selectedDate.value) return []
 
     return events.value.filter(event => {
-      const eventDate = new Date(event.start)
-      const clickedDate = new Date(selectedDate.value)
-      return eventDate.getFullYear() === clickedDate.getFullYear() &&
-             eventDate.getMonth() === clickedDate.getMonth() &&
-             eventDate.getDate() === clickedDate.getDate()
+      const eventStart = event.start
+      return isSameDay(eventStart, selectedDate.value)
     })
   })
 
@@ -159,13 +157,13 @@ export const useCalendarStore = defineStore('calendar', () => {
     if (!selectedDate.value) return null
 
     // 날짜 형식 정규화 (YYYY-MM-DD)
-    const formattedDate = selectedDate.value.split('T')[0]
+    const formattedDate = normalizeDate(selectedDate.value)
     return llmSummaries.value.find(summary => summary.date === formattedDate)
   })
 
   const hasLLMSummary = (dateStr) => {
     // 날짜 문자열 정규화 (YYYY-MM-DD 형식으로)
-    const formattedDate = dateStr.split('T')[0]
+    const formattedDate = normalizeDate(dateStr)
     return llmSummaries.value.some(summary => summary.date === formattedDate)
   }
 
