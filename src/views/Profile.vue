@@ -9,10 +9,13 @@ const router = useRouter()
 const userInfo = ref({
   name: '홍길동',
   email: 'user@example.com',
-  isPregnant: true,
+  phone: '010-1234-5678',
+  gender: 'female',
+  isPregnant: false,
   dueDate: '2025-06-15',
   pregnancyWeek: 12,
-  babyNickname: '콩콩이'
+  babyNickname: '콩콩이',
+  highRisk: false
 })
 
 // 출산 예정일까지 남은 일수 계산 함수
@@ -84,7 +87,7 @@ const handleLogout = () => {
     </div>
 
     <!-- 사용자 정보 섹션 -->
-    <div class="p-4 mt-4">
+    <div class="p-4 mt-4 pb-20">
       <div class="bg-white rounded-lg shadow-md p-6 mb-4">
         <div class="flex items-center mb-4">
           <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
@@ -111,19 +114,45 @@ const handleLogout = () => {
           </div>
         </div>
 
-        <div
-          v-if="userInfo.isPregnant"
-          class="bg-base-yellow bg-opacity-20 p-4 rounded-lg mb-4"
-        >
-          <div class="flex justify-between items-center mb-2">
-            <span class="font-medium text-dark-gray">임신 {{ userInfo.pregnancyWeek }}주차</span>
-            <span class="text-sm text-gray-500">{{ userInfo.babyNickname }} 만나기까지 D-{{ getDaysUntilDueDate() }} ♥</span>
+        <div v-if="userInfo.gender === 'female'" class="bg-white rounded-lg shadow-md p-6 mb-4">
+          <h2 class="text-lg font-bold text-dark-gray mb-4">임신 정보</h2>
+          <div v-if="userInfo.isPregnant" class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">태명</span>
+              <span class="font-medium">{{ userInfo.babyNickname }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">출산 예정일</span>
+              <span class="font-medium">{{ userInfo.dueDate }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">현재 임신 주차</span>
+              <span class="font-medium">{{ userInfo.pregnancyWeek }}주차</span>
+            </div>
+            <div v-if="userInfo.highRisk" class="flex items-center text-red-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-1"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              <span class="text-sm">고위험 임신</span>
+            </div>
           </div>
-          <div class="w-full bg-gray-200 rounded-full h-2.5">
-            <div
-              class="bg-point-yellow h-2.5 rounded-full"
-              :style="{ width: `${(userInfo.pregnancyWeek / 40) * 100}%` }"
-            />
+          <div v-else class="text-center">
+            <p class="text-gray-500 mb-4">아직 임신 정보가 등록되지 않았습니다</p>
+            <button
+              class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+              @click="router.push('/pregnancy-info-edit')"
+            >
+              임신 정보 등록하기
+            </button>
           </div>
         </div>
       </div>

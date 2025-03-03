@@ -9,7 +9,8 @@ const pregnancyInfo = ref({
   babyName: '',
   dueDate: '',
   currentWeek: 1,
-  highRisk: false
+  highRisk: false,
+  isPregnant: false
 })
 
 // "모름" 상태 관리
@@ -21,6 +22,20 @@ const unknownInfo = ref({
 
 // 현재 주차 옵션
 const weekOptions = Array.from({ length: 40 }, (_, i) => i + 1)
+
+// 임신 여부 변경 시 처리
+watch(() => pregnancyInfo.value.isPregnant, (isPregnant) => {
+  if (!isPregnant) {
+    // 임신이 아닌 경우 모든 필드 초기화
+    pregnancyInfo.value.babyName = ''
+    pregnancyInfo.value.dueDate = ''
+    pregnancyInfo.value.currentWeek = 1
+    pregnancyInfo.value.highRisk = false
+    unknownInfo.value.babyName = false
+    unknownInfo.value.dueDate = false
+    unknownInfo.value.currentWeek = false
+  }
+})
 
 // "모름" 체크박스 상태 변경 시 관련 필드 처리
 watch(() => unknownInfo.value.babyName, (isUnknown) => {
@@ -47,6 +62,13 @@ watch(() => unknownInfo.value.currentWeek, (isUnknown) => {
 
 // 임신 정보 저장 함수 (실제 구현은 나중에)
 const savePregnancyInfo = () => {
+  // 임신이 아닌 경우 바로 저장
+  if (!pregnancyInfo.value.isPregnant) {
+    alert('임신 정보가 성공적으로 저장되었습니다.')
+    router.push('/profile')
+    return
+  }
+
   // 유효성 검사
   if (!pregnancyInfo.value.babyName && !unknownInfo.value.babyName) {
     alert('태명을 입력하거나 태명이 없음을 체크해주세요.')
@@ -119,104 +141,121 @@ const goBack = () => {
           </p>
         </div>
 
-        <!-- 태명 입력 -->
-        <div class="mb-1">
-          <label
-            for="babyName"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >태명</label>
-          <input
-            id="babyName"
-            v-model="pregnancyInfo.babyName"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="태명을 입력해주세요"
-            :disabled="unknownInfo.babyName"
-          >
-        </div>
-        <div class="mb-4">
-          <label class="flex items-center mt-2">
-            <input
-              v-model="unknownInfo.babyName"
-              type="checkbox"
-              class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
-            >
-            <span class="ml-2 text-sm text-gray-500">태명이 없습니다</span>
-          </label>
-        </div>
-
-        <!-- 출산 예정일 -->
-        <div class="mb-1">
-          <label
-            for="dueDate"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >출산 예정일</label>
-          <input
-            id="dueDate"
-            v-model="pregnancyInfo.dueDate"
-            type="date"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            :disabled="unknownInfo.dueDate"
-          >
-        </div>
-        <div class="mb-4">
-          <label class="flex items-center mt-2">
-            <input
-              v-model="unknownInfo.dueDate"
-              type="checkbox"
-              class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
-            >
-            <span class="ml-2 text-sm text-gray-500">출산 예정일을 모릅니다</span>
-          </label>
-        </div>
-        <!-- 현재 임신 주차 -->
-        <div class="mb-1">
-          <label
-            for="currentWeek"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >현재 임신 주차</label>
-          <select
-            id="currentWeek"
-            v-model="pregnancyInfo.currentWeek"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            :disabled="unknownInfo.currentWeek"
-          >
-            <option
-              v-for="week in weekOptions"
-              :key="week"
-              :value="week"
-            >
-              {{ week }}주차
-            </option>
-          </select>
-        </div>
-        <div class="mb-4">
-          <label class="flex items-center mt-2">
-            <input
-              v-model="unknownInfo.currentWeek"
-              type="checkbox"
-              class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
-            >
-            <span class="ml-2 text-sm text-gray-500">현재 임신 주차를 모릅니다</span>
-          </label>
-        </div>
-        <!-- 고위험 임신 여부 -->
+        <!-- 임신 여부 -->
         <div class="mb-6">
           <label class="flex items-center">
             <input
-              v-model="pregnancyInfo.highRisk"
+              v-model="pregnancyInfo.isPregnant"
               type="checkbox"
               class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
             >
-            <span class="ml-2 text-sm text-dark-gray">고위험 임신입니다</span>
+            <span class="ml-2 text-sm text-dark-gray">임신 중입니다</span>
           </label>
+        </div>
+
+        <!-- 임신 정보 입력 영역 -->
+        <div v-if="pregnancyInfo.isPregnant">
+          <!-- 태명 입력 -->
+          <div class="mb-1">
+            <label
+              for="babyName"
+              class="block mb-2 text-sm font-medium text-dark-gray"
+            >태명</label>
+            <input
+              id="babyName"
+              v-model="pregnancyInfo.babyName"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="태명을 입력해주세요"
+              :disabled="unknownInfo.babyName"
+            >
+          </div>
+          <div class="mb-4">
+            <label class="flex items-center mt-2">
+              <input
+                v-model="unknownInfo.babyName"
+                type="checkbox"
+                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+              >
+              <span class="ml-2 text-sm text-gray-500">태명이 없습니다</span>
+            </label>
+          </div>
+
+          <!-- 출산 예정일 -->
+          <div class="mb-1">
+            <label
+              for="dueDate"
+              class="block mb-2 text-sm font-medium text-dark-gray"
+            >출산 예정일</label>
+            <input
+              id="dueDate"
+              v-model="pregnancyInfo.dueDate"
+              type="date"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :disabled="unknownInfo.dueDate"
+            >
+          </div>
+          <div class="mb-4">
+            <label class="flex items-center mt-2">
+              <input
+                v-model="unknownInfo.dueDate"
+                type="checkbox"
+                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+              >
+              <span class="ml-2 text-sm text-gray-500">출산 예정일을 모릅니다</span>
+            </label>
+          </div>
+
+          <!-- 현재 임신 주차 -->
+          <div class="mb-1">
+            <label
+              for="currentWeek"
+              class="block mb-2 text-sm font-medium text-dark-gray"
+            >현재 임신 주차</label>
+            <select
+              id="currentWeek"
+              v-model="pregnancyInfo.currentWeek"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :disabled="unknownInfo.currentWeek"
+            >
+              <option
+                v-for="week in weekOptions"
+                :key="week"
+                :value="week"
+              >
+                {{ week }}주차
+              </option>
+            </select>
+          </div>
+          <div class="mb-4">
+            <label class="flex items-center mt-2">
+              <input
+                v-model="unknownInfo.currentWeek"
+                type="checkbox"
+                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+              >
+              <span class="ml-2 text-sm text-gray-500">현재 임신 주차를 모릅니다</span>
+            </label>
+          </div>
+
+          <!-- 고위험 임신 여부 -->
+          <div class="mb-6">
+            <label class="flex items-center">
+              <input
+                v-model="pregnancyInfo.highRisk"
+                type="checkbox"
+                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+              >
+              <span class="ml-2 text-sm text-dark-gray">고위험 임신입니다</span>
+            </label>
+          </div>
         </div>
       </div>
 
       <!-- 버튼 영역 -->
       <div class="flex flex-col">
         <button
-          class="w-full p-4 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
+          class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
           @click="savePregnancyInfo"
         >
           저장하기
