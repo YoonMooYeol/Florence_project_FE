@@ -27,8 +27,8 @@ const events = [
   {
     id: '1',
     title: '운동',
-    start: '2023-05-12T10:00:00',
-    end: '2023-05-12T12:00:00',
+    start: '2025-03-12T10:00:00',
+    end: '2025-03-12T12:00:00',
     backgroundColor: '#FFD600',
     borderColor: '#FFD600',
     textColor: '#353535',
@@ -37,8 +37,8 @@ const events = [
   {
     id: '2',
     title: '약 복용',
-    start: '2023-05-15T14:00:00',
-    end: '2023-05-15T15:30:00',
+    start: '2025-03-15T14:00:00',
+    end: '2025-03-15T15:30:00',
     backgroundColor: '#FFD600',
     borderColor: '#FFD600',
     textColor: '#353535',
@@ -47,7 +47,7 @@ const events = [
   {
     id: '3',
     title: '병원 방문',
-    start: '2023-05-18',
+    start: '2025-03-18',
     allDay: true,
     backgroundColor: '#FFD600',
     borderColor: '#FFD600',
@@ -57,8 +57,8 @@ const events = [
   {
     id: '4',
     title: '혈압 측정',
-    start: '2023-05-22T13:00:00',
-    end: '2023-05-22T14:30:00',
+    start: '2025-03-22T13:00:00',
+    end: '2025-03-22T14:30:00',
     backgroundColor: '#FFD600',
     borderColor: '#FFD600',
     textColor: '#353535',
@@ -67,8 +67,8 @@ const events = [
   {
     id: '5',
     title: '건강검진',
-    start: '2023-05-28T09:00:00',
-    end: '2023-05-28T18:00:00',
+    start: '2025-03-28T09:00:00',
+    end: '2025-03-28T18:00:00',
     backgroundColor: '#FFD600',
     borderColor: '#FFD600',
     textColor: '#353535',
@@ -76,18 +76,21 @@ const events = [
   }
 ]
 
+// 이벤트 데이터를 반응형으로 변경
+const eventsData = ref([...events])
+
 // LLM 대화 요약 샘플 데이터
 const llmSummaries = [
   {
-    date: '2023-05-12',
+    date: '2025-03-12',
     summary: '오늘의 건강 상태가 양호하여 운동 강도를 올려보기로 했습니다. 유산소 운동 30분, 근력 운동 20분을 권장받았습니다.'
   },
   {
-    date: '2023-05-15',
+    date: '2025-03-15',
     summary: '약 복용 후 부작용이 있는지 확인했습니다. 특별한 이상 증상은 없었고, 계속해서 처방된 약을 복용하기로 했습니다.'
   },
   {
-    date: '2023-05-22',
+    date: '2025-03-22',
     summary: '최근 혈압이 약간 높아져 식이요법과 가벼운 운동을 통해 관리하기로 했습니다. 저염식 식단과 매일 30분 걷기를 추천받았습니다.'
   }
 ]
@@ -95,9 +98,13 @@ const llmSummaries = [
 // 모달 관련 상태
 const showModal = ref(false)
 const showAddEventModal = ref(false)
+const showEventDetailModal = ref(false)
+const showLLMDetailModal = ref(false)
 const selectedDate = ref(null)
 const selectedDateEvents = ref([])
 const selectedDateLLMSummary = ref(null)
+const selectedEvent = ref(null)
+const selectedLLMSummary = ref(null)
 
 // 날짜 클릭 핸들러
 const handleDateClick = (info) => {
@@ -108,7 +115,7 @@ const handleDateClick = (info) => {
   console.log(`날짜 객체 정보:`, info.date)
   
   // 선택한 날짜의 이벤트 필터링
-  selectedDateEvents.value = events.filter(event => {
+  selectedDateEvents.value = eventsData.value.filter(event => {
     const eventDate = new Date(event.start)
     const clickedDate = new Date(info.dateStr)
     return eventDate.getFullYear() === clickedDate.getFullYear() &&
@@ -127,7 +134,7 @@ const handleDateClick = (info) => {
 // 이벤트 클릭 핸들러
 const handleEventClick = (info) => {
   const eventId = info.event.id
-  const eventObj = events.find(e => e.id === eventId)
+  const eventObj = eventsData.value.find(e => e.id === eventId)
   if (eventObj) {
     const dateStr = new Date(eventObj.start).toISOString().split('T')[0]
     selectedDate.value = dateStr
@@ -155,6 +162,28 @@ const openAddEventModal = () => {
 // 일정 등록 모달 닫기
 const closeAddEventModal = () => {
   showAddEventModal.value = false
+}
+
+// 일정 상세 모달 열기
+const openEventDetailModal = (event) => {
+  selectedEvent.value = event
+  showEventDetailModal.value = true
+}
+
+// 일정 상세 모달 닫기
+const closeEventDetailModal = () => {
+  showEventDetailModal.value = false
+}
+
+// LLM 대화 요약 상세 모달 열기
+const openLLMDetailModal = (summary) => {
+  selectedLLMSummary.value = summary
+  showLLMDetailModal.value = true
+}
+
+// LLM 대화 요약 상세 모달 닫기
+const closeLLMDetailModal = () => {
+  showLLMDetailModal.value = false
 }
 
 // 날짜 포맷 함수
@@ -246,15 +275,20 @@ const calendarOptions = ref({
   },
   locales: [koLocale],
   locale: 'ko',
-  events: events, // 정적 이벤트 데이터
-  initialDate: '2023-05-15', // 고정된 날짜로 표시
+  events: eventsData, // 반응형 이벤트 데이터 사용
+  initialDate: '2025-03-15', // 초기 표시 날짜를 2025년 3월로 변경
   dateClick: handleDateClick,
-  eventClick: handleEventClick
+  eventClick: handleEventClick,
+  datesSet: (dateInfo) => {
+    // 날짜 변경 시 현재 표시 중인 년월 업데이트
+    currentYear.value = dateInfo.view.currentStart.getFullYear()
+    currentMonth.value = dateInfo.view.currentStart.getMonth() + 1
+  }
 })
 
-// 현재 표시할 년월 (고정값)
-const currentYear = ref(2023)
-const currentMonth = ref(5)
+// 현재 표시할 년월 (초기값을 2025년 3월로 변경)
+const currentYear = ref(2025)
+const currentMonth = ref(3)
 
 // 요일 배열
 const weekdays = ['일', '월', '화', '수', '목', '금', '토']
@@ -262,14 +296,102 @@ const weekdays = ['일', '월', '화', '수', '목', '금', '토']
 // 캘린더 참조
 const calendarRef = ref(null)
 
-// 이전 달로 이동 (시각적 효과만)
-const prevMonth = () => {
-  // 정적 화면이므로 실제 동작하지 않음
+// 현재 표시 중인 날짜 정보 업데이트 함수
+const updateCurrentDate = () => {
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    const currentDate = calendarApi.getDate()
+    currentYear.value = currentDate.getFullYear()
+    currentMonth.value = currentDate.getMonth() + 1 // JavaScript의 월은 0부터 시작하므로 +1
+  }
 }
 
-// 다음 달로 이동 (시각적 효과만)
+// 컴포넌트 마운트 시 현재 날짜 정보 초기화
+onMounted(() => {
+  // 약간의 지연을 두고 초기화 (캘린더가 완전히 렌더링된 후)
+  setTimeout(() => {
+    updateCurrentDate()
+  }, 100)
+})
+
+// 이전 달로 이동
+const prevMonth = () => {
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.prev() // FullCalendar API를 사용하여 이전 달로 이동
+    updateCurrentDate() // 현재 표시 중인 날짜 정보 업데이트
+  }
+}
+
+// 다음 달로 이동
 const nextMonth = () => {
-  // 정적 화면이므로 실제 동작하지 않음
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.next() // FullCalendar API를 사용하여 다음 달로 이동
+    updateCurrentDate() // 현재 표시 중인 날짜 정보 업데이트
+  }
+}
+
+// 오늘 날짜로 이동
+const goToToday = () => {
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.today() // FullCalendar API를 사용하여 오늘 날짜로 이동
+    updateCurrentDate() // 현재 표시 중인 날짜 정보 업데이트
+  }
+}
+
+// 일정 삭제 함수
+const deleteEvent = (eventId) => {
+  // 실제 구현에서는 API 호출 등을 통해 서버에서 삭제
+  // 현재는 클라이언트 측에서만 삭제 처리
+  const index = eventsData.value.findIndex(e => e.id === eventId)
+  if (index !== -1) {
+    // 이벤트 배열에서 삭제
+    eventsData.value.splice(index, 1)
+    
+    // 현재 선택된 날짜의 이벤트 목록에서도 삭제
+    selectedDateEvents.value = selectedDateEvents.value.filter(e => e.id !== eventId)
+    
+    // 모달 닫기
+    closeEventDetailModal()
+    
+    // 캘린더 새로고침 (이벤트 변경 반영)
+    if (calendarRef.value) {
+      const calendarApi = calendarRef.value.getApi()
+      calendarApi.refetchEvents()
+    }
+    
+    // 선택된 날짜에 이벤트가 없으면 일정 모달도 닫기
+    if (selectedDateEvents.value.length === 0) {
+      closeModal()
+    }
+  }
+}
+
+// 대화 요약 삭제 함수
+const deleteLLMSummary = (date) => {
+  // 실제 구현에서는 API 호출 등을 통해 서버에서 삭제
+  // 현재는 클라이언트 측에서만 삭제 처리
+  const index = llmSummaries.findIndex(s => s.date === date)
+  if (index !== -1) {
+    // 요약 배열에서 삭제
+    llmSummaries.splice(index, 1)
+    
+    // 현재 선택된 날짜의 요약 초기화
+    if (selectedDateLLMSummary.value && selectedDateLLMSummary.value.date === date) {
+      selectedDateLLMSummary.value = null
+    }
+    
+    // 모달 닫기
+    closeLLMDetailModal()
+    
+    // 캘린더 새로고침 (LLM 표시 변경 반영)
+    if (calendarRef.value) {
+      const calendarApi = calendarRef.value.getApi()
+      calendarApi.render()
+    }
+  }
 }
 </script>
 
@@ -284,7 +406,12 @@ const nextMonth = () => {
         <button @click="prevMonth" class="text-dark-gray px-2 py-1 rounded hover:bg-ivory">
           <span class="text-lg">◀</span>
         </button>
-        <span class="text-center text-lg font-bold text-dark-gray">{{ currentYear }}년 {{ currentMonth }}월</span>
+        <div class="flex items-center">
+          <span class="text-center text-lg font-bold text-dark-gray">{{ currentYear }}년 {{ currentMonth }}월</span>
+          <button @click="goToToday" class="ml-2 text-sm bg-point text-dark-gray px-2 py-1 rounded hover:bg-yellow-500 transition-colors">
+            오늘
+          </button>
+        </div>
         <button @click="nextMonth" class="text-dark-gray px-2 py-1 rounded hover:bg-ivory">
           <span class="text-lg">▶</span>
         </button>
@@ -377,7 +504,12 @@ const nextMonth = () => {
               이 날짜에 등록된 일정이 없습니다.
             </div>
             <div v-else>
-              <div v-for="event in selectedDateEvents" :key="event.id" class="mb-4 p-4 bg-white rounded-xl shadow-sm border-l-4 border-point">
+              <div 
+                v-for="event in selectedDateEvents" 
+                :key="event.id" 
+                class="mb-4 p-4 bg-white rounded-xl shadow-sm border-l-4 border-point cursor-pointer hover:shadow-md transition-shadow"
+                @click="openEventDetailModal(event)"
+              >
                 <div class="flex justify-between items-start">
                   <div class="font-bold text-dark-gray text-lg mb-2">{{ event.title }}</div>
                   <div class="bg-point text-dark-gray text-xs px-2 py-1 rounded-full">
@@ -397,7 +529,11 @@ const nextMonth = () => {
             <div v-if="!selectedDateLLMSummary" class="text-center py-4 text-gray-500">
               이 날짜에 대화 내용이 없습니다.
             </div>
-            <div v-else class="p-4 bg-white rounded-xl shadow-sm border-l-4 border-blue-400">
+            <div 
+              v-else 
+              class="p-4 bg-white rounded-xl shadow-sm border-l-4 border-blue-400 cursor-pointer hover:shadow-md transition-shadow"
+              @click="openLLMDetailModal(selectedDateLLMSummary)"
+            >
               <div class="flex justify-between items-start mb-2">
                 <div class="font-bold text-dark-gray text-lg">대화 요약</div>
                 <div class="bg-blue-400 text-white text-xs px-2 py-1 rounded-full">
@@ -410,15 +546,126 @@ const nextMonth = () => {
         </div>
         
         <!-- 모달 푸터 -->
+        <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-center">
+          <button @click="openAddEventModal" class="px-4 py-2 bg-point text-dark-gray rounded-full hover:bg-yellow-500 transition-colors font-medium">
+            일정등록
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 일정 상세 모달 -->
+    <div v-if="showEventDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
+        <!-- 모달 헤더 -->
+        <div class="bg-point px-6 py-4 flex justify-between items-center">
+          <h3 class="text-lg font-bold text-dark-gray">일정 상세</h3>
+          <button @click="closeEventDetailModal" class="text-dark-gray hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <!-- 모달 내용 -->
+        <div class="p-6 bg-ivory">
+          <div v-if="selectedEvent" class="space-y-4">
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">일정 제목</h4>
+              <p class="text-lg font-bold text-dark-gray">{{ selectedEvent.title }}</p>
+            </div>
+            
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">날짜</h4>
+              <p class="text-dark-gray">{{ formatDate(selectedEvent.start) }}</p>
+            </div>
+            
+            <div v-if="!selectedEvent.allDay">
+              <h4 class="text-sm font-medium text-gray-500 mb-1">시간</h4>
+              <p class="text-dark-gray">{{ formatTime(selectedEvent.start) }} - {{ formatTime(selectedEvent.end) }}</p>
+            </div>
+            
+            <div v-else>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">시간</h4>
+              <p class="text-dark-gray">종일</p>
+            </div>
+            
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">메모</h4>
+              <p class="text-dark-gray bg-white p-3 rounded-lg border border-gray-200">
+                일정에 관한 상세 메모가 여기에 표시됩니다. 현재는 샘플 데이터만 있어 메모 내용이 없습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 모달 푸터 -->
         <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-between">
-          <button class="px-4 py-2 bg-white text-dark-gray border border-gray-300 rounded-full hover:bg-gray-100 transition-colors font-medium">
+          <button 
+            @click="deleteEvent(selectedEvent.id)" 
+            class="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
+          >
             삭제
           </button>
-          <div>
-            <button @click="openAddEventModal" class="px-4 py-2 bg-point text-dark-gray rounded-full hover:bg-yellow-500 transition-colors font-medium">
-              일정등록
-            </button>
+          <button @click="closeEventDetailModal" class="px-4 py-2 bg-white text-dark-gray border border-gray-300 rounded-full hover:bg-gray-100 transition-colors font-medium">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- LLM 대화 요약 상세 모달 -->
+    <div v-if="showLLMDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
+        <!-- 모달 헤더 -->
+        <div class="bg-blue-400 px-6 py-4 flex justify-between items-center">
+          <h3 class="text-lg font-bold text-white">대화 요약 상세</h3>
+          <button @click="closeLLMDetailModal" class="text-white hover:text-gray-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <!-- 모달 내용 -->
+        <div class="p-6 bg-ivory">
+          <div v-if="selectedLLMSummary" class="space-y-4">
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">날짜</h4>
+              <p class="text-dark-gray">{{ formatDate(selectedLLMSummary.date) }}</p>
+            </div>
+            
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">대화 요약</h4>
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <p class="text-dark-gray">{{ selectedLLMSummary.summary }}</p>
+              </div>
+            </div>
+            
+            <div>
+              <h4 class="text-sm font-medium text-gray-500 mb-1">AI 추천 사항</h4>
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <ul class="list-disc pl-5 text-dark-gray space-y-2">
+                  <li>규칙적인 약 복용을 계속 유지하세요.</li>
+                  <li>부작용이 없다면 현재 처방대로 계속 진행하는 것이 좋습니다.</li>
+                  <li>다음 병원 방문 시 의사에게 현재 상태를 자세히 알려주세요.</li>
+                </ul>
+              </div>
+            </div>
           </div>
+        </div>
+        
+        <!-- 모달 푸터 -->
+        <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-between">
+          <button 
+            @click="deleteLLMSummary(selectedLLMSummary.date)" 
+            class="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
+          >
+            삭제
+          </button>
+          <button @click="closeLLMDetailModal" class="px-4 py-2 bg-white text-dark-gray border border-gray-300 rounded-full hover:bg-gray-100 transition-colors font-medium">
+            닫기
+          </button>
         </div>
       </div>
     </div>
