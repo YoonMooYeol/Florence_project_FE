@@ -371,10 +371,24 @@ const handleFabClick = () => {
   padding: 0 !important;
 }
 
-/* 요일 헤더 영역 높이 최소화 */
+/* 요일 헤더 영역 완전히 숨기기 */
 .fc-col-header {
-  height: 0;
-  visibility: hidden;
-  display: none;
+  height: 0 !important;
+  line-height: 0 !important;
+  visibility: hidden !important;
+  display: none !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+  display: none !important;
+}
+
+.fc .fc-col-header-cell {
+  height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
 </style> 

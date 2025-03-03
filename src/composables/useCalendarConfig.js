@@ -60,7 +60,6 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
     displayEventTime: false, // 이벤트 시간 표시 안함
     eventTimeFormat: { hour: '2-digit', minute: '2-digit' },
     firstDay: 0, // 일요일부터 시작
-    columnHeaderHtml: () => '<span style="display:none"></span>', // 요일 헤더를 숨김 처리
     dayCellContent: dayCellContent,
     // 이벤트 표시 관련 설정
     nextDayThreshold: '23:59:59', // 자정에 가까운 이벤트는 다음 날로 표시하지 않음
