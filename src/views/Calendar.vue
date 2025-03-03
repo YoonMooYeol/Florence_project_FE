@@ -200,6 +200,103 @@ const handleFabClick = () => {
   min-height: 22px !important;
 }
 
+/* 모달 스타일 개선 */
+.modal-container {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+.modal-content {
+  background-color: var(--color-white) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
+}
+
+.event-detail-modal .modal-content {
+  background-color: #FFFFFF !important;
+  border: 3px solid var(--color-point) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+.event-detail-header {
+  background-color: var(--color-point) !important;
+  color: #000000 !important;
+  padding: 14px 18px !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2) !important;
+  font-size: 1.1rem !important;
+}
+
+.event-detail-body {
+  padding: 18px !important;
+  background-color: #FFFEF8 !important;
+}
+
+/* 일정 상세 모달 내부 요소 스타일 */
+.event-detail-field {
+  margin-bottom: 12px !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+  padding-bottom: 12px !important;
+}
+
+.event-detail-label {
+  font-weight: 600 !important;
+  color: #555555 !important;
+  margin-bottom: 4px !important;
+}
+
+.event-detail-value {
+  color: #000000 !important;
+  font-size: 1.05rem !important;
+}
+
+/* 일정 상세 모달 버튼 스타일 */
+.event-detail-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  border-top: 2px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.event-detail-button {
+  padding: 8px 18px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  margin-left: 10px !important;
+}
+
+.event-detail-delete {
+  background-color: #FF6B6B !important;
+  color: white !important;
+}
+
+.event-detail-close {
+  background-color: #E9E9E9 !important;
+  color: #353535 !important;
+}
+
+.day-events-modal .modal-content {
+  max-height: 80vh !important;
+  overflow-y: auto !important;
+  padding-bottom: 16px !important;
+}
+
+/* 일정 상세 모달 특별 스타일 */
+.event-detail-modal {
+  z-index: 70 !important; /* 일정 상세 모달이 일일 일정 모달 위에 표시되도록 z-index 증가 */
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
 /* 커스텀 이벤트 콘텐츠 스타일 */
 .custom-event-content {
   font-size: 0.8rem;
