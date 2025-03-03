@@ -5,6 +5,11 @@ import { useCalendarStore } from '@/store/calendar'
 import { useCalendarConfig } from '@/composables/useCalendarConfig'
 import { useModalManager } from '@/composables/useModalManager'
 import { normalizeDate } from '@/utils/dateUtils'
+import * as logger from '@/utils/logger'
+import { handleError, trySafe } from '@/utils/errorHandler'
+
+// 로깅 컨텍스트 설정
+const CONTEXT = 'Calendar'
 
 // 컴포넌트 임포트
 import CalendarHeader from '@/components/calendar/CalendarHeader.vue'
@@ -21,23 +26,32 @@ const modalManager = useModalManager()
 
 // 날짜 클릭 핸들러
 const handleDateClick = (info) => {
+  logger.debug(CONTEXT, '날짜 클릭됨:', info.dateStr)
   modalManager.openDayEventsModal(info.dateStr)
 }
 
 // 이벤트 클릭 핸들러
 const handleEventClick = (info) => {
   const eventId = info.event.id
+  logger.debug(CONTEXT, '이벤트 클릭됨:', eventId)
 
-  const eventObj = calendarStore.events.find(e => e.id === eventId)
-  if (eventObj) {
-    const dateStr = normalizeDate(eventObj.start)
+  try {
+    const eventObj = calendarStore.events.find(e => e.id === eventId)
+    if (eventObj) {
+      const dateStr = normalizeDate(eventObj.start)
+      logger.debug(CONTEXT, '이벤트 날짜:', dateStr)
 
-    // 먼저 현재 표시된 모든 모달 닫기
-    modalManager.closeDayEventsModal()
+      // 먼저 현재 표시된 모든 모달 닫기
+      modalManager.closeDayEventsModal()
 
-    // 그런 다음 선택된 날짜를 설정하고 일일 일정 모달 열기
-    calendarStore.setSelectedDate(dateStr)
-    modalManager.openDayEventsModal(dateStr)
+      // 그런 다음 선택된 날짜를 설정하고 일일 일정 모달 열기
+      calendarStore.setSelectedDate(dateStr)
+      modalManager.openDayEventsModal(dateStr)
+    } else {
+      logger.warn(CONTEXT, `이벤트 ID(${eventId})에 해당하는 이벤트를 찾을 수 없음`)
+    }
+  } catch (error) {
+    handleError(error, CONTEXT)
   }
 }
 
@@ -53,52 +67,78 @@ const {
 
 // 컴포넌트 마운트 시 현재 날짜 정보 초기화
 onMounted(() => {
+  logger.info(CONTEXT, '캘린더 컴포넌트 마운트됨')
+  
   // 약간의 지연을 두고 초기화 (캘린더가 완전히 렌더링된 후)
   setTimeout(() => {
-    updateCurrentDate()
+    try {
+      updateCurrentDate()
+      logger.debug(CONTEXT, '현재 날짜 정보 업데이트됨')
+    } catch (error) {
+      handleError(error, `${CONTEXT}.updateCurrentDate`)
+    }
   }, 100)
   
   // LLM 요약 삭제 이벤트 리스너
-  document.addEventListener('llm-summary-deleted', (event) => {
-    console.log('Calendar: LLM 요약 삭제 이벤트 감지됨')
-    if (calendarRef.value) {
-      // 다른 뷰로 이동하지 않고 현재 뷰에서 업데이트만 수행
-      const calendarApi = calendarRef.value.getApi()
-      
-      // 현재 뷰의 시작 날짜와 끝 날짜를 확인
-      const view = calendarApi.view
-      const deletedDate = event.detail?.date
-      
-      // refetchEvents 대신 더 부드러운 방식 사용
-      calendarApi.refetchEvents()
-      
-      // 삭제된 날짜의 날짜 셀만 업데이트하기 위한 접근
-      if (deletedDate) {
-        // 날짜 요소에 접근하여 LLM 표시 업데이트
-        // 가능한 한 최소한의 DOM 업데이트 수행
-        setTimeout(() => {
-          // ARIA 상태를 변경하여 미묘한 리렌더링 촉발
-          calendarApi.render()
-        }, 10)
-      }
-    }
-  })
+  document.addEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
+  logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 등록됨')
 })
+
+// LLM 요약 삭제 이벤트 핸들러
+const handleLLMSummaryDeleted = (event) => {
+  logger.info(CONTEXT, 'LLM 요약 삭제 이벤트 감지됨')
+  if (!calendarRef.value) {
+    logger.warn(CONTEXT, '캘린더 참조가 없어 이벤트를 처리할 수 없음')
+    return
+  }
+  
+  try {
+    const calendarApi = calendarRef.value.getApi()
+    const deletedDate = event.detail?.date
+    
+    if (!deletedDate) {
+      logger.warn(CONTEXT, '삭제된 날짜 정보가 없습니다')
+      return
+    }
+    
+    // 최적화된 업데이트 방법 사용
+    // 1. 이벤트를 다시 가져옴
+    calendarApi.refetchEvents()
+    logger.debug(CONTEXT, '캘린더 이벤트 리패치 완료')
+    
+    // 2. requestAnimationFrame을 사용하여 렌더링 최적화
+    // 브라우저의 다음 렌더링 사이클에 렌더링을 예약하여 더 부드러운 업데이트 수행
+    requestAnimationFrame(() => {
+      // 3. 화면에 변경사항 반영
+      calendarApi.render()
+      logger.debug(CONTEXT, '캘린더 렌더링 완료')
+      
+      logger.info(CONTEXT, '캘린더 업데이트 완료 (날짜:', deletedDate, ')')
+    })
+  } catch (error) {
+    handleError(error, `${CONTEXT}.handleLLMSummaryDeleted`)
+  }
+}
 
 // 컴포넌트 언마운트 시 이벤트 리스너 제거
 onUnmounted(() => {
-  document.removeEventListener('llm-summary-deleted', () => {
-    console.log('Calendar: LLM 요약 삭제 이벤트 리스너 제거됨')
-  })
+  document.removeEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
+  logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 제거됨')
+  logger.info(CONTEXT, '캘린더 컴포넌트 언마운트됨')
 })
 
 // 플로팅 액션 버튼 클릭 핸들러
 const handleFabClick = () => {
-  // 오늘 날짜 설정 (일정 등록 시 필요)
-  const today = new Date().toISOString().split('T')[0]
-  calendarStore.setSelectedDate(today)
-  // 바로 일정 추가 모달만 열기
-  modalManager.openAddEventModal()
+  try {
+    // 오늘 날짜 설정 (일정 등록 시 필요)
+    const today = new Date().toISOString().split('T')[0]
+    logger.debug(CONTEXT, '오늘 날짜 설정:', today)
+    calendarStore.setSelectedDate(today)
+    // 바로 일정 추가 모달만 열기
+    modalManager.openAddEventModal()
+  } catch (error) {
+    handleError(error, `${CONTEXT}.handleFabClick`)
+  }
 }
 </script>
 
