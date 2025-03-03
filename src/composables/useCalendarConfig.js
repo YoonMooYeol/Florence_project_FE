@@ -10,12 +10,12 @@ import { useCalendarStore } from '@/store/calendar'
  * @param {Function} handleEventClick - 이벤트 클릭 핸들러
  * @returns {Object} 캘린더 설정 및 관련 함수들
  */
-export function useCalendarConfig(handleDateClick, handleEventClick) {
+export function useCalendarConfig (handleDateClick, handleEventClick) {
   const calendarStore = useCalendarStore()
-  
+
   // 캘린더 참조
   const calendarRef = ref(null)
-  
+
   // 날짜 셀 컨텐츠 렌더링
   const dayCellContent = (info) => {
     // Date 객체를 YYYY-MM-DD 형식 문자열로 변환 - 타임존 고려
@@ -24,19 +24,19 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       info.date.getMonth(),
       info.date.getDate()
     )
-    
+
     // YYYY-MM-DD 형식으로 변환
     const year = localDate.getFullYear()
     const month = String(localDate.getMonth() + 1).padStart(2, '0')
     const day = String(localDate.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${day}`
-    
+
     // 날짜 텍스트에서 '일' 제거
     const dayNumber = info.dayNumberText.replace('일', '')
-    
+
     // LLM 요약 존재 여부 확인
     const hasLLM = calendarStore.hasLLMSummary(dateStr)
-    
+
     return {
       html: `
         <div class="day-cell-content">
@@ -46,7 +46,7 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       `
     }
   }
-  
+
   // 캘린더 옵션
   const calendarOptions = computed(() => ({
     plugins: [dayGridPlugin, interactionPlugin],
@@ -60,7 +60,7 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
     displayEventTime: false, // 이벤트 시간 표시 안함
     eventTimeFormat: { hour: '2-digit', minute: '2-digit' },
     firstDay: 0, // 일요일부터 시작
-    dayCellContent: dayCellContent,
+    dayCellContent,
     // 이벤트 표시 관련 설정
     nextDayThreshold: '23:59:59', // 자정에 가까운 이벤트는 다음 날로 표시하지 않음
     eventDurationEditable: false, // 이벤트 기간 편집 비활성화
@@ -84,7 +84,7 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       )
     }
   }))
-  
+
   // 현재 표시 중인 날짜 정보 업데이트 함수
   const updateCurrentDate = () => {
     if (calendarRef.value) {
@@ -96,7 +96,7 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       )
     }
   }
-  
+
   // 이전 달로 이동
   const prevMonth = () => {
     if (calendarRef.value) {
@@ -105,7 +105,7 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       updateCurrentDate() // 현재 표시 중인 날짜 정보 업데이트
     }
   }
-  
+
   // 다음 달로 이동
   const nextMonth = () => {
     if (calendarRef.value) {
@@ -114,7 +114,7 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       updateCurrentDate() // 현재 표시 중인 날짜 정보 업데이트
     }
   }
-  
+
   // 오늘 날짜로 이동
   const goToToday = () => {
     if (calendarRef.value) {
@@ -123,7 +123,7 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       updateCurrentDate() // 현재 표시 중인 날짜 정보 업데이트
     }
   }
-  
+
   return {
     calendarRef,
     calendarOptions,
@@ -132,4 +132,4 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
     nextMonth,
     goToToday
   }
-} 
+}

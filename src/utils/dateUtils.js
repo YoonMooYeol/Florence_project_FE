@@ -7,7 +7,7 @@
  * @param {string} dateStr - 날짜 문자열
  * @returns {string} 포맷팅된 날짜 문자열
  */
-export function formatDate(dateStr) {
+export function formatDate (dateStr) {
   const date = new Date(dateStr)
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`
 }
@@ -17,7 +17,7 @@ export function formatDate(dateStr) {
  * @param {string} dateTimeStr - 날짜시간 문자열
  * @returns {string} 포맷팅된 시간 문자열
  */
-export function formatTime(dateTimeStr) {
+export function formatTime (dateTimeStr) {
   if (!dateTimeStr) return ''
   const date = new Date(dateTimeStr)
   const hours = date.getHours().toString().padStart(2, '0')
@@ -30,7 +30,7 @@ export function formatTime(dateTimeStr) {
  * @param {string} dateStr - 날짜 문자열
  * @returns {string} 정규화된 날짜 문자열
  */
-export function normalizeDate(dateStr) {
+export function normalizeDate (dateStr) {
   if (!dateStr) return ''
   return dateStr.split('T')[0]
 }
@@ -39,7 +39,7 @@ export function normalizeDate(dateStr) {
  * 현재 날짜를 YYYY-MM-DD 형식으로 반환
  * @returns {string} 오늘 날짜 문자열
  */
-export function getTodayString() {
+export function getTodayString () {
   const today = new Date()
   const year = today.getFullYear()
   const month = String(today.getMonth() + 1).padStart(2, '0')
@@ -70,4 +70,4 @@ export const koLocale = {
 /**
  * 요일 배열 (한국어)
  */
-export const weekdays = ['일', '월', '화', '수', '목', '금', '토'] 
+export const weekdays = ['일', '월', '화', '수', '목', '금', '토']

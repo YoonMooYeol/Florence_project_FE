@@ -83,7 +83,7 @@ export const useCalendarStore = defineStore('calendar', () => {
   const selectedLLMSummary = ref(null)
 
   // 액션 (actions)
-  function addEvent(newEvent) {
+  function addEvent (newEvent) {
     // 새 ID 생성 (실제 구현에서는 서버에서 ID를 받아올 수 있음)
     const newId = String(Math.max(...events.value.map(e => Number(e.id))) + 1)
     const eventWithId = { ...newEvent, id: newId }
@@ -91,7 +91,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     return eventWithId
   }
 
-  function updateEvent(updatedEvent) {
+  function updateEvent (updatedEvent) {
     const index = events.value.findIndex(e => e.id === updatedEvent.id)
     if (index !== -1) {
       events.value[index] = { ...updatedEvent }
@@ -100,7 +100,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     return false
   }
 
-  function deleteEvent(eventId) {
+  function deleteEvent (eventId) {
     const index = events.value.findIndex(e => e.id === eventId)
     if (index !== -1) {
       events.value.splice(index, 1)
@@ -109,11 +109,11 @@ export const useCalendarStore = defineStore('calendar', () => {
     return false
   }
 
-  function addLLMSummary(newSummary) {
+  function addLLMSummary (newSummary) {
     llmSummaries.value.push(newSummary)
   }
 
-  function deleteLLMSummary(date) {
+  function deleteLLMSummary (date) {
     const index = llmSummaries.value.findIndex(s => s.date === date)
     if (index !== -1) {
       llmSummaries.value.splice(index, 1)
@@ -122,22 +122,22 @@ export const useCalendarStore = defineStore('calendar', () => {
     return false
   }
 
-  function setSelectedDate(date) {
+  function setSelectedDate (date) {
     console.log('calendarStore: 선택된 날짜 설정:', date)
     selectedDate.value = date
   }
 
-  function setSelectedEvent(event) {
+  function setSelectedEvent (event) {
     console.log('calendarStore: 선택된 일정 설정:', event)
     selectedEvent.value = event
   }
 
-  function setSelectedLLMSummary(summary) {
+  function setSelectedLLMSummary (summary) {
     console.log('calendarStore: 선택된 LLM 요약 설정:', summary)
     selectedLLMSummary.value = summary
   }
 
-  function updateCurrentYearMonth(year, month) {
+  function updateCurrentYearMonth (year, month) {
     currentYear.value = year
     currentMonth.value = month
   }
@@ -145,7 +145,7 @@ export const useCalendarStore = defineStore('calendar', () => {
   // 게터 (getters)
   const eventsForSelectedDate = computed(() => {
     if (!selectedDate.value) return []
-    
+
     return events.value.filter(event => {
       const eventDate = new Date(event.start)
       const clickedDate = new Date(selectedDate.value)
@@ -157,7 +157,7 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   const llmSummaryForSelectedDate = computed(() => {
     if (!selectedDate.value) return null
-    
+
     // 날짜 형식 정규화 (YYYY-MM-DD)
     const formattedDate = selectedDate.value.split('T')[0]
     return llmSummaries.value.find(summary => summary.date === formattedDate)
@@ -178,7 +178,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     selectedDate,
     selectedEvent,
     selectedLLMSummary,
-    
+
     // 액션
     addEvent,
     updateEvent,
@@ -189,10 +189,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     setSelectedEvent,
     setSelectedLLMSummary,
     updateCurrentYearMonth,
-    
+
     // 게터
     eventsForSelectedDate,
     llmSummaryForSelectedDate,
     hasLLMSummary
   }
-}) 
+})

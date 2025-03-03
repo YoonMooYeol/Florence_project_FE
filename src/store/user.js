@@ -7,12 +7,12 @@ export const useUserStore = defineStore('user', {
     loading: false,
     error: null
   }),
-  
+
   actions: {
-    async register(userData) {
+    async register (userData) {
       this.loading = true
       this.error = null
-      
+
       try {
         const response = await axios.post('http://127.0.0.1:8000/v1/accounts/register/', userData)
         this.user = response.data
@@ -24,14 +24,14 @@ export const useUserStore = defineStore('user', {
         this.loading = false
       }
     },
-    
-    clearError() {
+
+    clearError () {
       this.error = null
     }
   },
-  
+
   getters: {
     isAuthenticated: (state) => !!state.user,
     getUser: (state) => state.user
   }
-}) 
+})
