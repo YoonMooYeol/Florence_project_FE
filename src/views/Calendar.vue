@@ -546,7 +546,7 @@ const deleteLLMSummary = (date) => {
         </div>
         
         <!-- 모달 푸터 -->
-        <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-center">
+        <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-end">
           <button @click="openAddEventModal" class="px-4 py-2 bg-point text-dark-gray rounded-full hover:bg-yellow-500 transition-colors font-medium">
             일정등록
           </button>
@@ -600,15 +600,12 @@ const deleteLLMSummary = (date) => {
         </div>
         
         <!-- 모달 푸터 -->
-        <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-between">
+        <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-end">
           <button 
             @click="deleteEvent(selectedEvent.id)" 
             class="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
           >
             삭제
-          </button>
-          <button @click="closeEventDetailModal" class="px-4 py-2 bg-white text-dark-gray border border-gray-300 rounded-full hover:bg-gray-100 transition-colors font-medium">
-            닫기
           </button>
         </div>
       </div>
@@ -656,15 +653,12 @@ const deleteLLMSummary = (date) => {
         </div>
         
         <!-- 모달 푸터 -->
-        <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-between">
+        <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-end">
           <button 
             @click="deleteLLMSummary(selectedLLMSummary.date)" 
             class="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
           >
             삭제
-          </button>
-          <button @click="closeLLMDetailModal" class="px-4 py-2 bg-white text-dark-gray border border-gray-300 rounded-full hover:bg-gray-100 transition-colors font-medium">
-            닫기
           </button>
         </div>
       </div>
