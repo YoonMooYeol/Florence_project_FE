@@ -3,6 +3,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { koLocale } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
+import { normalizeDate } from '@/utils/dateUtils'
 
 /**
  * FullCalendar 설정 및 관련 기능을 제공하는 컴포저블
@@ -18,18 +19,8 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
 
   // 날짜 셀 컨텐츠 렌더링
   const dayCellContent = (info) => {
-    // Date 객체를 YYYY-MM-DD 형식 문자열로 변환 - 타임존 고려
-    const localDate = new Date(
-      info.date.getFullYear(),
-      info.date.getMonth(),
-      info.date.getDate()
-    )
-
-    // YYYY-MM-DD 형식으로 변환
-    const year = localDate.getFullYear()
-    const month = String(localDate.getMonth() + 1).padStart(2, '0')
-    const day = String(localDate.getDate()).padStart(2, '0')
-    const dateStr = `${year}-${month}-${day}`
+    // 날짜를 YYYY-MM-DD 형식으로 변환 - 개선된 유틸리티 함수 사용
+    const dateStr = normalizeDate(info.date)
 
     // 날짜 텍스트에서 '일' 제거
     const dayNumber = info.dayNumberText.replace('일', '')
