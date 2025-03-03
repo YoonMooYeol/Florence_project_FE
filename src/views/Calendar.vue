@@ -61,9 +61,10 @@ onMounted(() => {
 
 // 플로팅 액션 버튼 클릭 핸들러
 const handleFabClick = () => {
-  // 현재 날짜를 선택하고 일정 추가 모달 열기
+  // 오늘 날짜 설정 (일정 등록 시 필요)
   const today = new Date().toISOString().split('T')[0]
   calendarStore.setSelectedDate(today)
+  // 바로 일정 추가 모달만 열기
   modalManager.openAddEventModal()
 }
 </script>
