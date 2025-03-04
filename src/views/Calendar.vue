@@ -6,12 +6,7 @@ import { useCalendarConfig } from '@/composables/useCalendarConfig'
 import { useModalManager } from '@/composables/useModalManager'
 import { normalizeDate } from '@/utils/dateUtils'
 import * as logger from '@/utils/logger'
-import { handleError, trySafe } from '@/utils/errorHandler'
-
-// 로깅 컨텍스트 설정
-const CONTEXT = 'Calendar'
-
-// 컴포넌트 임포트
+import { handleError } from '@/utils/errorHandler'
 import CalendarHeader from '@/components/calendar/CalendarHeader.vue'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
 import FloatingActionButton from '@/components/common/FloatingActionButton.vue'
@@ -19,6 +14,9 @@ import DayEventsModal from '@/components/calendar/DayEventsModal.vue'
 import EventDetailModal from '@/components/calendar/EventDetailModal.vue'
 import LLMSummaryModal from '@/components/calendar/LLMSummaryModal.vue'
 import AddEventModal from '@/components/calendar/AddEventModal.vue'
+
+// 로깅 컨텍스트 설정
+const CONTEXT = 'Calendar'
 
 // 스토어 및 컴포저블 사용
 const calendarStore = useCalendarStore()
@@ -36,7 +34,7 @@ const handleEventClick = (info) => {
   logger.debug(CONTEXT, '이벤트 클릭됨:', eventId)
 
   try {
-    const eventObj = calendarStore.events.find(e => e.id === eventId)
+    const eventObj = calendarStore.events.find((e) => e.id === eventId)
     if (eventObj) {
       const dateStr = normalizeDate(eventObj.start)
       logger.debug(CONTEXT, '이벤트 날짜:', dateStr)
@@ -48,7 +46,10 @@ const handleEventClick = (info) => {
       calendarStore.setSelectedDate(dateStr)
       modalManager.openDayEventsModal(dateStr)
     } else {
-      logger.warn(CONTEXT, `이벤트 ID(${eventId})에 해당하는 이벤트를 찾을 수 없음`)
+      logger.warn(
+        CONTEXT,
+        `이벤트 ID(${eventId})에 해당하는 이벤트를 찾을 수 없음`
+      )
     }
   } catch (error) {
     handleError(error, CONTEXT)
@@ -68,7 +69,7 @@ const {
 // 컴포넌트 마운트 시 현재 날짜 정보 초기화
 onMounted(() => {
   logger.info(CONTEXT, '캘린더 컴포넌트 마운트됨')
-  
+
   // 약간의 지연을 두고 초기화 (캘린더가 완전히 렌더링된 후)
   setTimeout(() => {
     try {
@@ -78,7 +79,7 @@ onMounted(() => {
       handleError(error, `${CONTEXT}.updateCurrentDate`)
     }
   }, 100)
-  
+
   // LLM 요약 삭제 이벤트 리스너
   document.addEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
   logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 등록됨')
@@ -91,28 +92,28 @@ const handleLLMSummaryDeleted = (event) => {
     logger.warn(CONTEXT, '캘린더 참조가 없어 이벤트를 처리할 수 없음')
     return
   }
-  
+
   try {
     const calendarApi = calendarRef.value.getApi()
     const deletedDate = event.detail?.date
-    
+
     if (!deletedDate) {
       logger.warn(CONTEXT, '삭제된 날짜 정보가 없습니다')
       return
     }
-    
+
     // 최적화된 업데이트 방법 사용
     // 1. 이벤트를 다시 가져옴
     calendarApi.refetchEvents()
     logger.debug(CONTEXT, '캘린더 이벤트 리패치 완료')
-    
+
     // 2. requestAnimationFrame을 사용하여 렌더링 최적화
     // 브라우저의 다음 렌더링 사이클에 렌더링을 예약하여 더 부드러운 업데이트 수행
     requestAnimationFrame(() => {
       // 3. 화면에 변경사항 반영
       calendarApi.render()
       logger.debug(CONTEXT, '캘린더 렌더링 완료')
-      
+
       logger.info(CONTEXT, '캘린더 업데이트 완료 (날짜:', deletedDate, ')')
     })
   } catch (error) {
@@ -208,16 +209,16 @@ const handleFabClick = () => {
 <style>
 /* 색상 변수 */
 :root {
-  --color-base: #FFED90;
-  --color-white: #FFFFFF;
+  --color-base: #ffed90;
+  --color-white: #ffffff;
   --color-dark-gray: #353535;
-  --color-ivory: #FFFAE0;
-  --color-point: #FFD600;
+  --color-ivory: #fffae0;
+  --color-point: #ffd600;
 }
 
 /* FullCalendar 기본 스타일 */
 .fc {
-  font-family: 'Noto Sans KR', 'Roboto', sans-serif;
+  font-family: "Noto Sans KR", "Roboto", sans-serif;
   border: none;
 }
 
@@ -231,7 +232,7 @@ const handleFabClick = () => {
   border-radius: 4px;
   font-size: 0.8rem;
   border: none !important;
-  background-color: #FFD600 !important;
+  background-color: #ffd600 !important;
   color: #353535 !important;
   font-weight: 500;
 }
@@ -281,7 +282,7 @@ const handleFabClick = () => {
 }
 
 .event-detail-modal .modal-content {
-  background-color: #FFFFFF !important;
+  background-color: #ffffff !important;
   border: 3px solid var(--color-point) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
 }
@@ -297,7 +298,7 @@ const handleFabClick = () => {
 
 .event-detail-body {
   padding: 18px !important;
-  background-color: #FFFEF8 !important;
+  background-color: #fffef8 !important;
 }
 
 /* 일정 상세 모달 내부 요소 */
@@ -335,12 +336,12 @@ const handleFabClick = () => {
 }
 
 .event-detail-delete {
-  background-color: #FF6B6B !important;
+  background-color: #ff6b6b !important;
   color: white !important;
 }
 
 .event-detail-close {
-  background-color: #E9E9E9 !important;
+  background-color: #e9e9e9 !important;
   color: #353535 !important;
 }
 
@@ -378,8 +379,8 @@ const handleFabClick = () => {
 }
 
 .fc-h-event {
-  background-color: #FFD600 !important;
-  border-color: #FFD600 !important;
+  background-color: #ffd600 !important;
+  border-color: #ffd600 !important;
   color: #353535 !important;
   border-width: 0 !important;
   border-left-width: 0 !important;
@@ -427,8 +428,8 @@ const handleFabClick = () => {
 .fc-daygrid-dot-event {
   display: block !important;
   padding: 2px 6px !important;
-  background-color: #FFD600 !important;
-  border-color: #FFD600 !important;
+  background-color: #ffd600 !important;
+  border-color: #ffd600 !important;
 }
 
 .fc-daygrid-dot-event .fc-event-title {

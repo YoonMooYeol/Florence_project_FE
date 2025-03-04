@@ -1,5 +1,5 @@
 <script setup>
-import { ref, defineProps, defineEmits, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
   show: {
@@ -8,7 +8,7 @@ const props = defineProps({
   },
   selectedDate: {
     type: String,
-    default: null
+    default: () => new Date().toISOString().split('T')[0]
   }
 })
 
