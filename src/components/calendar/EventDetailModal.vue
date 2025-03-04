@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, defineEmits, watch } from 'vue'
+import { watch } from 'vue'
 import { formatDate, formatTime } from '@/utils/dateUtils'
 
 const props = defineProps({

@@ -1,5 +1,4 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue'
 import { weekdays } from '@/utils/dateUtils'
 
 defineProps({
