@@ -84,6 +84,17 @@ onMounted(async () => {
       conversationId.value = route.params.conversationId
       await loadConversation()
     } else {
+      // 새 대화 시작 시 환영 메시지 추가
+      messages.value.push({
+        id: Date.now(),
+        sender: 'bot',
+        content: '안녕하세요! 하트비트인지 플로렌스인지 여러가지 이름이 있는 AI입니다. 저는 산모의 감정과 상황을 분석하여 건강한 출산과 육아를 위한 조언을 드리는 AI 상담사입니다. 편안하게 대화해주세요.',
+        time: getCurrentTime()
+      })
+
+      // 메시지가 추가되면 스크롤을 맨 아래로 이동
+      scrollToBottom()
+
       await startNewConversation()
     }
 
@@ -180,12 +191,29 @@ const getNextQuestion = async () => {
     }
 
     logger.info(CONTEXT, '다음 질문 요청')
+
+    // 먼저 타이핑 중 메시지 추가 (질문이 9번까지)
+    if (currentStep.value < 9) {
+      const typingMessage = {
+        id: Date.now() + messages.value.length,
+        sender: 'bot',
+        time: getCurrentTime(),
+        isLoading: true,
+        isTyping: true // 타이핑 효과를 위한 플래그 추가
+      }
+      messages.value.push(typingMessage)
+      scrollToBottom()
+    }
+
     const response = await apiClient.get(`/v1/healthcare/conversations/${conversationId.value}/next-question/`)
     logger.info(CONTEXT, '다음 질문 응답:', response.data)
 
     // 단계 정보 업데이트
     currentStep.value = response.data.step || currentStep.value + 1
     totalSteps.value = response.data.total_steps || 10
+
+    // 타이핑 중 메시지 제거
+    messages.value = messages.value.filter(msg => !msg.isLoading)
 
     messages.value.push({
       id: Date.now() + messages.value.length,
@@ -196,6 +224,9 @@ const getNextQuestion = async () => {
     // 메시지가 추가되면 스크롤을 맨 아래로 이동
     scrollToBottom()
   } catch (error) {
+    // 타이핑 중 메시지 제거
+    messages.value = messages.value.filter(msg => !msg.isLoading)
+
     errorMessage.value = '다음 질문을 가져오는 중 오류가 발생했습니다.'
     logger.error(CONTEXT, '질문 가져오기 오류:', error)
     handleError(error, `${CONTEXT}.getNextQuestion`)
@@ -379,7 +410,7 @@ const submitAnswerRetry = async (answer) => {
     if (response.data.is_completed) {
       isConversationComplete.value = true
       logger.info(CONTEXT, '대화 완료')
-      
+
       // 피드백 페이지로 즉시 이동
       logger.info(CONTEXT, '피드백 페이지로 자동 이동:', conversationId.value)
       router.push(`/feedback/${conversationId.value}`)
@@ -482,12 +513,12 @@ const handleSendClick = () => {
     </div>
 
     <!-- 로딩 표시 -->
-    <div
+    <!-- <div
       v-if="isLoading"
       class="flex justify-center items-center p-4 mt-14"
     >
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-point-yellow" />
-    </div>
+    </div> -->
 
     <!-- 진행 상태 바 제거 -->
 
@@ -518,11 +549,19 @@ const handleSendClick = () => {
             <div>
               <div
                 class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
-                :class="{ 'loading-message': message.isLoading }"
+                :class="{
+                  'loading-message': message.isLoading,
+                  'typing-message': message.isTyping
+                }"
               >
                 {{ message.content }}
-                <span v-if="message.isLoading" class="loading-dots">
+                <span v-if="message.isLoading && !message.isTyping" class="loading-dots">
                   <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+                </span>
+                <span v-if="message.isTyping" class="typing-indicator">
+                  <span class="typing-dot"></span>
+                  <span class="typing-dot"></span>
+                  <span class="typing-dot"></span>
                 </span>
               </div>
               <div class="text-xs text-gray-500 mt-1 ml-1">
@@ -669,6 +708,56 @@ textarea {
   30% {
     transform: translateY(-5px);
     opacity: 1;
+  }
+}
+
+/* 타이핑 메시지 스타일 */
+.typing-message {
+  background-color: #f8f9fa !important;
+  border-left: 3px solid #FFD600;
+}
+
+/* 타이핑 인디케이터 */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+  background-color: #666;
+  border-radius: 50%;
+  opacity: 0;
+  animation: typingAnimation 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingAnimation {
+  0% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
   }
 }
 </style>
