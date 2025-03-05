@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우편번호 찾기</title>
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+</head>
+<body>
+
+    <h2>우편번호 찾기</h2>
+    
+    <!-- 우편번호 입력 -->
+    <input type="text" id="sample4_postcode" placeholder="우편번호" readonly>
+    <input type="button" onclick="sample4_execDaumPostcode()" value="우편번호 찾기"><br>
+    
+    <!-- 도로명 주소 입력 -->
+    <input type="text" id="sample4_roadAddress" placeholder="도로명주소" readonly><br>
+    
+    <!-- 지번 주소 입력 -->
+    <input type="text" id="sample4_jibunAddress" placeholder="지번주소" readonly><br>
+    
+    <!-- 상세 주소 입력 -->
+    <input type="text" id="sample4_detailAddress" placeholder="상세주소"><br>
+    
+    <!-- 참고 항목 입력 -->
+    <input type="text" id="sample4_extraAddress" placeholder="참고항목" readonly><br>
+    
+    <!-- 주소 안내 텍스트 -->
+    <span id="guide" style="color:#999;display:none"></span><br>
+
+    <script>
+        // 우편번호 검색 실행 함수
+        function sample4_execDaumPostcode() {
+            new daum.Postcode({
+                oncomplete: function(data) {
+                    // 도로명 주소
+                    var roadAddr = data.roadAddress;
+                    var extraRoadAddr = ''; // 참고 항목
+
+                    // 법정동명 처리
+                    if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
+                        extraRoadAddr += data.bname;
+                    }
+
+                    // 건물명 처리
+                    if (data.buildingName !== '' && data.apartment === 'Y') {
+                        extraRoadAddr += (extraRoadAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+                    }
+
+                    // 참고 항목 추가
+                    if (extraRoadAddr !== '') {
+                        extraRoadAddr = ' (' + extraRoadAddr + ')';
+                    }
+
+                    // 우편번호와 주소 입력
+                    document.getElementById('sample4_postcode').value = data.zonecode;
+                    document.getElementById("sample4_roadAddress").value = roadAddr;
+                    document.getElementById("sample4_jibunAddress").value = data.jibunAddress;
+
+                    // 참고 항목 표시
+                    if (roadAddr !== '') {
+                        document.getElementById("sample4_extraAddress").value = extraRoadAddr;
+                    } else {
+                        document.getElementById("sample4_extraAddress").value = '';
+                    }
+
+                    var guideTextBox = document.getElementById("guide");
+
+                    // 예상 도로명 주소 또는 지번 주소 안내
+                    if (data.autoRoadAddress) {
+                        var expRoadAddr = data.autoRoadAddress + extraRoadAddr;
+                        guideTextBox.innerHTML = '(예상 도로명 주소 : ' + expRoadAddr + ')';
+                        guideTextBox.style.display = 'block';
+                    } else if (data.autoJibunAddress) {
+                        var expJibunAddr = data.autoJibunAddress;
+                        guideTextBox.innerHTML = '(예상 지번 주소 : ' + expJibunAddr + ')';
+                        guideTextBox.style.display = 'block';
+                    } else {
+                        guideTextBox.innerHTML = '';
+                        guideTextBox.style.display = 'none';
+                    }
+                }
+            }).open();
+        }
+    </script>
+
+</body>
+</html>

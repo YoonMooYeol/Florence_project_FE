@@ -1,7 +1,12 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+
+// Daum 지도 API 초기화
+let geocoder;
+let map;
+let marker;
 
 const router = useRouter()
 
@@ -74,7 +79,7 @@ const validateForm = () => {
 
   // 사용자명 검증
   if (!formData.username.trim()) {
-    errors.username = '사용자명을 입력해주세요'
+    errors.username = '아이디를 입력해주세요'
     isValid = false
   } else {
     errors.username = ''
@@ -150,7 +155,7 @@ const validateForm = () => {
   } else {
     errors.address = ''
   }
-
+  
   return isValid
 }
 
@@ -242,6 +247,72 @@ const navigateAfterRegistration = () => {
     goToLogin()
   }
 }
+
+// Daum 우편번호 검색 창 열기
+const openDaumPostcode = () => {
+  const width = 500;
+  const height = 600;
+  const left = (window.screen.width / 2) - (width / 2);
+  const top = (window.screen.height / 2) - (height / 2);
+
+  window.open(
+    'search.html',
+    'addressSearch',
+    `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
+  );
+}
+
+// 지도 표시
+const showMap = (coords) => {
+  const mapContainer = document.getElementById('map')
+  const mapOption = {
+    center: coords,
+    level: 5
+  }
+  map = new daum.maps.Map(mapContainer, mapOption)
+  mapContainer.style.display = 'block'
+}
+
+// 마커 표시
+const placeMarker = (coords) => {
+  marker = new daum.maps.Marker({
+    position: coords
+  })
+  marker.setMap(map)
+}
+
+// 주소 검색 결과 처리
+const handleAddressSelect = (event) => {
+  if (event.data && event.data.type === 'ADDRESS_SELECTED') {
+    const address = event.data.address;
+    formData.address = address;
+
+    // 주소로 좌표 검색
+    geocoder.addressSearch(address, (results, status) => {
+      if (status === daum.maps.services.Status.OK) {
+        const result = results[0];
+        const coords = new daum.maps.LatLng(result.y, result.x);
+
+        showMap(coords);
+        placeMarker(coords);
+      }
+    });
+  }
+}
+
+// 컴포넌트 마운트 시 이벤트 리스너 등록
+onMounted(() => {
+  window.addEventListener('message', handleAddressSelect);
+  
+  // Daum 지도 API 설정
+  geocoder = new daum.maps.services.Geocoder();
+  marker = new daum.maps.Marker();
+});
+
+// 컴포넌트 언마운트 시 이벤트 리스너 제거
+onUnmounted(() => {
+  window.removeEventListener('message', handleAddressSelect);
+});
 </script>
 
 <template>
@@ -256,7 +327,7 @@ const navigateAfterRegistration = () => {
         <div class="absolute inset-0 bg-black bg-opacity-50" />
 
         <!-- 모달 컨텐츠 -->
-        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 z-10 relative">
+        <div class="bg-white rounded-[20px] shadow-xl p-6 max-w-md w-full mx-4 z-10 relative">
           <div class="flex justify-center mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -295,7 +366,7 @@ const navigateAfterRegistration = () => {
 
           <div class="text-center">
             <button
-              class="px-6 py-2 bg-point-yellow text-dark-gray font-medium rounded-md hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-colors"
+              class="px-6 py-2 bg-point-yellow text-dark-gray font-medium rounded-[20px] hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-colors"
               @click="navigateAfterRegistration"
             >
               {{ formData.is_pregnant ? '임신 정보 등록하기' : '로그인 페이지로 이동' }}
@@ -313,12 +384,22 @@ const navigateAfterRegistration = () => {
       </div>
 
       <!-- 회원가입 폼 -->
+
+      <div class="mb-3 text-center">
+        <h1 class="text-3xl font-bold text-dark-gray">
+          하트비트
+        </h1>
+        <p class="mt-1 text-dark-gray">
+          회원가입
+        </p>
+      </div>
+
       <form
-        class="p-6 bg-white rounded-lg shadow-md"
-        @submit.prevent="handleSubmit"
-      >
+        class="p-5 bg-white rounded-lg shadow-md"
+        @submit.prevent="handleSubmit">
         <!-- 사용자명 입력 -->
         <div class="mb-4">
+          
           <label
             for="username"
             class="block mb-2 text-sm font-medium text-dark-gray"
@@ -327,8 +408,8 @@ const navigateAfterRegistration = () => {
             id="username"
             v-model="formData.username"
             type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="사용자명을 입력하세요"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            placeholder="아이디를 입력하세요"
             @input="clearFieldError('username')"
           >
           <p
@@ -349,7 +430,7 @@ const navigateAfterRegistration = () => {
             id="name"
             v-model="formData.name"
             type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="이름을 입력하세요"
             @input="clearFieldError('name')"
           >
@@ -371,7 +452,7 @@ const navigateAfterRegistration = () => {
             id="email"
             v-model="formData.email"
             type="email"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="이메일을 입력하세요"
             @input="clearFieldError('email')"
           >
@@ -392,7 +473,7 @@ const navigateAfterRegistration = () => {
               v-model="formData.phone_part1"
               type="text"
               maxlength="3"
-              class="w-1/4 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-1/4 px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
               placeholder="010"
               @input="updatePhoneNumber(); clearFieldError('phone_number')"
             >
@@ -402,7 +483,7 @@ const navigateAfterRegistration = () => {
               v-model="formData.phone_part2"
               type="text"
               maxlength="4"
-              class="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-1/3 px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
               placeholder="0000"
               @input="updatePhoneNumber(); clearFieldError('phone_number')"
             >
@@ -412,7 +493,7 @@ const navigateAfterRegistration = () => {
               v-model="formData.phone_part3"
               type="text"
               maxlength="4"
-              class="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-1/3 px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
               placeholder="0000"
               @input="updatePhoneNumber(); clearFieldError('phone_number')"
             >
@@ -435,7 +516,7 @@ const navigateAfterRegistration = () => {
             id="password"
             v-model="formData.password"
             type="password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 입력하세요"
             @input="clearFieldError('password'); formData.password_confirm && clearFieldError('password_confirm')"
           >
@@ -457,7 +538,7 @@ const navigateAfterRegistration = () => {
             id="password_confirm"
             v-model="formData.password_confirm"
             type="password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 다시 입력하세요"
             @input="clearFieldError('password_confirm')"
           >
@@ -517,34 +598,42 @@ const navigateAfterRegistration = () => {
           </label>
         </div>
 
+        <div class="mb-6 flex items-center space-x-4">
         <!-- 주소 입력 -->
-        <div class="mb-6">
-          <label
-            for="address"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >주소</label>
-          <input
+        <div class="flex-1">
+          <label for="address" class="block mb-2 text-sm font-medium text-dark-gray">주소</label>
+        <input
+            type="text"
             id="address"
             v-model="formData.address"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="주소를 입력하세요"
             @input="clearFieldError('address')"
-          >
-          <p
-            v-if="errors.address"
-            class="mt-1 text-sm text-red-600"
-          >
-            {{ errors.address }}
-          </p>
+          />
         </div>
 
-        <!-- 버튼 섹션 -->
-        <div class="flex flex-col space-y-3">
+        
+
+        <!-- 주소 검색 버튼 -->
+        <button
+          type="button"
+          @click="openDaumPostcode"
+          class="mt-6 bg-base-yellow text-dark-gray py-2 px-3 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow font-bold"
+        >
+          주소 검색
+        </button>
+          </div>
+
+          <!-- 지도 표시 -->
+          <div id="map" style="width:100px;height:300px;margin-top:10px;display:none"></div>
+        
+
+          <!-- 버튼 섹션 -->
+          <div class="flex flex-col space-y-3">
           <!-- 회원가입 버튼 -->
           <button
             type="submit"
-            class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+            class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-[10px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             :disabled="isSubmitting"
           >
             <span v-if="isSubmitting">처리 중...</span>
@@ -566,3 +655,67 @@ const navigateAfterRegistration = () => {
     </div>
   </div>
 </template>
+
+<script>
+export default {
+  data() {
+    return {
+      formData: {
+        address: '', // 주소
+      }
+    };
+  },
+  methods: {
+    // Daum 주소 검색 및 지도 표시
+    openDaumPostcode() {
+      new daum.Postcode({
+        oncomplete: (data) => {
+          const addr = data.address; // 최종 주소 변수
+
+          // 주소를 입력 필드에 넣기
+          this.formData.address = addr;
+
+          // 주소로 상세 정보를 검색
+          this.geocoder.addressSearch(data.address, (results, status) => {
+            // 정상적으로 검색이 완료됐으면
+            if (status === daum.maps.services.Status.OK) {
+              const result = results[0]; // 첫번째 결과의 값 사용
+
+              const coords = new daum.maps.LatLng(result.y, result.x); // 좌표
+              this.showMap(coords); // 지도 표시
+              this.placeMarker(coords); // 마커 표시
+            }
+          });
+        }
+      }).open();
+    },
+
+    // 지도 표시
+    showMap(coords) {
+      const mapContainer = document.getElementById('map'); // 지도 표시 div
+      const mapOption = {
+        center: coords, // 지도의 중심 좌표
+        level: 5, // 확대 레벨
+      };
+      this.map = new daum.maps.Map(mapContainer, mapOption);
+      mapContainer.style.display = 'block'; // 지도를 표시
+    },
+
+    // 마커 표시
+    placeMarker(coords) {
+      this.marker.setPosition(coords);
+    },
+
+    // 필드 에러 초기화 함수
+    clearFieldError(field) {
+      // 필드에 대한 에러를 초기화하는 코드 (에러 메시지 처리 등)
+    }
+  },
+
+  mounted() {
+    // Daum 지도 API 설정
+    this.geocoder = new daum.maps.services.Geocoder(); // 주소-좌표 변환 객체
+    this.marker = new daum.maps.Marker(); // 마커 객체 생성
+  }
+};
+</script>

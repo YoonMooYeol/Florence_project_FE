@@ -32,6 +32,11 @@ const routes = [
     component: () => import('../views/Chat.vue')
   },
   {
+    path: '/feedback/:conversationId',
+    name: 'Feedback',
+    component: () => import('../views/Feedback.vue')
+  },
+  {
     path: '/user-info-edit',
     name: 'UserInfoEdit',
     component: () => import('../views/UserInfoEdit.vue')
