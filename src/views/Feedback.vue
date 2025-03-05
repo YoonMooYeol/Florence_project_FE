@@ -21,7 +21,8 @@ const processMarkdownNumbering = (text) => {
   processed = processed.replace(/^[•*]\s*/gm, '- ')
 
   // 숫자 목록 처리 (숫자. 으로 시작하는 항목)
-  processed = processed.replace(/^\d+\.\s*/gm, '- ')
+  // 숫자와 점을 완전히 제거하고 내용만 유지
+  processed = processed.replace(/^\d+\.\s*/gm, '')
 
   // 굵은 텍스트 유지
   processed = processed.replace(/\*\*([^*]+)\*\*/g, '**$1**')
@@ -236,22 +237,6 @@ const goBackToChat = () => {
       v-if="feedback && !isLoading"
       class="flex-1 p-4 overflow-y-auto"
     >
-      <!-- 감정 분석 섹션 -->
-      <div class="bg-white rounded-lg shadow-md p-4 mb-4">
-        <h2 class="text-lg font-semibold text-dark-gray mb-2 border-b pb-2 border-gray-200">
-          감정 분석 및 조언
-        </h2>
-        <div class="text-gray-700">
-          <template v-if="feedback.emotional_analysis">
-            <!-- 마크다운 형식으로 표시 -->
-            <div class="markdown-content" v-html="renderMarkdown(feedback.emotional_analysis)"></div>
-          </template>
-          <template v-else>
-            <p>감정 분석 정보를 찾을 수 없습니다.</p>
-          </template>
-        </div>
-      </div>
-
       <!-- 건강 팁 섹션 -->
       <div class="bg-white rounded-lg shadow-md p-4 mb-4">
         <h2 class="text-lg font-semibold text-dark-gray mb-2 border-b pb-2 border-gray-200">
@@ -260,7 +245,17 @@ const goBackToChat = () => {
         <div class="text-gray-700">
           <template v-if="typeof feedback.health_tips === 'string'">
             <!-- 마크다운 형식으로 표시 -->
-            <div class="markdown-content" v-html="renderMarkdown(feedback.health_tips)"></div>
+            <div class="health-tips-list">
+              <!-- 문자열을 줄 단위로 분리하고 각 줄을 별도 항목으로 처리 -->
+              <div
+                v-for="(line, index) in feedback.health_tips.split('\n').filter(line => line.trim())"
+                :key="index"
+                class="health-tip-item"
+              >
+                <div class="tip-number">{{ index + 1 }}</div>
+                <div class="tip-content markdown-content" v-html="renderMarkdown(processMarkdownNumbering(line))"></div>
+              </div>
+            </div>
           </template>
           <template v-else-if="Array.isArray(feedback.health_tips) && feedback.health_tips.length > 0">
             <div class="health-tips-list">
@@ -270,7 +265,7 @@ const goBackToChat = () => {
                 class="health-tip-item"
               >
                 <div class="tip-number">{{ index + 1 }}</div>
-                <div class="tip-content markdown-content" v-html="renderMarkdown(tip)"></div>
+                <div class="tip-content markdown-content" v-html="renderMarkdown(processMarkdownNumbering(tip))"></div>
               </div>
             </div>
           </template>
@@ -299,7 +294,7 @@ const goBackToChat = () => {
                     class="health-tip-item"
                   >
                     <div class="tip-number">{{ index + 1 }}</div>
-                    <div class="tip-content markdown-content" v-html="renderMarkdown(tip)"></div>
+                    <div class="tip-content markdown-content" v-html="renderMarkdown(processMarkdownNumbering(tip))"></div>
                   </div>
                 </div>
               </div>
@@ -313,7 +308,7 @@ const goBackToChat = () => {
                     :key="'source-' + index"
                     class="mb-1"
                   >
-                    <div class="markdown-content" v-html="renderMarkdown(source)"></div>
+                    <div class="markdown-content" v-html="renderMarkdown(processMarkdownNumbering(source))"></div>
                   </li>
                 </ul>
               </div>
@@ -328,7 +323,7 @@ const goBackToChat = () => {
                   class="health-tip-item"
                 >
                   <div class="tip-number">{{ index + 1 }}</div>
-                  <div class="tip-content markdown-content" v-html="renderMarkdown(info)"></div>
+                  <div class="tip-content markdown-content" v-html="renderMarkdown(processMarkdownNumbering(info))"></div>
                 </div>
               </div>
             </template>
@@ -376,6 +371,12 @@ const goBackToChat = () => {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.health-tip-item:hover {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
 }
 
 .tip-number {
