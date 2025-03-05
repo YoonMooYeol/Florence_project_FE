@@ -44,17 +44,19 @@ const skipForNow = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-ivory">
-    <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md">
+  <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
+    <div class="w-full max-w-md">
+      <!-- 헤더 -->
+      <div class="mb-1 text-center">
       <h1 class="text-xl font-bold text-center text-dark-gray">
         임신 정보 등록
       </h1>
     </div>
+  </div>
 
     <!-- 임신 정보 폼 -->
     <div class="p-4">
-      <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+      <div class="bg-white rounded-[10px] shadow-md p-10 mb-4">
         <div class="mb-6 text-center">
           <div class="w-20 h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
@@ -147,10 +149,10 @@ const skipForNow = () => {
         </button>
 
         <button
-          class="w-full p-4 bg-white rounded-lg shadow-md text-center text-gray-500"
+          class="w-full p-4 bg-white rounded-lg shadow-md text-center text-gray-500 font-bold"
           @click="skipForNow"
         >
-          나중에 입력하기
+          건너뛰기
         </button>
       </div>
     </div>

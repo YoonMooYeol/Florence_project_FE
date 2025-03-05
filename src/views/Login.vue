@@ -159,7 +159,7 @@ const goToFindPassword = () => {
       <!-- 폼 에러 메시지 -->
       <div
         v-if="errors.form"
-        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-md"
+        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-[20px]"
       >
         {{ errors.form }}
       </div>
@@ -179,7 +179,7 @@ const goToFindPassword = () => {
             id="email"
             v-model="formData.email"
             type="email"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="이메일을 입력하세요"
           >
           <p
@@ -200,7 +200,7 @@ const goToFindPassword = () => {
             id="password"
             v-model="formData.password"
             type="password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 입력하세요"
           >
           <p
@@ -228,7 +228,7 @@ const goToFindPassword = () => {
           <!-- 로그인 버튼 -->
           <button
             type="submit"
-            class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+            class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             :disabled="isSubmitting"
           >
             <span v-if="isSubmitting">처리 중...</span>
@@ -247,7 +247,7 @@ const goToFindPassword = () => {
               <!-- 소셜 로그인 버튼 -->
               <button
                 type="button"
-                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
               >
                 <svg
                   class="w-5 h-5 mr-3"
@@ -259,12 +259,12 @@ const goToFindPassword = () => {
                     fill="#4285F4"
                   />
                 </svg>
-                <span>구글 계정으로 로그인</span>
+                <span>Google 계정으로 로그인</span>
               </button>
 
               <button
                 type="button"
-                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-800 bg-[#FEE500] border border-[#FEE500] rounded-md shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-800 bg-[#FEE500] border border-[#FEE500] rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
               >
                 <svg
                   class="w-5 h-5 mr-3"
@@ -281,7 +281,7 @@ const goToFindPassword = () => {
 
               <button
                 type="button"
-                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-[#03C75A] border border-[#03C75A] rounded-md shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-[#03C75A] border border-[#03C75A] rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
               >
                 <svg
                   class="w-5 h-5 mr-3"
@@ -298,7 +298,7 @@ const goToFindPassword = () => {
 
               <button
                 type="button"
-                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-black border border-black rounded-md shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-black border border-black rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
               >
                 <svg
                   class="w-5 h-5 mr-3"
