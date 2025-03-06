@@ -232,13 +232,13 @@ onMounted(fetchAllUsers)
 
         <div class="space-y-4">
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">이름</span>
+            <span class="text-gray-600">닉네임</span>
             <span class="font-medium">{{ selectedUser.name || '정보 없음' }}</span>
           </div>
-          <div class="flex justify-between items-center">
+          <!-- <div class="flex justify-between items-center">
             <span class="text-gray-600">이메일</span>
             <span class="font-medium">{{ selectedUser.email || '정보 없음' }}</span>
-          </div>
+          </div> -->
           <div class="flex justify-between items-center">
             <span class="text-gray-600">성별</span>
             <span class="font-medium">{{ selectedUser.gender !== undefined ? (selectedUser.gender === 'M' ? '남성' : '여성') : '정보 없음' }}</span>

@@ -4,9 +4,9 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 
 // Daum 지도 API 초기화
-let geocoder;
-let map;
-let marker;
+let geocoder
+let map
+let marker
 
 const router = useRouter()
 
@@ -46,7 +46,6 @@ const registeredUser = ref(null)
 
 // 전화번호 부분이 변경될 때 전체 전화번호 업데이트
 const updatePhoneNumber = () => {
-  // 숫자만 남기기
   formData.phone_part1 = formData.phone_part1.replace(/\D/g, '')
   formData.phone_part2 = formData.phone_part2.replace(/\D/g, '')
   formData.phone_part3 = formData.phone_part3.replace(/\D/g, '')
@@ -155,7 +154,7 @@ const validateForm = () => {
   } else {
     errors.address = ''
   }
-  
+
   return isValid
 }
 
@@ -250,16 +249,16 @@ const navigateAfterRegistration = () => {
 
 // Daum 우편번호 검색 창 열기
 const openDaumPostcode = () => {
-  const width = 500;
-  const height = 600;
-  const left = (window.screen.width / 2) - (width / 2);
-  const top = (window.screen.height / 2) - (height / 2);
+  const width = 500
+  const height = 600
+  const left = (window.screen.width / 2) - (width / 2)
+  const top = (window.screen.height / 2) - (height / 2)
 
   window.open(
     'search.html',
     'addressSearch',
     `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
-  );
+  )
 }
 
 // 지도 표시
@@ -284,35 +283,35 @@ const placeMarker = (coords) => {
 // 주소 검색 결과 처리
 const handleAddressSelect = (event) => {
   if (event.data && event.data.type === 'ADDRESS_SELECTED') {
-    const address = event.data.address;
-    formData.address = address;
+    const address = event.data.address
+    formData.address = address
 
     // 주소로 좌표 검색
     geocoder.addressSearch(address, (results, status) => {
       if (status === daum.maps.services.Status.OK) {
-        const result = results[0];
-        const coords = new daum.maps.LatLng(result.y, result.x);
+        const result = results[0]
+        const coords = new daum.maps.LatLng(result.y, result.x)
 
-        showMap(coords);
-        placeMarker(coords);
+        showMap(coords)
+        placeMarker(coords)
       }
-    });
+    })
   }
 }
 
 // 컴포넌트 마운트 시 이벤트 리스너 등록
 onMounted(() => {
-  window.addEventListener('message', handleAddressSelect);
-  
+  window.addEventListener('message', handleAddressSelect)
+
   // Daum 지도 API 설정
-  geocoder = new daum.maps.services.Geocoder();
-  marker = new daum.maps.Marker();
-});
+  geocoder = new daum.maps.services.Geocoder()
+  marker = new daum.maps.Marker()
+})
 
 // 컴포넌트 언마운트 시 이벤트 리스너 제거
 onUnmounted(() => {
-  window.removeEventListener('message', handleAddressSelect);
-});
+  window.removeEventListener('message', handleAddressSelect)
+})
 </script>
 
 <template>
@@ -396,10 +395,10 @@ onUnmounted(() => {
 
       <form
         class="p-5 bg-white rounded-lg shadow-md"
-        @submit.prevent="handleSubmit">
+        @submit.prevent="handleSubmit"
+      >
         <!-- 사용자명 입력 -->
         <div class="mb-4">
-          
           <label
             for="username"
             class="block mb-2 text-sm font-medium text-dark-gray"
@@ -425,7 +424,7 @@ onUnmounted(() => {
           <label
             for="name"
             class="block mb-2 text-sm font-medium text-dark-gray"
-          >이름</label>
+          >닉네임</label>
           <input
             id="name"
             v-model="formData.name"
@@ -599,37 +598,40 @@ onUnmounted(() => {
         </div>
 
         <div class="mb-6 flex items-center space-x-4">
-        <!-- 주소 입력 -->
-        <div class="flex-1">
-          <label for="address" class="block mb-2 text-sm font-medium text-dark-gray">주소</label>
-        <input
-            type="text"
-            id="address"
-            v-model="formData.address"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="주소를 입력하세요"
-            @input="clearFieldError('address')"
-          />
-        </div>
-
-        
-
-        <!-- 주소 검색 버튼 -->
-        <button
-          type="button"
-          @click="openDaumPostcode"
-          class="mt-6 bg-base-yellow text-dark-gray py-2 px-3 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow font-bold"
-        >
-          주소 검색
-        </button>
+          <!-- 주소 입력 -->
+          <div class="flex-1">
+            <label
+              for="address"
+              class="block mb-2 text-sm font-medium text-dark-gray"
+            >주소</label>
+            <input
+              id="address"
+              v-model="formData.address"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="주소를 입력하세요"
+              @input="clearFieldError('address')"
+            >
           </div>
 
-          <!-- 지도 표시 -->
-          <div id="map" style="width:100px;height:300px;margin-top:10px;display:none"></div>
-        
+          <!-- 주소 검색 버튼 -->
+          <button
+            type="button"
+            class="mt-6 bg-base-yellow text-dark-gray py-2 px-3 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow font-bold"
+            @click="openDaumPostcode"
+          >
+            주소 검색
+          </button>
+        </div>
 
-          <!-- 버튼 섹션 -->
-          <div class="flex flex-col space-y-3">
+        <!-- 지도 표시 -->
+        <div
+          id="map"
+          style="width:100px;height:300px;margin-top:10px;display:none"
+        />
+
+        <!-- 버튼 섹션 -->
+        <div class="flex flex-col space-y-3">
           <!-- 회원가입 버튼 -->
           <button
             type="submit"
@@ -658,64 +660,62 @@ onUnmounted(() => {
 
 <script>
 export default {
-  data() {
+  data () {
     return {
       formData: {
-        address: '', // 주소
+        address: '' // 주소
       }
-    };
-  },
-  methods: {
-    // Daum 주소 검색 및 지도 표시
-    openDaumPostcode() {
-      new daum.Postcode({
-        oncomplete: (data) => {
-          const addr = data.address; // 최종 주소 변수
-
-          // 주소를 입력 필드에 넣기
-          this.formData.address = addr;
-
-          // 주소로 상세 정보를 검색
-          this.geocoder.addressSearch(data.address, (results, status) => {
-            // 정상적으로 검색이 완료됐으면
-            if (status === daum.maps.services.Status.OK) {
-              const result = results[0]; // 첫번째 결과의 값 사용
-
-              const coords = new daum.maps.LatLng(result.y, result.x); // 좌표
-              this.showMap(coords); // 지도 표시
-              this.placeMarker(coords); // 마커 표시
-            }
-          });
-        }
-      }).open();
-    },
-
-    // 지도 표시
-    showMap(coords) {
-      const mapContainer = document.getElementById('map'); // 지도 표시 div
-      const mapOption = {
-        center: coords, // 지도의 중심 좌표
-        level: 5, // 확대 레벨
-      };
-      this.map = new daum.maps.Map(mapContainer, mapOption);
-      mapContainer.style.display = 'block'; // 지도를 표시
-    },
-
-    // 마커 표시
-    placeMarker(coords) {
-      this.marker.setPosition(coords);
-    },
-
-    // 필드 에러 초기화 함수
-    clearFieldError(field) {
-      // 필드에 대한 에러를 초기화하는 코드 (에러 메시지 처리 등)
     }
   },
 
-  mounted() {
-    // Daum 지도 API 설정
-    this.geocoder = new daum.maps.services.Geocoder(); // 주소-좌표 변환 객체
-    this.marker = new daum.maps.Marker(); // 마커 객체 생성
+  mounted () {
+    this.geocoder = new daum.maps.services.Geocoder() // 주소-좌표 변환 객체
+    this.marker = new daum.maps.Marker() // 마커 객체 생성
+  },
+  methods: {
+    // Daum 주소 검색 및 지도 표시
+    openDaumPostcode () {
+      new daum.Postcode({
+        oncomplete: (data) => {
+          const addr = data.address // 최종 주소 변수
+
+          // 주소를 입력 필드에 넣기
+          this.formData.address = addr
+
+          // 주소로 상세 정보를 검색
+          this.geocoder.addressSearch(data.address, (results, status) => {
+            if (status === daum.maps.services.Status.OK) {
+              const result = results[0] // 첫번째 결과의 값 사용
+
+              const coords = new daum.maps.LatLng(result.y, result.x) // 좌표
+              this.showMap(coords) // 지도 표시
+              this.placeMarker(coords) // 마커 표시
+            }
+          })
+        }
+      }).open()
+    },
+
+    // 지도 표시
+    showMap (coords) {
+      const mapContainer = document.getElementById('map') // 지도 표시 div
+      const mapOption = {
+        center: coords, // 지도의 중심 좌표
+        level: 5 // 확대 레벨
+      }
+      this.map = new daum.maps.Map(mapContainer, mapOption)
+      mapContainer.style.display = 'block' // 지도를 표시
+    },
+
+    // 마커 표시
+    placeMarker (coords) {
+      this.marker.setPosition(coords)
+    },
+
+    // 필드 에러 초기화 함수
+    clearFieldError (field) {
+      // 필드에 대한 에러를 초기화하는 코드 (에러 메시지 처리 등)
+    }
   }
-};
+}
 </script>
