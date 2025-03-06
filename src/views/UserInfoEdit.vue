@@ -220,7 +220,7 @@ onMounted(fetchUserInfo)
           <label
             for="name"
             class="block mb-2 text-sm font-medium text-dark-gray"
-          >이름</label>
+          >닉네임</label>
           <input
             id="name"
             v-model="userInfo.name"

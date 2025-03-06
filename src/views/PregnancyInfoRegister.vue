@@ -10,7 +10,8 @@ const pregnancyInfo = ref({
   babyName: '',
   dueDate: '',
   currentWeek: 1,
-  highRisk: false
+  highRisk: false,
+  pregnancyId: null
 })
 
 // 로딩 상태 관리
@@ -46,7 +47,11 @@ const savePregnancyInfo = async () => {
     }
 
     // 임신 정보 등록 API 호출
-    await api.post('/accounts/pregnancies/', requestData)
+    const response = await api.post('/accounts/pregnancies/', requestData)
+    // 응답에서 임신 ID 저장
+    if (response.data && response.data.pregnancy_id) {
+      pregnancyInfo.value.pregnancyId = response.data.pregnancy_id
+    }
 
     // 임신 상태 저장
     localStorage.setItem('isPregnant', 'true')
