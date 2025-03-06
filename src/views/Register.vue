@@ -19,9 +19,6 @@ const formData = reactive({
   name: '',
   email: '',
   phone_number: '',
-  phonePart1: '',
-  phonePart2: '',
-  phonePart3: '',
   password: '',
   password_confirm: '',
   gender: '',
@@ -59,6 +56,41 @@ const checkAlreadyLoggedIn = () => {
   return false
 }
 
+// 전화번호 자동 형식화 함수
+const formatPhoneNumber = (value) => {
+  if (!value) return ''
+  
+  // 숫자만 추출
+  const numericValue = value.replace(/\D/g, '')
+  
+  // 길이에 따라 포맷팅
+  if (numericValue.length <= 3) {
+    return numericValue
+  } else if (numericValue.length <= 7) {
+    return `${numericValue.slice(0, 3)}-${numericValue.slice(3)}`
+  } else {
+    return `${numericValue.slice(0, 3)}-${numericValue.slice(3, 7)}-${numericValue.slice(7, 11)}`
+  }
+}
+
+// 전화번호 입력 처리
+const handlePhoneInput = (event) => {
+  // 기존 에러 메시지 초기화
+  clearFieldError('phone_number')
+  
+  // 현재 입력값 저장
+  const input = event.target
+  
+  // 입력 값 형식화
+  formData.phone_number = formatPhoneNumber(input.value)
+  
+  // 커서를 항상 맨 끝으로 이동
+  setTimeout(() => {
+    const len = formData.phone_number.length
+    input.setSelectionRange(len, len)
+  }, 0)
+}
+
 // 컴포넌트 마운트 시 로그인 상태 확인 및 초기화
 onMounted(() => {
   if (checkAlreadyLoggedIn()) {
@@ -71,35 +103,7 @@ onMounted(() => {
   // Daum 지도 API 설정
   geocoder = new daum.maps.services.Geocoder()
   marker = new daum.maps.Marker()
-
-  // 전화번호 초기화
-  initPhoneParts()
 })
-
-// 전화번호 부분이 변경될 때 전체 전화번호 업데이트
-const updatePhoneNumber = () => {
-  formData.phone_part1 = formData.phone_part1.replace(/\D/g, '')
-  formData.phone_part2 = formData.phone_part2.replace(/\D/g, '')
-  formData.phone_part3 = formData.phone_part3.replace(/\D/g, '')
-
-  if (formData.phone_part1 && formData.phone_part2 && formData.phone_part3) {
-    formData.phone_number = `${formData.phone_part1}-${formData.phone_part2}-${formData.phone_part3}`
-  } else {
-    formData.phone_number = ''
-  }
-}
-
-// 기존 전화번호가 있을 경우 각 부분으로 나누기
-const initPhoneParts = () => {
-  if (formData.phone_number && formData.phone_number.includes('-')) {
-    const parts = formData.phone_number.split('-')
-    if (parts.length === 3) {
-      formData.phone_part1 = parts[0]
-      formData.phone_part2 = parts[1]
-      formData.phone_part3 = parts[2]
-    }
-  }
-}
 
 // 폼 유효성 검사 함수
 const validateForm = () => {
@@ -239,7 +243,7 @@ const handleSubmit = async () => {
 
   try {
     // API에 보낼 데이터 준비
-    const { phonePart1, phonePart2, phonePart3, ...dataToSend } = formData
+    const dataToSend = { ...formData }
 
     // API 호출
     const response = await registerApi(dataToSend)
@@ -527,35 +531,15 @@ onUnmounted(() => {
         <!-- 전화번호 입력 -->
         <div class="mb-4">
           <label class="block mb-2 text-sm font-medium text-dark-gray">전화번호</label>
-          <div class="flex space-x-2">
+          <div class="relative">
             <input
-              id="phone_part1"
-              v-model="formData.phone_part1"
-              type="text"
-              maxlength="3"
-              class="w-1/4 px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-              placeholder="010"
-              @input="updatePhoneNumber(); clearFieldError('phone_number')"
-            >
-            <span class="flex items-center">-</span>
-            <input
-              id="phone_part2"
-              v-model="formData.phone_part2"
-              type="text"
-              maxlength="4"
-              class="w-1/3 px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-              placeholder="0000"
-              @input="updatePhoneNumber(); clearFieldError('phone_number')"
-            >
-            <span class="flex items-center">-</span>
-            <input
-              id="phone_part3"
-              v-model="formData.phone_part3"
-              type="text"
-              maxlength="4"
-              class="w-1/3 px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-              placeholder="0000"
-              @input="updatePhoneNumber(); clearFieldError('phone_number')"
+              id="phone_number"
+              v-model="formData.phone_number"
+              type="tel"
+              maxlength="13"
+              class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="010-0000-0000"
+              @input="handlePhoneInput"
             >
           </div>
           <p
@@ -563,6 +547,9 @@ onUnmounted(() => {
             class="mt-1 text-sm text-red-600"
           >
             {{ errors.phone_number }}
+          </p>
+          <p class="mt-1 text-xs text-gray-500">
+            휴대폰 번호는 '-'없이 숫자만 입력하셔도 됩니다
           </p>
         </div>
 
@@ -658,31 +645,38 @@ onUnmounted(() => {
           </label>
         </div>
 
-        <div class="mb-6 flex items-center space-x-4">
+        <div class="mb-6">
           <!-- 주소 입력 -->
-          <div class="flex-1">
+          <div class="w-full mb-2">
             <label
               for="address"
               class="block mb-2 text-sm font-medium text-dark-gray"
             >주소</label>
-            <input
-              id="address"
-              v-model="formData.address"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-              placeholder="주소를 입력하세요"
-              @input="clearFieldError('address')"
+            <div class="flex">
+              <input
+                id="address"
+                v-model="formData.address"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-l-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow bg-gray-50"
+                placeholder="주소 검색 버튼을 눌러 주소를 입력하세요"
+                readonly
+              >
+              <!-- 주소 검색 버튼 -->
+              <button
+                type="button"
+                class="bg-base-yellow text-dark-gray py-2 px-3 rounded-r-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow font-bold whitespace-nowrap"
+                @click="openDaumPostcode"
+              >
+                주소 검색
+              </button>
+            </div>
+            <p
+              v-if="errors.address"
+              class="mt-1 text-sm text-red-600"
             >
+              {{ errors.address }}
+            </p>
           </div>
-
-          <!-- 주소 검색 버튼 -->
-          <button
-            type="button"
-            class="mt-6 bg-base-yellow text-dark-gray py-2 px-3 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow font-bold"
-            @click="openDaumPostcode"
-          >
-            주소 검색
-          </button>
         </div>
 
         <!-- 지도 표시 -->

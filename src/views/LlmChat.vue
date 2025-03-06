@@ -44,6 +44,9 @@ const showNewChatDialog = ref(false)
 const lastSubmitTime = ref(0)
 const debounceTime = 1000 // 1초 디바운스
 const chatContainer = ref(null)
+const isSummarizing = ref(false) // 요약 기능 로딩 상태
+const chatSummary = ref(null) // 채팅방 요약 정보
+const showSummary = ref(false) // 요약 보기 모달 표시 여부
 
 // 로컬 스토리지에서 토큰 가져오기
 const getTokenFromStorage = () => {
@@ -65,7 +68,7 @@ const getTokenFromStorage = () => {
 // 사용자 정보 가져오기
 const getUserInfo = async () => {
   try {
-    const response = await apiClient.get('/v1/users/profile/')
+    const response = await apiClient.get('/v1/accounts/users/me/')
     userInfo.value = response.data
     return response.data
   } catch (error) {
@@ -78,7 +81,7 @@ const getUserInfo = async () => {
 // 임신 정보 확인하기
 const checkPregnancyInfo = async () => {
   try {
-    const response = await apiClient.get('/v1/users/pregnancy-info/')
+    const response = await apiClient.get('/v1/accounts/pregnancies/')
     return response.data && response.data.length > 0
   } catch (error) {
     logger.error(CONTEXT, '임신 정보 조회 오류:', error)
@@ -93,7 +96,7 @@ const getChatRooms = async () => {
   errorMessage.value = ''
 
   try {
-    const userId = userInfo.value?.id
+    const userId = userInfo.value?.user_id
     if (!userId) {
       throw new Error('유저 정보가 없습니다')
     }
@@ -122,11 +125,11 @@ const createChatRoom = async () => {
   showNewChatDialog.value = false
 
   try {
-    const userId = userInfo.value?.id
+    const userId = userInfo.value?.user_id
     // 임신 정보의 첫 번째 항목 ID 사용
-    const pregnancyInfo = await apiClient.get('/v1/users/pregnancy-info/')
-    const pregnancyId = pregnancyInfo.data && pregnancyInfo.data.length > 0 
-      ? pregnancyInfo.data[0].id 
+    const pregnancyInfo = await apiClient.get('/v1/accounts/pregnancies/')
+    const pregnancyId = pregnancyInfo.data && pregnancyInfo.data.length > 0
+      ? pregnancyInfo.data[0].pregnancy_id
       : null
 
     if (!userId || !pregnancyId) {
@@ -408,19 +411,60 @@ onMounted(async () => {
 
 // 채팅방 이름 컴퓨티드 프로퍼티
 const getChatRoomName = (room, index) => {
+  // 채팅방에 topic이 있으면 우선 표시
   if (room.topic) {
-    return room.topic
+    return room.topic.length > 25
+      ? room.topic.substring(0, 25) + '...'
+      : room.topic
   }
   
   // 첫 번째 메시지가 있는 경우
   const allMessages = currentChat.value?.all_messages || []
   if (room.chat_id === selectedChatId.value && allMessages.length > 0) {
-    return allMessages[0].query.length > 20 
-      ? allMessages[0].query.substring(0, 20) + '...' 
+    return allMessages[0].query.length > 20
+      ? allMessages[0].query.substring(0, 20) + '...'
       : allMessages[0].query
   }
   
   return `새 대화 ${index + 1}`
+}
+
+// 채팅방 요약 함수
+const summarizeChat = async () => {
+  if (!selectedChatId.value || isSummarizing.value) return
+  
+  isSummarizing.value = true
+  errorMessage.value = ''
+  
+  try {
+    const response = await apiClient.post(`/v1/llm/chat/rooms/${selectedChatId.value}/summarize/`)
+    chatSummary.value = response.data
+    
+    // 요약 모달 표시
+    showSummary.value = true
+    
+    // 채팅방 정보 업데이트 (요약이 업데이트되었을 경우)
+    if (chatSummary.value.is_updated && currentChat.value) {
+      currentChat.value.topic = chatSummary.value.topic
+      
+      // 채팅방 목록도 업데이트
+      const chatRoom = chatRooms.value.find(room => room.chat_id === selectedChatId.value)
+      if (chatRoom) {
+        chatRoom.topic = chatSummary.value.topic
+      }
+    }
+  } catch (error) {
+    errorMessage.value = '채팅방 요약 중 오류가 발생했습니다.'
+    logger.error(CONTEXT, '채팅방 요약 오류:', error)
+    handleError(error, `${CONTEXT}.summarizeChat`)
+  } finally {
+    isSummarizing.value = false
+  }
+}
+
+// 요약 모달 닫기
+const closeSummary = () => {
+  showSummary.value = false
 }
 </script>
 
@@ -431,25 +475,55 @@ const getChatRoomName = (room, index) => {
       <h1 class="text-xl font-bold text-dark-gray">
         AI 채팅
       </h1>
-      <button
-        class="p-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
-        @click="showNewChatDialog = true"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+      <div class="flex items-center space-x-2">
+        <button
+          v-if="selectedChatId"
+          class="p-2 bg-white border border-point-yellow text-dark-gray rounded-lg hover:bg-gray-100 focus:outline-none"
+          :disabled="isSummarizing"
+          @click="summarizeChat"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      </button>
+          <div class="flex items-center">
+            <template v-if="isSummarizing">
+              <svg class="animate-spin h-5 w-5 mr-1 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span class="text-sm">요약 중...</span>
+            </template>
+            <template v-else>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                class="h-5 w-5 mr-1" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+              </svg>
+              <span class="text-sm">요약</span>
+            </template>
+          </div>
+        </button>
+        <button
+          class="p-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
+          @click="showNewChatDialog = true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- 에러 메시지 -->
@@ -534,6 +608,19 @@ const getChatRoomName = (room, index) => {
               {{ getChatRoomName(room, index) }}
             </option>
           </select>
+        </div>
+        
+        <!-- 현재 채팅방 제목 (MD 이상 화면에서만 표시) -->
+        <div v-if="selectedChatId && currentChat" class="bg-white p-3 border-b border-gray-200 hidden md:flex items-center justify-between">
+          <h2 class="font-semibold text-dark-gray">
+            {{ currentChat.topic || '새 대화' }}
+          </h2>
+          <div
+            v-if="!currentChat.topic"
+            class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md"
+          >
+            아직 요약되지 않은 대화입니다
+          </div>
         </div>
 
         <!-- 채팅 메시지 영역 -->
@@ -646,6 +733,35 @@ const getChatRoomName = (room, index) => {
               </svg>
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 채팅 요약 모달 -->
+    <div
+      v-if="showSummary"
+      class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50"
+    >
+      <div class="bg-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
+        <h3 class="text-lg font-bold text-dark-gray mb-4">
+          대화 요약
+        </h3>
+        <div v-if="chatSummary" class="mb-6">
+          <div class="bg-gray-50 p-4 rounded-lg mb-4">
+            <p class="text-gray-800 font-medium mb-2">주제</p>
+            <p class="text-gray-700">{{ chatSummary.topic }}</p>
+          </div>
+          <div class="bg-gray-50 p-3 rounded-lg text-gray-600 text-sm">
+            <p>메시지 수: {{ chatSummary.message_count }}개</p>
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <button
+            class="px-4 py-2 bg-point-yellow text-dark-gray rounded-md hover:bg-yellow-400 focus:outline-none"
+            @click="closeSummary"
+          >
+            확인
+          </button>
         </div>
       </div>
     </div>

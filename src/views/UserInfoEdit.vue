@@ -27,6 +27,41 @@ const errors = reactive({
 const isLoading = ref(false)
 const isSubmitting = ref(false)
 
+// 전화번호 자동 형식화 함수
+const formatPhoneNumber = (value) => {
+  if (!value) return ''
+  
+  // 숫자만 추출
+  const numericValue = value.replace(/\D/g, '')
+  
+  // 길이에 따라 포맷팅
+  if (numericValue.length <= 3) {
+    return numericValue
+  } else if (numericValue.length <= 7) {
+    return `${numericValue.slice(0, 3)}-${numericValue.slice(3)}`
+  } else {
+    return `${numericValue.slice(0, 3)}-${numericValue.slice(3, 7)}-${numericValue.slice(7, 11)}`
+  }
+}
+
+// 전화번호 입력 처리
+const handlePhoneInput = (event) => {
+  // 기존 에러 메시지 초기화
+  clearFieldError('phone_number')
+  
+  // 현재 입력값 저장
+  const input = event.target
+  
+  // 입력 값 형식화
+  userInfo.value.phone_number = formatPhoneNumber(input.value)
+  
+  // 커서를 항상 맨 끝으로 이동
+  setTimeout(() => {
+    const len = userInfo.value.phone_number.length
+    input.setSelectionRange(len, len)
+  }, 0)
+}
+
 // 오류 필드 초기화
 const clearErrors = () => {
   errors.username = ''
@@ -334,18 +369,25 @@ onMounted(fetchUserInfo)
             for="phone_number"
             class="block mb-2 text-sm font-medium text-dark-gray"
           >전화번호</label>
-          <input
-            id="phone_number"
-            v-model="userInfo.phone_number"
-            type="tel"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            @input="clearFieldError('phone_number')"
-          >
+          <div class="relative">
+            <input
+              id="phone_number"
+              v-model="userInfo.phone_number"
+              type="tel"
+              maxlength="13"
+              placeholder="010-0000-0000"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              @input="handlePhoneInput"
+            >
+          </div>
           <p
             v-if="errors.phone_number"
             class="mt-1 text-sm text-red-600"
           >
             {{ errors.phone_number }}
+          </p>
+          <p class="mt-1 text-xs text-gray-500">
+            휴대폰 번호는 '-'없이 숫자만 입력하셔도 됩니다
           </p>
         </div>
       </div>
