@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick, onUpdated, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
@@ -47,6 +47,37 @@ const chatContainer = ref(null)
 const isSummarizing = ref(false) // 요약 기능 로딩 상태
 const chatSummary = ref(null) // 채팅방 요약 정보
 const showSummary = ref(false) // 요약 보기 모달 표시 여부
+const showChatRoomDropdown = ref(false) // 데스크탑 채팅방 선택 드롭다운 표시 여부
+const showMobileChatRoomDropdown = ref(false) // 모바일 채팅방 선택 드롭다운 표시 여부
+
+// 스크롤 위치 감지
+const isUserScrolling = ref(false);
+const lastScrollTop = ref(0);
+
+// 스크롤 이벤트 핸들러
+const handleScroll = (event) => {
+  // 현재 스크롤 위치
+  const currentScrollTop = event.target.scrollTop;
+  
+  // 스크롤 방향 (위로/아래로)
+  const isScrollingDown = currentScrollTop > lastScrollTop.value;
+  
+  // 스크롤이 거의 맨 아래에 도달했는지 확인
+  const isNearBottom = 
+    currentScrollTop + event.target.clientHeight >= 
+    event.target.scrollHeight - 50;
+    
+  // 스크롤이 거의 맨 아래거나 아래로 스크롤 중이면 사용자 스크롤 플래그 해제
+  if (isNearBottom || isScrollingDown) {
+    isUserScrolling.value = false;
+  } else {
+    // 위로 스크롤하는 경우 사용자 스크롤 플래그 설정
+    isUserScrolling.value = true;
+  }
+  
+  // 마지막 스크롤 위치 저장
+  lastScrollTop.value = currentScrollTop;
+};
 
 // 로컬 스토리지에서 토큰 가져오기
 const getTokenFromStorage = () => {
@@ -254,8 +285,8 @@ const sendMessage = async () => {
     }
     messages.value.push(userMessageObj)
     
-    // 스크롤 아래로
-    scrollToBottom()
+    // 스크롤 아래로 - 강제 스크롤 사용
+    forceScrollToBottom()
     
     // 응답 대기 메시지 추가
     const waitingId = `waiting-${Date.now()}`
@@ -267,8 +298,8 @@ const sendMessage = async () => {
       created_at: getCurrentTime()
     })
     
-    // 스크롤 아래로
-    scrollToBottom()
+    // 스크롤 아래로 - 강제 스크롤 사용
+    forceScrollToBottom()
 
     // API 호출
     const response = await apiClient.post(`/v1/llm/chat/rooms/${selectedChatId.value}/messages/`, {
@@ -289,8 +320,8 @@ const sendMessage = async () => {
     // 채팅방 목록 새로고침
     await getChatRooms()
     
-    // 스크롤 아래로
-    scrollToBottom()
+    // 스크롤 아래로 - 강제 스크롤 사용
+    forceScrollToBottom()
   } catch (error) {
     // 응답 대기 메시지를 에러 메시지로 변경
     const waitingMsg = messages.value.find(m => m.isTyping)
@@ -313,18 +344,55 @@ const sendMessage = async () => {
     handleError(error, `${CONTEXT}.sendMessage`)
   } finally {
     isSubmitting.value = false
-    scrollToBottom()
+    // 마지막으로 한번 더 스크롤
+    forceScrollToBottom()
   }
 }
 
-// 스크롤을 맨 아래로 이동
+// 스크롤을 맨 아래로 이동 - 코드 수정
 const scrollToBottom = () => {
-  setTimeout(() => {
+  // 사용자가 위로 스크롤 중이면 스크롤 안함
+  if (isUserScrolling.value) {
+    return;
+  }
+  
+  nextTick(() => {
     if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+      // 약간의 지연 후 스크롤 적용 (DOM 업데이트 완료 보장)
+      setTimeout(() => {
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight + 1000;
+      }, 50);
     }
-  }, 50)
-}
+  });
+};
+
+// 메시지 전송 후 무조건 스크롤
+const forceScrollToBottom = () => {
+  // 사용자 스크롤 상태 무시하고 강제로 스크롤
+  isUserScrolling.value = false;
+  
+  nextTick(() => {
+    if (chatContainer.value) {
+      // 더 긴 지연 시간으로 스크롤 적용
+      setTimeout(() => {
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight + 1000;
+      }, 100);
+    }
+  });
+};
+
+// 메시지 배열 변경 감시
+watch(messages, () => {
+  // 메시지가 변경되면 스크롤 맨 아래로
+  scrollToBottom();
+  
+  // 메시지가 추가되면 시간차를 두고 한 번 더 스크롤 (애니메이션 등 완료 후)
+  if (messages.value.length > 0) {
+    setTimeout(() => {
+      scrollToBottom();
+    }, 300);
+  }
+}, { deep: true });
 
 // 메시지 전송 키보드 이벤트 처리
 const handleKeyDown = (event) => {
@@ -402,11 +470,29 @@ onMounted(async () => {
     if (chatRooms.value.length === 0) {
       await createChatRoom()
     }
+
+    // 창 크기 변경 이벤트 처리
+    window.addEventListener('resize', scrollToBottom)
+    
+    // 초기 로딩 후 스크롤 처리
+    setTimeout(() => {
+      scrollToBottom();
+    }, 500);
   } catch (error) {
     errorMessage.value = '데이터를 불러오는 중 오류가 발생했습니다.'
     logger.error(CONTEXT, '초기화 오류:', error)
     handleError(error, `${CONTEXT}.onMounted`)
   }
+})
+
+// 컴포넌트 언마운트 시 이벤트 리스너 제거
+onUnmounted(() => {
+  window.removeEventListener('resize', scrollToBottom)
+})
+
+// 컴포넌트 업데이트 시 스크롤 처리
+onUpdated(() => {
+  scrollToBottom()
 })
 
 // 채팅방 이름 컴퓨티드 프로퍼티
@@ -470,40 +556,17 @@ const closeSummary = () => {
 
 <template>
   <div class="min-h-screen bg-ivory flex flex-col">
+    <!-- 하단 네비게이션 바 -->
+    <BottomNavBar active-tab="chat" />
+
     <!-- 헤더 -->
     <div class="bg-white p-4 shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-20">
-      <h1 class="text-xl font-bold text-dark-gray">
-        AI 채팅
-      </h1>
+      <div class="flex items-center">
+        <h1 class="text-xl font-bold text-dark-gray">
+          하트비트 AI 채팅
+        </h1>
+      </div>
       <div class="flex items-center space-x-2">
-        <button
-          v-if="selectedChatId"
-          class="p-2 bg-white border border-point-yellow text-dark-gray rounded-lg hover:bg-gray-100 focus:outline-none"
-          :disabled="isSummarizing"
-          @click="summarizeChat"
-        >
-          <div class="flex items-center">
-            <template v-if="isSummarizing">
-              <svg class="animate-spin h-5 w-5 mr-1 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span class="text-sm">요약 중...</span>
-            </template>
-            <template v-else>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                class="h-5 w-5 mr-1" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
-              </svg>
-              <span class="text-sm">요약</span>
-            </template>
-          </div>
-        </button>
         <button
           class="p-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
           @click="showNewChatDialog = true"
@@ -543,9 +606,9 @@ const closeSummary = () => {
     </div>
 
     <!-- 메인 컨텐츠 영역 -->
-    <div class="flex flex-1 mt-16 mb-16">
-      <!-- 채팅방 목록 -->
-      <div class="w-1/3 bg-white border-r border-gray-200 overflow-y-auto hidden md:block">
+    <div class="flex flex-1 mt-16 relative">
+      <!-- 채팅방 목록 (데스크탑) -->
+      <div class="w-1/3 bg-white border-r border-gray-200 overflow-y-auto hidden md:block fixed top-16 bottom-0 left-0 z-10 md:w-1/4">
         <div class="p-4">
           <div class="flex justify-between items-center mb-4">
             <h2 class="font-bold text-dark-gray">
@@ -592,43 +655,113 @@ const closeSummary = () => {
       </div>
 
       <!-- 채팅 내용 영역 -->
-      <div class="flex-1 flex flex-col">
-        <!-- 모바일 채팅방 선택기 (모바일에서만 표시) -->
-        <div class="bg-white p-2 border-b border-gray-200 md:hidden">
-          <select
-            v-model="selectedChatId"
-            class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            @change="loadChatRoom(selectedChatId)"
-          >
-            <option
-              v-for="(room, index) in chatRooms"
-              :key="room.chat_id"
-              :value="room.chat_id"
-            >
-              {{ getChatRoomName(room, index) }}
-            </option>
-          </select>
-        </div>
-        
+      <div class="flex-1 flex flex-col md:pl-1/4 w-full">
         <!-- 현재 채팅방 제목 (MD 이상 화면에서만 표시) -->
-        <div v-if="selectedChatId && currentChat" class="bg-white p-3 border-b border-gray-200 hidden md:flex items-center justify-between">
+        <div 
+          v-if="selectedChatId && currentChat" 
+          class="bg-white p-3 border-b border-gray-200 hidden md:flex items-center justify-between fixed top-16 left-1/4 right-0 z-10"
+        >
           <h2 class="font-semibold text-dark-gray">
             {{ currentChat.topic || '새 대화' }}
           </h2>
-          <div
-            v-if="!currentChat.topic"
-            class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md"
+          <!-- 데스크탑 채팅방 선택 드롭다운 -->
+          <div class="relative">
+            <button
+              class="p-2 bg-white border border-point-yellow text-dark-gray rounded-lg hover:bg-gray-100 focus:outline-none flex items-center"
+              @click="() => showChatRoomDropdown = !showChatRoomDropdown"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                class="h-5 w-5 mr-1" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+              </svg>
+              <span class="text-sm">채팅방 선택</span>
+            </button>
+            
+            <!-- 채팅방 선택 드롭다운 메뉴 -->
+            <div 
+              v-if="showChatRoomDropdown"
+              class="absolute right-0 mt-2 w-60 bg-white rounded-md shadow-lg z-50 max-h-80 overflow-y-auto border border-gray-200"
+            >
+              <div class="p-2">
+                <div
+                  v-for="(room, index) in chatRooms"
+                  :key="room.chat_id"
+                  class="p-2 rounded-md cursor-pointer hover:bg-gray-100 mb-1"
+                  :class="selectedChatId === room.chat_id ? 'bg-base-yellow' : ''"
+                  @click="selectChatRoom(room.chat_id); showChatRoomDropdown = false"
+                >
+                  <div class="text-sm font-medium text-dark-gray truncate">
+                    {{ getChatRoomName(room, index) }}
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">
+                    {{ new Date(room.updated_at).toLocaleDateString() }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 모바일 채팅방 선택 드롭다운 - 상단에 고정 -->
+        <div 
+          v-if="selectedChatId" 
+          class="bg-ivory py-2 px-3 border-b border-gray-200 flex md:hidden items-center justify-between fixed top-16 left-0 right-0 z-10"
+        >
+          <div class="text-sm font-medium text-gray-600">
+            {{ currentChat?.topic || '새 대화' }}
+          </div>
+          <button
+            class="flex items-center py-1.5 px-3 bg-white border border-point-yellow text-dark-gray rounded-full hover:bg-gray-100 focus:outline-none shadow-sm text-sm"
+            @click="() => showMobileChatRoomDropdown = !showMobileChatRoomDropdown"
           >
-            아직 요약되지 않은 대화입니다
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              class="h-4 w-4 mr-1" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+            <span>채팅방 선택</span>
+          </button>
+          
+          <!-- 모바일 채팅방 선택 드롭다운 메뉴 -->
+          <div 
+            v-if="showMobileChatRoomDropdown"
+            class="absolute top-full left-0 right-0 mt-1 bg-white rounded-b-md shadow-lg z-50 max-h-60 overflow-y-auto border-t border-gray-200"
+          >
+            <div class="p-2">
+              <div
+                v-for="(room, index) in chatRooms"
+                :key="room.chat_id"
+                class="p-2 rounded-md cursor-pointer hover:bg-gray-100 mb-1"
+                :class="selectedChatId === room.chat_id ? 'bg-base-yellow' : ''"
+                @click="selectChatRoom(room.chat_id); showMobileChatRoomDropdown = false"
+              >
+                <div class="text-sm font-medium text-dark-gray truncate">
+                  {{ getChatRoomName(room, index) }}
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  {{ new Date(room.updated_at).toLocaleDateString() }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- 채팅 메시지 영역 -->
         <div
           ref="chatContainer"
-          class="flex-1 p-4 overflow-y-auto chat-messages pb-24"
+          class="chat-messages-container"
+          @scroll="handleScroll"
         >
-          <div class="flex flex-col space-y-4">
+          <div class="flex flex-col space-y-4 p-4 pb-10">
             <div
               v-for="message in messages"
               :key="message.id"
@@ -638,7 +771,7 @@ const closeSummary = () => {
               <!-- AI 메시지 -->
               <div
                 v-if="message.role === 'assistant'"
-                class="flex max-w-[80%]"
+                class="flex max-w-[85%] md:max-w-[75%]"
               >
                 <div class="w-8 h-8 bg-point-yellow rounded-full flex items-center justify-center mr-2 flex-shrink-0">
                   <svg
@@ -650,7 +783,7 @@ const closeSummary = () => {
                     <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8 5a1 1 0 100-2 1 1 0 000 2zm-2-7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5z" />
                   </svg>
                 </div>
-                <div>
+                <div class="assistant-message">
                   <div
                     class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
                     :class="{
@@ -676,7 +809,7 @@ const closeSummary = () => {
               <!-- 사용자 메시지 -->
               <div
                 v-else-if="message.role === 'user'"
-                class="flex flex-col items-end max-w-[80%]"
+                class="flex flex-col items-end max-w-[85%] md:max-w-[75%]"
               >
                 <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
                   {{ message.content }}
@@ -699,21 +832,23 @@ const closeSummary = () => {
                 </div>
               </div>
             </div>
+            <!-- 하단 여백 -->
+            <div class="h-10"></div>
           </div>
         </div>
 
         <!-- 메시지 입력 영역 -->
-        <div class="bg-white p-3 border-t border-gray-200 fixed bottom-16 left-0 right-0 z-10">
-          <div class="flex items-center">
+        <div class="message-input-area">
+          <div class="input-container">
             <textarea
               v-model="userInput"
               placeholder="메시지를 입력하세요"
-              class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-point-yellow resize-none"
+              class="chat-input flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-point-yellow resize-none"
               rows="1"
               @keydown="handleKeyDown"
             />
             <button
-              class="p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              class="send-button p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               :disabled="isSubmitting || !userInput.trim()"
               @click="sendMessage"
             >
@@ -794,9 +929,6 @@ const closeSummary = () => {
         </div>
       </div>
     </div>
-
-    <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="chat" />
   </div>
 </template>
 
@@ -814,12 +946,110 @@ const closeSummary = () => {
   color: #353535;
 }
 
-.chat-messages {
-  height: calc(100vh - 170px); /* 헤더 높이 고려하여 조정 */
-  padding-bottom: 120px; /* 하단 입력창 가려지지 않도록 패딩 증가 */
+/* 채팅방 목록 레이아웃 */
+@media (min-width: 768px) {
+  .md\:pl-1\/4 {
+    padding-left: 25%;
+  }
+  
+  .md\:w-1\/4 {
+    width: 25%;
+  }
+  
+  .left-1\/4 {
+    left: 25%;
+  }
+}
+
+.chat-messages-container {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch; /* iOS 스크롤 개선 */
   scroll-behavior: smooth; /* 부드러운 스크롤 효과 */
+  position: fixed;
+  top: 64px; /* 헤더 높이 */
+  bottom: 56px; /* 입력 필드 + 하단 네비게이션 바 */
+  width: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5; /* 채팅 메시지 영역의 z-index 조정 */
+  background-color: #FFFAE0; /* 배경색 추가 */
+}
+
+.message-input-area {
+  position: fixed;
+  bottom: 56px; /* 하단 네비게이션 바 높이 */
+  left: 0;
+  right: 0;
+  background-color: white;
+  padding: 8px 0;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  z-index: 20;
+  height: 56px; /* 높이 고정 */
+  display: flex;
+  justify-content: center; /* 중앙 정렬 */
+  align-items: center;
+}
+
+.input-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 640px; /* 최대 너비 설정 */
+  padding: 0 16px; /* 좌우 패딩 */
+  margin: 0 auto; /* 중앙 정렬 */
+}
+
+.chat-input {
+  border-radius: 18px;
+  min-height: 40px;
+  max-height: 80px;
+  overflow-y: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1.5;
+  outline: none;
+}
+
+.send-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 채팅 메시지 스타일 개선 */
+.assistant-message {
+  max-width: 100%;
+}
+
+/* 모바일 환경 최적화 */
+@media (max-width: 767px) {
+  .chat-messages-container {
+    top: 104px; /* 헤더 + 모바일 요약 버튼 높이 */
+    padding-top: 10px;
+  }
+  
+  .input-container {
+    padding: 0 12px; /* 모바일에서는 좁은 패딩 */
+  }
+}
+
+/* 데스크탑 레이아웃 조정 */
+@media (min-width: 768px) {
+  .chat-messages-container {
+    left: 25%; /* 채팅방 목록 너비만큼 오른쪽으로 이동 */
+    top: 104px; /* 헤더 + 채팅방 제목 높이 */
+  }
+  
+  .message-input-area {
+    left: 25%; /* 채팅방 목록 너비만큼 오른쪽으로 이동 */
+  }
+  
+  .input-container {
+    padding: 0; /* 데스크탑에서는 패딩 제거 */
+  }
 }
 
 textarea {
@@ -833,8 +1063,12 @@ textarea {
 /* 모바일 환경 최적화 */
 @media (max-width: 768px) {
   .chat-messages {
-    height: calc(100vh - 160px);
-    padding-bottom: 120px; /* 모바일에서도 충분한 하단 패딩 */
+    padding-bottom: 260px; /* 모바일에서 더 큰 하단 패딩 */
+    height: calc(100vh - 170px);
+  }
+  
+  .message-input-area {
+    bottom: 56px; /* 모바일에서의 하단 네비게이션 바 높이 */
   }
 }
 
