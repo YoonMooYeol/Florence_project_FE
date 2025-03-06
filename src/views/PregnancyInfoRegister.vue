@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '../utils/axios'
 
 const router = useRouter()
 
@@ -12,11 +13,15 @@ const pregnancyInfo = ref({
   highRisk: false
 })
 
+// 로딩 상태 관리
+const isSubmitting = ref(false)
+const errorMessage = ref('')
+
 // 현재 주차 옵션
 const weekOptions = Array.from({ length: 40 }, (_, i) => i + 1)
 
-// 임신 정보 저장 함수 (실제 구현은 나중에)
-const savePregnancyInfo = () => {
+// 임신 정보 저장 함수
+const savePregnancyInfo = async () => {
   // 유효성 검사
   if (!pregnancyInfo.value.babyName) {
     alert('태명을 입력해주세요.')
@@ -28,11 +33,37 @@ const savePregnancyInfo = () => {
     return
   }
 
-  // 저장 성공 메시지
-  alert('임신 정보가 성공적으로 저장되었습니다.')
+  isSubmitting.value = true
+  errorMessage.value = ''
 
-  // 홈 페이지로 이동
-  router.push('/calendar')
+  try {
+    // API 요청 데이터 준비
+    const requestData = {
+      baby_name: pregnancyInfo.value.babyName,
+      due_date: pregnancyInfo.value.dueDate,
+      current_week: pregnancyInfo.value.currentWeek,
+      high_risk: pregnancyInfo.value.highRisk
+    }
+
+    // 임신 정보 등록 API 호출
+    await api.post('/accounts/pregnancies/', requestData)
+
+    // 임신 상태 저장
+    localStorage.setItem('isPregnant', 'true')
+    sessionStorage.setItem('isPregnant', 'true')
+
+    // 저장 성공 메시지
+    alert('임신 정보가 성공적으로 저장되었습니다.')
+
+    // 홈 페이지로 이동
+    router.push('/calendar')
+  } catch (error) {
+    console.error('임신 정보 저장 오류:', error)
+    errorMessage.value = error.response?.data?.detail || '임신 정보 저장 중 오류가 발생했습니다.'
+    alert(errorMessage.value)
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 // 건너뛰기 (나중에 입력)
@@ -48,11 +79,11 @@ const skipForNow = () => {
     <div class="w-full max-w-md">
       <!-- 헤더 -->
       <div class="mb-1 text-center">
-      <h1 class="text-xl font-bold text-center text-dark-gray">
-        임신 정보 등록
-      </h1>
+        <h1 class="text-xl font-bold text-center text-dark-gray">
+          임신 정보 등록
+        </h1>
+      </div>
     </div>
-  </div>
 
     <!-- 임신 정보 폼 -->
     <div class="p-4">
@@ -74,6 +105,14 @@ const skipForNow = () => {
           <p class="text-sm text-gray-500 mt-1">
             하트비트에서 맞춤 서비스를 제공해 드립니다
           </p>
+        </div>
+
+        <!-- 에러 메시지 표시 -->
+        <div
+          v-if="errorMessage"
+          class="p-3 mb-4 text-center text-red-700 bg-red-100 rounded-md"
+        >
+          {{ errorMessage }}
         </div>
 
         <!-- 태명 입력 -->
@@ -143,13 +182,16 @@ const skipForNow = () => {
       <div class="flex flex-col space-y-3">
         <button
           class="w-full p-4 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
+          :disabled="isSubmitting"
           @click="savePregnancyInfo"
         >
-          저장하기
+          <span v-if="isSubmitting">처리 중...</span>
+          <span v-else>저장하기</span>
         </button>
 
         <button
           class="w-full p-4 bg-white rounded-lg shadow-md text-center text-gray-500 font-bold"
+          :disabled="isSubmitting"
           @click="skipForNow"
         >
           건너뛰기
