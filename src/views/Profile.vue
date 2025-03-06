@@ -207,7 +207,7 @@ const handleLogout = () => {
         <div class="bg-white rounded-lg shadow-md p-6 mb-4">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold text-dark-gray">
-              임신 정보
+              (하트)사랑스런 {{ userInfo.babyNickname }} 만나기까지(하트)
             </h2>
             <div
               v-if="userInfo.isPregnant"
@@ -232,10 +232,10 @@ const handleLogout = () => {
             v-if="userInfo.isPregnant"
             class="space-y-4"
           >
-            <div class="flex justify-between items-center">
+            <!-- <div class="flex justify-between items-center">
               <span class="text-gray-600">태명</span>
               <span class="font-medium">{{ userInfo.babyNickname }}</span>
-            </div>
+            </div> -->
             <div class="flex justify-between items-center">
               <span class="text-gray-600">출산 예정일</span>
               <span class="font-medium">{{ userInfo.dueDate }}</span>

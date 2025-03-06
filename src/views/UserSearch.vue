@@ -222,18 +222,18 @@ onMounted(fetchAllUsers)
           </div>
           <div>
             <h2 class="text-lg font-bold text-dark-gray">
-              {{ selectedUser.name || '이름 없음' }}
+              {{ selectedUser.username || '아이디 없음' }}
             </h2>
-            <p class="text-sm text-gray-500">
+            <!-- <p class="text-sm text-gray-500">
               {{ selectedUser.email || '이메일 없음' }}
-            </p>
+            </p> -->
           </div>
         </div>
 
         <div class="space-y-4">
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">사용자명</span>
-            <span class="font-medium">{{ selectedUser.username || '정보 없음' }}</span>
+            <span class="text-gray-600">이름</span>
+            <span class="font-medium">{{ selectedUser.name || '정보 없음' }}</span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-600">이메일</span>
