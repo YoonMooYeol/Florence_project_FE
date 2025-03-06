@@ -491,7 +491,7 @@ const handleSendClick = () => {
 <template>
   <div class="min-h-screen bg-ivory flex flex-col">
     <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md flex items-center justify-center relative fixed top-0 left-0 right-0 z-20">
+    <div class="bg-white p-4 shadow-md flex items-center justify-center fixed top-0 left-0 right-0 z-20">
       <h1 class="text-xl font-bold text-center text-dark-gray">
         AI 상담사
       </h1>
@@ -523,7 +523,10 @@ const handleSendClick = () => {
     <!-- 진행 상태 바 제거 -->
 
     <!-- 대화 메시지 영역 -->
-    <div class="flex-1 p-4 overflow-y-auto chat-messages pb-24 mt-14" ref="chatContainer">
+    <div
+      ref="chatContainer"
+      class="flex-1 p-4 overflow-y-auto chat-messages pb-24 mt-14"
+    >
       <div class="flex flex-col space-y-4">
         <div
           v-for="message in messages"
@@ -555,13 +558,19 @@ const handleSendClick = () => {
                 }"
               >
                 {{ message.content }}
-                <span v-if="message.isLoading && !message.isTyping" class="loading-dots">
+                <span
+                  v-if="message.isLoading && !message.isTyping"
+                  class="loading-dots"
+                >
                   <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
                 </span>
-                <span v-if="message.isTyping" class="typing-indicator">
-                  <span class="typing-dot"></span>
-                  <span class="typing-dot"></span>
-                  <span class="typing-dot"></span>
+                <span
+                  v-if="message.isTyping"
+                  class="typing-indicator"
+                >
+                  <span class="typing-dot" />
+                  <span class="typing-dot" />
+                  <span class="typing-dot" />
                 </span>
               </div>
               <div class="text-xs text-gray-500 mt-1 ml-1">
@@ -590,9 +599,13 @@ const handleSendClick = () => {
       v-if="isSubmitting && currentStep >= totalSteps - 1"
       class="fixed inset-0 bg-gray-800 bg-opacity-70 flex flex-col items-center justify-center z-50"
     >
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-white mb-4"></div>
-      <p class="text-white text-xl font-semibold">답변을 분석 중입니다...</p>
-      <p class="text-white text-sm mt-2">잠시만 기다려주세요</p>
+      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-white mb-4" />
+      <p class="text-white text-xl font-semibold">
+        답변을 분석 중입니다...
+      </p>
+      <p class="text-white text-sm mt-2">
+        잠시만 기다려주세요
+      </p>
     </div>
 
     <!-- 메시지 입력 영역 -->
