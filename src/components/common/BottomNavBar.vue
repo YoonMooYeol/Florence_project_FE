@@ -82,6 +82,35 @@ const navigateTo = (route) => {
 
     <button
       class="p-2 flex flex-col items-center justify-center"
+      @click="navigateTo('UserSearch')"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        :class="['h-6 w-6', activeTab === 'search' ? 'text-point' : 'text-dark-gray']"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle
+          cx="11"
+          cy="11"
+          r="8"
+        />
+        <line
+          x1="21"
+          y1="21"
+          x2="16.65"
+          y2="16.65"
+        />
+      </svg>
+      <span :class="['text-xs mt-1', activeTab === 'search' ? 'text-point font-bold' : 'text-dark-gray']">검색</span>
+    </button>
+
+    <button
+      class="p-2 flex flex-col items-center justify-center"
       @click="navigateTo('Profile')"
     >
       <svg
