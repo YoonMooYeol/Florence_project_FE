@@ -1,4 +1,5 @@
 import axios from 'axios'
+import router from '../router'
 
 // axios 인스턴스 생성
 const api = axios.create({
@@ -33,7 +34,6 @@ api.interceptors.response.use(
     return response
   },
   async (error) => {
-    // 원래 요청 설정 저장
     const originalRequest = error.config
 
     // 401 에러(인증 실패)이고 재시도하지 않은 경우
@@ -41,11 +41,13 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        // 리프레시 토큰 가져오기
         const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken')
 
         if (!refreshToken) {
-          throw new Error('리프레시 토큰이 없습니다.')
+          // 리프레시 토큰이 없으면 로그인 페이지로 이동
+          clearAuthData()
+          router.push('/login')
+          return Promise.reject(error)
         }
 
         // 토큰 갱신 요청
@@ -53,50 +55,29 @@ api.interceptors.response.use(
           refresh: refreshToken
         })
 
-        // 새 액세스 토큰 저장
         const newAccessToken = response.data.access
+        const rememberMe = localStorage.getItem('rememberMe') === 'true'
 
-        // 로그인 유지 설정에 따라 저장소 선택
-        if (localStorage.getItem('rememberMe') === 'true') {
+        // 새 토큰 저장
+        if (rememberMe) {
           localStorage.setItem('accessToken', newAccessToken)
-
-          // 새 리프레시 토큰이 있는 경우 저장
           if (response.data.refresh) {
             localStorage.setItem('refreshToken', response.data.refresh)
           }
         } else {
           sessionStorage.setItem('accessToken', newAccessToken)
-
-          // 새 리프레시 토큰이 있는 경우 저장
           if (response.data.refresh) {
             sessionStorage.setItem('refreshToken', response.data.refresh)
           }
         }
 
-        // 갱신된 토큰으로 헤더 업데이트
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-
         // 원래 요청 재시도
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return api(originalRequest)
       } catch (refreshError) {
-        // 토큰 갱신 실패 시 로그인 페이지로 이동
-        // 로컬 스토리지와 세션 스토리지에서 토큰 제거
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        sessionStorage.removeItem('accessToken')
-        sessionStorage.removeItem('refreshToken')
-
-        // 사용자 정보도 함께 제거
-        localStorage.removeItem('userEmail')
-        localStorage.removeItem('userName')
-        localStorage.removeItem('userId')
-        localStorage.removeItem('isPregnant')
-        sessionStorage.removeItem('userEmail')
-        sessionStorage.removeItem('userName')
-        sessionStorage.removeItem('userId')
-        sessionStorage.removeItem('isPregnant')
-
-        window.location.href = '/login'
+        // 토큰 갱신 실패 시 로그아웃 처리
+        clearAuthData()
+        router.push('/login')
         return Promise.reject(refreshError)
       }
     }
@@ -104,5 +85,21 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+// 인증 데이터 초기화 함수
+const clearAuthData = () => {
+  localStorage.removeItem('accessToken')
+  localStorage.removeItem('refreshToken')
+  sessionStorage.removeItem('accessToken')
+  sessionStorage.removeItem('refreshToken')
+  localStorage.removeItem('userEmail')
+  localStorage.removeItem('userName')
+  localStorage.removeItem('userId')
+  localStorage.removeItem('isPregnant')
+  sessionStorage.removeItem('userEmail')
+  sessionStorage.removeItem('userName')
+  sessionStorage.removeItem('userId')
+  sessionStorage.removeItem('isPregnant')
+}
 
 export default api
