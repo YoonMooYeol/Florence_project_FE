@@ -32,6 +32,16 @@ const routes = [
     component: () => import('../views/Chat.vue')
   },
   {
+    path: '/llm-chat',
+    name: 'LlmChat',
+    component: () => import('../views/LlmChat.vue')
+  },
+  {
+    path: '/chat-socket',
+    name: 'ChatSocket',
+    component: () => import('../views/ChatSocketView.vue')
+  },
+  {
     path: '/feedback/:conversationId',
     name: 'Feedback',
     component: () => import('../views/Feedback.vue')

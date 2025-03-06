@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../utils/axios'
 
@@ -14,15 +14,39 @@ const userInfo = ref({
   gender: ''
 })
 
+// 오류 메시지 객체
+const errors = reactive({
+  username: '',
+  name: '',
+  email: '',
+  phone_number: '',
+  form: '' // 일반적인 오류 메시지
+})
+
 // 로딩 상태 관리
 const isLoading = ref(false)
 const isSubmitting = ref(false)
-const errorMessage = ref('')
+
+// 오류 필드 초기화
+const clearErrors = () => {
+  errors.username = ''
+  errors.name = ''
+  errors.email = ''
+  errors.phone_number = ''
+  errors.form = ''
+}
+
+// 각 필드 입력 시 해당 필드의 오류 메시지 초기화
+const clearFieldError = (field) => {
+  if (errors[field]) {
+    errors[field] = ''
+  }
+}
 
 // 사용자 정보 불러오기
 const fetchUserInfo = async () => {
   isLoading.value = true
-  errorMessage.value = ''
+  clearErrors()
 
   try {
     // API를 통해 본인 정보 조회
@@ -37,7 +61,7 @@ const fetchUserInfo = async () => {
     userInfo.value.gender = response.data.gender || ''
   } catch (error) {
     console.error('사용자 정보 불러오기 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '사용자 정보를 불러오는 중 오류가 발생했습니다.'
+    errors.form = error.response?.data?.detail || '사용자 정보를 불러오는 중 오류가 발생했습니다.'
 
     // API 호출 실패 시 로컬 스토리지에서 정보 가져오기
     userInfo.value.name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || ''
@@ -47,21 +71,39 @@ const fetchUserInfo = async () => {
   }
 }
 
-// 수정된 정보를 저장하는 함수
-const saveUserInfo = async () => {
-  // 유효성 검사
-  if (!userInfo.value.name.trim()) {
-    alert('이름을 입력해주세요.')
-    return
+// 유효성 검사 함수
+const validateForm = () => {
+  let isValid = true
+
+  // 사용자명 검증
+  if (!userInfo.value.username.trim()) {
+    errors.username = '아이디를 입력해주세요'
+    isValid = false
+  } else {
+    errors.username = ''
   }
 
-  if (!userInfo.value.username.trim()) {
-    alert('사용자명을 입력해주세요.')
+  // 이름 검증
+  if (!userInfo.value.name.trim()) {
+    errors.name = '닉네임을 입력해주세요'
+    isValid = false
+  } else {
+    errors.name = ''
+  }
+
+  return isValid
+}
+
+// 수정된 정보를 저장하는 함수
+const saveUserInfo = async () => {
+  clearErrors()
+
+  // 폼 유효성 검사
+  if (!validateForm()) {
     return
   }
 
   isSubmitting.value = true
-  errorMessage.value = ''
 
   try {
     // API 요청 데이터 준비
@@ -92,16 +134,35 @@ const saveUserInfo = async () => {
     router.push('/profile')
   } catch (error) {
     console.error('사용자 정보 저장 오류:', error)
-    // 오류 응답 상세 정보 출력
-    if (error.response) {
-      console.error('오류 응답 데이터:', error.response.data)
-      console.error('오류 상태 코드:', error.response.status)
-      console.error('오류 헤더:', error.response.headers)
-      errorMessage.value = JSON.stringify(error.response.data) || '사용자 정보 저장 중 오류가 발생했습니다.'
+
+    // 서버에서 오는 에러 메시지 처리
+    if (error.response && error.response.data) {
+      if (typeof error.response.data === 'string') {
+        errors.form = error.response.data
+      } else if (error.response.data.detail) {
+        errors.form = error.response.data.detail
+      } else {
+        // 필드별 에러 메시지 처리
+        const fieldErrors = error.response.data
+
+        Object.keys(fieldErrors).forEach(field => {
+          if (errors[field] !== undefined) {
+            errors[field] = Array.isArray(fieldErrors[field])
+              ? fieldErrors[field][0]
+              : fieldErrors[field]
+          } else {
+            // 알 수 없는 필드의 경우 일반 오류로 추가
+            errors.form = `${field}: ${fieldErrors[field]}`
+          }
+        })
+
+        if (Object.keys(fieldErrors).length === 0) {
+          errors.form = '사용자 정보 저장 중 오류가 발생했습니다.'
+        }
+      }
     } else {
-      errorMessage.value = error.message || '사용자 정보 저장 중 오류가 발생했습니다.'
+      errors.form = error.message || '사용자 정보 저장 중 오류가 발생했습니다.'
     }
-    alert(errorMessage.value)
   } finally {
     isSubmitting.value = false
   }
@@ -156,12 +217,12 @@ onMounted(fetchUserInfo)
       </p>
     </div>
 
-    <!-- 에러 메시지 표시 -->
+    <!-- 일반 에러 메시지 표시 -->
     <div
-      v-if="errorMessage"
+      v-if="errors.form"
       class="p-4 mb-4 text-center text-red-700 bg-red-100"
     >
-      {{ errorMessage }}
+      {{ errors.form }}
     </div>
 
     <!-- 사용자 정보 폼 -->
@@ -206,13 +267,20 @@ onMounted(fetchUserInfo)
           <label
             for="username"
             class="block mb-2 text-sm font-medium text-dark-gray"
-          >사용자명</label>
+          >아이디</label>
           <input
             id="username"
             v-model="userInfo.username"
             type="text"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            @input="clearFieldError('username')"
           >
+          <p
+            v-if="errors.username"
+            class="mt-1 text-sm text-red-600"
+          >
+            {{ errors.username }}
+          </p>
         </div>
 
         <!-- 이름 입력 -->
@@ -226,7 +294,14 @@ onMounted(fetchUserInfo)
             v-model="userInfo.name"
             type="text"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            @input="clearFieldError('name')"
           >
+          <p
+            v-if="errors.name"
+            class="mt-1 text-sm text-red-600"
+          >
+            {{ errors.name }}
+          </p>
         </div>
 
         <!-- 이메일 입력 -->
@@ -245,6 +320,12 @@ onMounted(fetchUserInfo)
           <p class="mt-1 text-xs text-gray-500">
             이메일은 변경할 수 없습니다
           </p>
+          <p
+            v-if="errors.email"
+            class="mt-1 text-sm text-red-600"
+          >
+            {{ errors.email }}
+          </p>
         </div>
 
         <!-- 전화번호 입력 -->
@@ -258,7 +339,14 @@ onMounted(fetchUserInfo)
             v-model="userInfo.phone_number"
             type="tel"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            @input="clearFieldError('phone_number')"
           >
+          <p
+            v-if="errors.phone_number"
+            class="mt-1 text-sm text-red-600"
+          >
+            {{ errors.phone_number }}
+          </p>
         </div>
       </div>
 

@@ -19,7 +19,7 @@ const navigateTo = (route) => {
   <div class="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex items-center justify-evenly shadow-md">
     <button
       class="p-2 flex flex-col items-center justify-center"
-      @click="navigateTo('Chat')"
+      @click="navigateTo('LlmChat')"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
