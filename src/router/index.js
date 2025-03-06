@@ -55,12 +55,35 @@ const routes = [
     path: '/user-search',
     name: 'UserSearch',
     component: () => import('../views/UserSearch.vue')
+  },
+  {
+    path: '/daily-diary',
+    name: 'DailyDiary',
+    component: () => import('../views/DailyDiary.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/baby-diary',
+    name: 'BabyDiary',
+    component: () => import('../views/BabyDiary.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// 네비게이션 가드 설정
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+  
+  if (to.meta.requiresAuth && !token) {
+    next('/login')
+  } else {
+    next()
+  }
 })
 
 export default router
