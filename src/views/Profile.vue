@@ -32,8 +32,15 @@ const fetchUserInfo = async () => {
   errorMessage.value = ''
 
   try {
+    // 토큰 확인
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+    if (!token) {
+      throw new Error('인증 토큰이 없습니다.')
+    }
+
     // API를 통해 본인 정보 조회
     const response = await api.get('/accounts/users/me/')
+    console.log('사용자 정보 응답:', response.data)
 
     // 사용자 기본 정보 설정
     userInfo.value.name = response.data.name || '사용자'
@@ -42,16 +49,26 @@ const fetchUserInfo = async () => {
     userInfo.value.gender = response.data.gender || ''
 
     // 로컬 스토리지 및 세션 스토리지에 사용자 정보 저장
-    localStorage.setItem('userName', userInfo.value.name)
-    sessionStorage.setItem('userName', userInfo.value.name)
-    localStorage.setItem('userEmail', userInfo.value.email)
-    sessionStorage.setItem('userEmail', userInfo.value.email)
+    if (localStorage.getItem('rememberMe') === 'true') {
+      localStorage.setItem('userName', userInfo.value.name)
+      localStorage.setItem('userEmail', userInfo.value.email)
+    } else {
+      sessionStorage.setItem('userName', userInfo.value.name)
+      sessionStorage.setItem('userEmail', userInfo.value.email)
+    }
 
     // 임신 정보 불러오기
     await fetchPregnancyInfo()
   } catch (error) {
     console.error('사용자 정보 불러오기 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '사용자 정보를 불러오는 중 오류가 발생했습니다.'
+    
+    if (error.response?.status === 401) {
+      // 인증 오류인 경우 로그인 페이지로 리다이렉트
+      router.push('/login')
+      return
+    }
+    
+    errorMessage.value = error.response?.data?.detail || error.message || '사용자 정보를 불러오는 중 오류가 발생했습니다.'
 
     // API 호출 실패 시 로컬 스토리지에서 정보 가져오기
     userInfo.value.name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '사용자'
@@ -207,7 +224,7 @@ const handleLogout = () => {
         <div class="bg-white rounded-lg shadow-md p-6 mb-4">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold text-dark-gray">
-              (하트)사랑스런 {{ userInfo.babyNickname }} 만나기까지(하트)
+              ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
             <div
               v-if="userInfo.isPregnant"
@@ -322,7 +339,10 @@ const handleLogout = () => {
             <span class="text-dark-gray">임신 정보 입력</span>
           </button>
 
-          <button class="w-full p-4 text-left flex items-center">
+          <button 
+            class="w-full p-4 text-left flex items-center"
+            @click="router.push('/daily-diary')"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5 mr-3 text-gray-500"
@@ -347,6 +367,7 @@ const handleLogout = () => {
           <button
             v-if="userInfo.isPregnant"
             class="w-full p-4 text-left flex items-center"
+            @click="router.push('/baby-diary')"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

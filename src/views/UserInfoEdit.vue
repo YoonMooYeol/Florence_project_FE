@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../utils/axios'
+import BottomNavBar from '@/components/common/BottomNavBar.vue'
 
 const router = useRouter()
 
@@ -402,6 +403,9 @@ onMounted(fetchUserInfo)
         <span v-else>저장하기</span>
       </button>
     </div>
+
+    <!-- 하단 네비게이션 바 -->
+    <BottomNavBar active-tab="profile" />
   </div>
 </template>
 
