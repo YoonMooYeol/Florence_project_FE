@@ -50,6 +50,11 @@ const routes = [
     path: '/pregnancy-info-edit',
     name: 'PregnancyInfoEdit',
     component: () => import('../views/PregnancyInfoEdit.vue')
+  },
+  {
+    path: '/user-search',
+    name: 'UserSearch',
+    component: () => import('../views/UserSearch.vue')
   }
 ]
 
