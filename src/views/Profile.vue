@@ -32,15 +32,30 @@ const fetchUserInfo = async () => {
   errorMessage.value = ''
 
   try {
-    // 사용자 기본 정보 설정 (로컬 스토리지 또는 세션 스토리지에서 가져옴)
-    userInfo.value.name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '사용자'
-    userInfo.value.email = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail') || ''
+    // API를 통해 본인 정보 조회
+    const response = await api.get('/accounts/users/me/')
+
+    // 사용자 기본 정보 설정
+    userInfo.value.name = response.data.name || '사용자'
+    userInfo.value.email = response.data.email || ''
+    userInfo.value.phone = response.data.phone || ''
+    userInfo.value.gender = response.data.gender || ''
+
+    // 로컬 스토리지 및 세션 스토리지에 사용자 정보 저장
+    localStorage.setItem('userName', userInfo.value.name)
+    sessionStorage.setItem('userName', userInfo.value.name)
+    localStorage.setItem('userEmail', userInfo.value.email)
+    sessionStorage.setItem('userEmail', userInfo.value.email)
 
     // 임신 정보 불러오기
     await fetchPregnancyInfo()
   } catch (error) {
     console.error('사용자 정보 불러오기 오류:', error)
-    errorMessage.value = '사용자 정보를 불러오는 중 오류가 발생했습니다.'
+    errorMessage.value = error.response?.data?.detail || '사용자 정보를 불러오는 중 오류가 발생했습니다.'
+
+    // API 호출 실패 시 로컬 스토리지에서 정보 가져오기
+    userInfo.value.name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '사용자'
+    userInfo.value.email = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail') || ''
   } finally {
     isLoading.value = false
   }
@@ -115,43 +130,6 @@ const getJosa = (word, josa1, josa2) => {
 }
 
 // 임신 정보 삭제 함수
-const deletePregnancyInfo = async () => {
-  if (!userInfo.value.pregnancyId) {
-    alert('삭제할 임신 정보가 없습니다.')
-    return
-  }
-
-  if (!confirm('정말로 임신 정보를 삭제하시겠습니까?')) {
-    return
-  }
-
-  isLoading.value = true
-  errorMessage.value = ''
-
-  try {
-    await api.delete(`/accounts/pregnancies/${userInfo.value.pregnancyId}/`)
-
-    // 임신 상태 업데이트
-    userInfo.value.isPregnant = false
-    userInfo.value.babyNickname = ''
-    userInfo.value.dueDate = ''
-    userInfo.value.pregnancyWeek = null
-    userInfo.value.highRisk = false
-    userInfo.value.pregnancyId = null
-
-    // 로컬 스토리지 및 세션 스토리지 업데이트
-    localStorage.setItem('isPregnant', 'false')
-    sessionStorage.setItem('isPregnant', 'false')
-
-    alert('임신 정보가 성공적으로 삭제되었습니다.')
-  } catch (error) {
-    console.error('임신 정보 삭제 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '임신 정보 삭제 중 오류가 발생했습니다.'
-    alert(errorMessage.value)
-  } finally {
-    isLoading.value = false
-  }
-}
 
 // 로그아웃 함수
 const handleLogout = () => {
@@ -235,7 +213,7 @@ const handleLogout = () => {
               v-if="userInfo.isPregnant"
               class="flex space-x-2"
             >
-              <button
+              <!-- <button
                 class="px-3 py-1 text-sm bg-base-yellow rounded-md hover:bg-point-yellow text-dark-gray"
                 @click="router.push('/pregnancy-info-edit')"
               >
@@ -246,7 +224,7 @@ const handleLogout = () => {
                 @click="deletePregnancyInfo"
               >
                 삭제
-              </button>
+              </button> -->
             </div>
           </div>
 
