@@ -557,7 +557,7 @@ const closeSummary = () => {
 <template>
   <div class="min-h-screen bg-ivory flex flex-col">
     <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="chat" />
+    <BottomNavBar active-tab="chat" class="bottom-nav" />
 
     <!-- 헤더 -->
     <div class="bg-white p-4 shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-20">
@@ -967,7 +967,7 @@ const closeSummary = () => {
   scroll-behavior: smooth; /* 부드러운 스크롤 효과 */
   position: fixed;
   top: 64px; /* 헤더 높이 */
-  bottom: 56px; /* 입력 필드 + 하단 네비게이션 바 */
+  bottom: 112px; /* 입력 필드(56px) + 하단 네비게이션 바(56px) */
   width: 100%;
   left: 0;
   right: 0;
@@ -977,7 +977,7 @@ const closeSummary = () => {
 
 .message-input-area {
   position: fixed;
-  bottom: 56px; /* 하단 네비게이션 바 높이 */
+  bottom: 56px; /* 하단 네비게이션 바 높이만큼 띄우기 */
   left: 0;
   right: 0;
   background-color: white;
@@ -1029,6 +1029,7 @@ const closeSummary = () => {
   .chat-messages-container {
     top: 104px; /* 헤더 + 모바일 요약 버튼 높이 */
     padding-top: 10px;
+    bottom: 112px; /* 입력 필드 + 하단 네비게이션 바 */
   }
   
   .input-container {
@@ -1041,6 +1042,7 @@ const closeSummary = () => {
   .chat-messages-container {
     left: 25%; /* 채팅방 목록 너비만큼 오른쪽으로 이동 */
     top: 104px; /* 헤더 + 채팅방 제목 높이 */
+    bottom: 112px; /* 입력 필드 + 하단 네비게이션 바 */
   }
   
   .message-input-area {
@@ -1120,5 +1122,14 @@ textarea {
     transform: scale(1);
     opacity: 0.3;
   }
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30; /* 가장 높은 z-index로 설정 */
+  height: 56px;
 }
 </style> 
