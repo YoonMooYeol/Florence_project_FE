@@ -163,7 +163,7 @@ const handleFabClick = () => {
     </div>
 
     <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="calendar" />
+    <BottomNavBar active-tab="calendar" class="bottom-nav" />
 
     <!-- 추가 버튼 (우측 하단 고정) -->
     <FloatingActionButton @click="handleFabClick" />
@@ -554,5 +554,15 @@ const handleFabClick = () => {
   height: 0 !important;
   padding: 0 !important;
   border: none !important;
+}
+
+/* 하단 네비게이션 바 스타일 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30; /* 가장 높은 z-index로 설정 */
+  height: 56px;
 }
 </style>
