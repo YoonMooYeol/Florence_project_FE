@@ -1,25 +1,89 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../store/auth'
+import api from '../utils/axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
-// 사용자 정보 (실제 구현 시 스토어나 API에서 가져올 예정)
+// 사용자 정보
 const userInfo = ref({
-  name: '홍길동',
-  email: 'user@example.com',
-  phone: '010-1234-5678',
-  gender: 'female',
+  name: '',
+  email: '',
+  phone: '',
+  gender: '',
   isPregnant: false,
-  dueDate: '2025-06-15',
-  pregnancyWeek: 12,
-  babyNickname: '콩콩이',
-  highRisk: false
+  dueDate: '',
+  pregnancyWeek: null,
+  babyNickname: '',
+  highRisk: false,
+  pregnancyId: null
 })
+
+// 로딩 상태 관리
+const isLoading = ref(false)
+const errorMessage = ref('')
+
+// 사용자 정보 불러오기
+const fetchUserInfo = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    // 사용자 기본 정보 설정 (로컬 스토리지 또는 세션 스토리지에서 가져옴)
+    userInfo.value.name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '사용자'
+    userInfo.value.email = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail') || ''
+
+    // 임신 정보 불러오기
+    await fetchPregnancyInfo()
+  } catch (error) {
+    console.error('사용자 정보 불러오기 오류:', error)
+    errorMessage.value = '사용자 정보를 불러오는 중 오류가 발생했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 임신 정보 불러오기
+const fetchPregnancyInfo = async () => {
+  try {
+    const response = await api.get('/accounts/pregnancies/')
+
+    // 임신 정보가 있는 경우
+    if (response.data && response.data.length > 0) {
+      const data = response.data[0] // 가장 최근 임신 정보 사용
+
+      userInfo.value.isPregnant = true
+      userInfo.value.babyNickname = data.baby_name
+      userInfo.value.dueDate = data.due_date
+      userInfo.value.pregnancyWeek = data.current_week
+      userInfo.value.highRisk = data.high_risk
+      userInfo.value.pregnancyId = data.pregnancy_id
+
+      // 임신 상태 저장
+      localStorage.setItem('isPregnant', 'true')
+      sessionStorage.setItem('isPregnant', 'true')
+    } else {
+      // 임신 정보가 없는 경우
+      userInfo.value.isPregnant = false
+      localStorage.setItem('isPregnant', 'false')
+      sessionStorage.setItem('isPregnant', 'false')
+    }
+  } catch (error) {
+    console.error('임신 정보 불러오기 오류:', error)
+    throw error
+  }
+}
+
+// 컴포넌트 마운트 시 사용자 정보 불러오기
+onMounted(fetchUserInfo)
 
 // 출산 예정일까지 남은 일수 계산 함수
 const getDaysUntilDueDate = () => {
+  if (!userInfo.value.dueDate) return 0
+
   const today = new Date()
   const dueDate = new Date(userInfo.value.dueDate)
 
@@ -50,24 +114,49 @@ const getJosa = (word, josa1, josa2) => {
   return josa1
 }
 
-// 로그아웃 함수 (실제 구현은 나중에)
-const handleLogout = () => {
-  // 로컬 스토리지에서 사용자 정보 및 토큰 제거
-  localStorage.removeItem('rememberMe')
-  localStorage.removeItem('userEmail')
-  localStorage.removeItem('userName')
-  localStorage.removeItem('userId')
-  localStorage.removeItem('isPregnant')
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
+// 임신 정보 삭제 함수
+const deletePregnancyInfo = async () => {
+  if (!userInfo.value.pregnancyId) {
+    alert('삭제할 임신 정보가 없습니다.')
+    return
+  }
 
-  // 세션 스토리지에서 사용자 정보 및 토큰 제거
-  sessionStorage.removeItem('userEmail')
-  sessionStorage.removeItem('userName')
-  sessionStorage.removeItem('userId')
-  sessionStorage.removeItem('isPregnant')
-  sessionStorage.removeItem('accessToken')
-  sessionStorage.removeItem('refreshToken')
+  if (!confirm('정말로 임신 정보를 삭제하시겠습니까?')) {
+    return
+  }
+
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    await api.delete(`/accounts/pregnancies/${userInfo.value.pregnancyId}/`)
+
+    // 임신 상태 업데이트
+    userInfo.value.isPregnant = false
+    userInfo.value.babyNickname = ''
+    userInfo.value.dueDate = ''
+    userInfo.value.pregnancyWeek = null
+    userInfo.value.highRisk = false
+    userInfo.value.pregnancyId = null
+
+    // 로컬 스토리지 및 세션 스토리지 업데이트
+    localStorage.setItem('isPregnant', 'false')
+    sessionStorage.setItem('isPregnant', 'false')
+
+    alert('임신 정보가 성공적으로 삭제되었습니다.')
+  } catch (error) {
+    console.error('임신 정보 삭제 오류:', error)
+    errorMessage.value = error.response?.data?.detail || '임신 정보 삭제 중 오류가 발생했습니다.'
+    alert(errorMessage.value)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 로그아웃 함수
+const handleLogout = () => {
+  // auth 스토어의 로그아웃 함수 호출
+  authStore.logout()
 
   // 로그아웃 메시지 표시
   alert('로그아웃 되었습니다.')
@@ -86,8 +175,30 @@ const handleLogout = () => {
       </h1>
     </div>
 
+    <!-- 로딩 표시 -->
+    <div
+      v-if="isLoading"
+      class="p-4 text-center"
+    >
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
+      <p class="mt-2 text-dark-gray">
+        정보를 불러오는 중...
+      </p>
+    </div>
+
+    <!-- 에러 메시지 표시 -->
+    <div
+      v-if="errorMessage"
+      class="p-4 mb-4 text-center text-red-700 bg-red-100"
+    >
+      {{ errorMessage }}
+    </div>
+
     <!-- 사용자 정보 섹션 -->
-    <div class="p-4 mt-4 pb-20">
+    <div
+      v-if="!isLoading"
+      class="p-4 mt-4 pb-20"
+    >
       <div class="bg-white rounded-lg shadow-md p-6 mb-4">
         <div class="flex items-center mb-4">
           <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
@@ -114,9 +225,35 @@ const handleLogout = () => {
           </div>
         </div>
 
-        <div v-if="userInfo.gender === 'female'" class="bg-white rounded-lg shadow-md p-6 mb-4">
-          <h2 class="text-lg font-bold text-dark-gray mb-4">임신 정보</h2>
-          <div v-if="userInfo.isPregnant" class="space-y-4">
+        <!-- 임신 정보 섹션 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-dark-gray">
+              임신 정보
+            </h2>
+            <div
+              v-if="userInfo.isPregnant"
+              class="flex space-x-2"
+            >
+              <button
+                class="px-3 py-1 text-sm bg-base-yellow rounded-md hover:bg-point-yellow text-dark-gray"
+                @click="router.push('/pregnancy-info-edit')"
+              >
+                수정
+              </button>
+              <button
+                class="px-3 py-1 text-sm bg-red-100 rounded-md hover:bg-red-200 text-red-600"
+                @click="deletePregnancyInfo"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+
+          <div
+            v-if="userInfo.isPregnant"
+            class="space-y-4"
+          >
             <div class="flex justify-between items-center">
               <span class="text-gray-600">태명</span>
               <span class="font-medium">{{ userInfo.babyNickname }}</span>
@@ -129,7 +266,14 @@ const handleLogout = () => {
               <span class="text-gray-600">현재 임신 주차</span>
               <span class="font-medium">{{ userInfo.pregnancyWeek }}주차</span>
             </div>
-            <div v-if="userInfo.highRisk" class="flex items-center text-red-500">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">출산까지 남은 일수</span>
+              <span class="font-medium">{{ getDaysUntilDueDate() }}일</span>
+            </div>
+            <div
+              v-if="userInfo.highRisk"
+              class="flex items-center text-red-500"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="h-5 w-5 mr-1"
@@ -145,8 +289,13 @@ const handleLogout = () => {
               <span class="text-sm">고위험 임신</span>
             </div>
           </div>
-          <div v-else class="text-center">
-            <p class="text-gray-500 mb-4">아직 임신 정보가 등록되지 않았습니다</p>
+          <div
+            v-else
+            class="text-center"
+          >
+            <p class="text-gray-500 mb-4">
+              아직 임신 정보가 등록되지 않았습니다
+            </p>
             <button
               class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
               @click="router.push('/pregnancy-info-edit')"
@@ -217,7 +366,10 @@ const handleLogout = () => {
             <span class="text-dark-gray">오늘의 하루</span>
           </button>
 
-          <button class="w-full p-4 text-left flex items-center">
+          <button
+            v-if="userInfo.isPregnant"
+            class="w-full p-4 text-left flex items-center"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5 mr-3 text-gray-500"

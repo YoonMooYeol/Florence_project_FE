@@ -1,9 +1,11 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useAuthStore } from '../store/auth'
+import api from '../utils/axios'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // 폼 데이터 관리
 const formData = reactive({
@@ -47,23 +49,23 @@ const validateForm = () => {
 
 // 로그인 정보와 토큰을 저장하는 함수
 const saveLoginState = (userData) => {
+  // 액세스 토큰과 리프레시 토큰 저장
+  authStore.setAccessToken(userData.tokens.access)
+  authStore.setRefreshToken(userData.tokens.refresh)
+
+  // 로그인 유지를 선택한 경우 로컬 스토리지에 저장 (브라우저를 닫아도 유지)
   if (formData.rememberMe) {
-    // 로그인 유지를 선택한 경우 로컬 스토리지에 저장 (브라우저를 닫아도 유지)
     localStorage.setItem('rememberMe', 'true')
     localStorage.setItem('userEmail', formData.email)
     localStorage.setItem('userName', userData.name)
     localStorage.setItem('userId', userData.user_id)
     localStorage.setItem('isPregnant', userData.is_pregnant)
-    localStorage.setItem('accessToken', userData.tokens.access)
-    localStorage.setItem('refreshToken', userData.tokens.refresh)
   } else {
     // 로그인 유지를 선택하지 않은 경우 세션 스토리지에 저장 (브라우저 닫으면 삭제)
     sessionStorage.setItem('userEmail', formData.email)
     sessionStorage.setItem('userName', userData.name)
     sessionStorage.setItem('userId', userData.user_id)
     sessionStorage.setItem('isPregnant', userData.is_pregnant)
-    sessionStorage.setItem('accessToken', userData.tokens.access)
-    sessionStorage.setItem('refreshToken', userData.tokens.refresh)
 
     // 로컬 스토리지에서 기존 데이터 삭제
     localStorage.removeItem('rememberMe')
@@ -71,8 +73,6 @@ const saveLoginState = (userData) => {
     localStorage.removeItem('userName')
     localStorage.removeItem('userId')
     localStorage.removeItem('isPregnant')
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
   }
 }
 
@@ -93,7 +93,7 @@ checkSavedLogin()
 
 // 로그인 API 호출 함수
 const loginApi = async (email, password) => {
-  const response = await axios.post('http://127.0.0.1:8000/v1/accounts/login/', {
+  const response = await api.post('/accounts/login/', {
     email,
     password
   })
