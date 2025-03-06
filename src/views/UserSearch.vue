@@ -45,10 +45,9 @@ const searchUsers = async () => {
     console.log('검색 결과 데이터:', response.data)
     const allUsers = response.data
 
-    // 이름이나 이메일에 검색어가 포함된 사용자 필터링
+    // 아이디(username)에 검색어가 포함된 사용자 필터링
     users.value = allUsers.filter(user =>
-      user.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.value.toLowerCase())
+      user.username?.toLowerCase().includes(searchQuery.value.toLowerCase())
     )
   } catch (error) {
     console.error('사용자 검색 오류:', error)
@@ -149,7 +148,7 @@ onMounted(fetchAllUsers)
           v-model="searchQuery"
           type="text"
           class="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-          placeholder="이름 또는 이메일로 검색"
+          placeholder="아이디로 검색"
           @keyup.enter="searchUsers"
         >
         <button
@@ -293,7 +292,7 @@ onMounted(fetchAllUsers)
                   {{ user.name || '이름 없음' }}
                 </h3>
                 <p class="text-sm text-gray-500">
-                  {{ user.email || '이메일 없음' }}
+                  {{ user.username || '아이디 없음' }}
                 </p>
               </div>
             </div>

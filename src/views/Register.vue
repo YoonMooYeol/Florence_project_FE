@@ -2,6 +2,8 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { useAuthStore } from '../store/auth'
+import api from '../utils/axios'
 
 // Daum 지도 API 초기화
 let geocoder
@@ -9,6 +11,7 @@ let map
 let marker
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // 폼 데이터 관리
 const formData = reactive({
@@ -44,6 +47,35 @@ const isSubmitting = ref(false)
 const showSuccessMessage = ref(false)
 const registeredUser = ref(null)
 
+// 이미 로그인된 사용자인지 확인
+const checkAlreadyLoggedIn = () => {
+  const accessToken = localStorage.getItem('accessToken') || authStore.accessToken || sessionStorage.getItem('accessToken')
+  const userName = localStorage.getItem('userName') || sessionStorage.getItem('userName')
+
+  if (accessToken && userName) {
+    router.push('/calendar')
+    return true
+  }
+  return false
+}
+
+// 컴포넌트 마운트 시 로그인 상태 확인 및 초기화
+onMounted(() => {
+  if (checkAlreadyLoggedIn()) {
+    return
+  }
+
+  // 이벤트 리스너 등록
+  window.addEventListener('message', handleAddressSelect)
+
+  // Daum 지도 API 설정
+  geocoder = new daum.maps.services.Geocoder()
+  marker = new daum.maps.Marker()
+
+  // 전화번호 초기화
+  initPhoneParts()
+})
+
 // 전화번호 부분이 변경될 때 전체 전화번호 업데이트
 const updatePhoneNumber = () => {
   formData.phone_part1 = formData.phone_part1.replace(/\D/g, '')
@@ -68,9 +100,6 @@ const initPhoneParts = () => {
     }
   }
 }
-
-// 컴포넌트 마운트 시 초기화
-initPhoneParts()
 
 // 폼 유효성 검사 함수
 const validateForm = () => {
@@ -164,6 +193,33 @@ const registerApi = async (userData) => {
   return response.data
 }
 
+// 로그인 API 호출 함수
+const loginApi = async (email, password) => {
+  const response = await api.post('/accounts/login/', {
+    email,
+    password
+  })
+  return response.data
+}
+
+// 로그인 정보와 토큰을 저장하는 함수
+const saveLoginState = (userData) => {
+  // 액세스 토큰과 리프레시 토큰 저장
+  authStore.setAccessToken(userData.tokens.access)
+  authStore.setRefreshToken(userData.tokens.refresh)
+
+  // 사용자 정보 저장
+  localStorage.setItem('userEmail', formData.email)
+  localStorage.setItem('userName', userData.name)
+  localStorage.setItem('userId', userData.user_id)
+  localStorage.setItem('isPregnant', userData.is_pregnant || 'false')
+  // 세션 스토리지에도 저장
+  sessionStorage.setItem('userEmail', formData.email)
+  sessionStorage.setItem('userName', userData.name)
+  sessionStorage.setItem('userId', userData.user_id)
+  sessionStorage.setItem('isPregnant', userData.is_pregnant || 'false')
+}
+
 // 각 필드 입력 시 해당 필드의 오류 메시지 초기화
 const clearFieldError = (field) => {
   if (errors[field]) {
@@ -191,8 +247,22 @@ const handleSubmit = async () => {
     // 응답 데이터 저장
     registeredUser.value = response
 
-    // 성공 메시지 표시
-    showSuccessMessage.value = true
+    // 자동 로그인 처리
+    try {
+      const userData = await loginApi(formData.email, formData.password)
+      // 로그인 정보와 토큰 저장
+      saveLoginState(userData)
+      // 임신 여부에 따라 페이지 이동
+      if (formData.is_pregnant) {
+        router.push('/pregnancy-info-register')
+      } else {
+        router.push('/calendar')
+      }
+    } catch (loginError) {
+      console.error('자동 로그인 실패:', loginError)
+      // 자동 로그인 실패 시 성공 메시지 표시 후 수동으로 로그인하도록 유도
+      showSuccessMessage.value = true
+    }
   } catch (error) {
     // 서버에서 오는 에러 메시지 처리
     if (error.response && error.response.data) {
@@ -298,15 +368,6 @@ const handleAddressSelect = (event) => {
     })
   }
 }
-
-// 컴포넌트 마운트 시 이벤트 리스너 등록
-onMounted(() => {
-  window.addEventListener('message', handleAddressSelect)
-
-  // Daum 지도 API 설정
-  geocoder = new daum.maps.services.Geocoder()
-  marker = new daum.maps.Marker()
-})
 
 // 컴포넌트 언마운트 시 이벤트 리스너 제거
 onUnmounted(() => {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
 import api from '../utils/axios'
@@ -80,7 +80,7 @@ const saveLoginState = (userData) => {
 const checkSavedLogin = () => {
   const savedRememberMe = localStorage.getItem('rememberMe')
   const savedEmail = localStorage.getItem('userEmail')
-  const accessToken = localStorage.getItem('accessToken')
+  const accessToken = localStorage.getItem('accessToken') || authStore.accessToken
 
   if (savedRememberMe === 'true' && savedEmail && accessToken) {
     formData.email = savedEmail
@@ -88,8 +88,28 @@ const checkSavedLogin = () => {
   }
 }
 
-// 컴포넌트 마운트 시 저장된 로그인 정보 확인
-checkSavedLogin()
+// 이미 로그인된 사용자인지 확인
+const checkAlreadyLoggedIn = () => {
+  const accessToken = localStorage.getItem('accessToken') || authStore.accessToken || sessionStorage.getItem('accessToken')
+  const userName = localStorage.getItem('userName') || sessionStorage.getItem('userName')
+
+  if (accessToken && userName) {
+    // 이미 로그인된 상태이므로 캘린더 페이지로 리다이렉팅
+    router.push('/calendar')
+    return true
+  }
+  return false
+}
+
+// 컴포넌트 마운트 시 로그인 상태 확인
+onMounted(() => {
+  // 이미 로그인된 사용자인지 확인
+  if (checkAlreadyLoggedIn()) {
+    return
+  }
+  // 저장된 로그인 정보 확인
+  checkSavedLogin()
+})
 
 // 로그인 API 호출 함수
 const loginApi = async (email, password) => {
