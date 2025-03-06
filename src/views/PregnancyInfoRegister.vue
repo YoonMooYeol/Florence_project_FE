@@ -56,12 +56,12 @@ const skipForNow = () => {
 
     <!-- 임신 정보 폼 -->
     <div class="p-4">
-      <div class="bg-white rounded-[10px] shadow-md p-10 mb-4">
+      <div class="bg-white rounded-[10px] shadow-md  ">
         <div class="mb-6 text-center">
           <div class="w-20 h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="h-10 w-10 text-dark-gray"
+              class="h-10 w-10 text-dark-gray"  
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -110,7 +110,7 @@ const skipForNow = () => {
           <label
             for="currentWeek"
             class="block mb-2 text-sm font-medium text-dark-gray"
-          >현재 임신 주차</label>
+          >현재 주차</label>
           <select
             id="currentWeek"
             v-model="pregnancyInfo.currentWeek"
@@ -142,7 +142,7 @@ const skipForNow = () => {
       <!-- 버튼 영역 -->
       <div class="flex flex-col space-y-3">
         <button
-          class="w-full p-4 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
+          class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold shadow-md"
           @click="savePregnancyInfo"
         >
           저장하기
