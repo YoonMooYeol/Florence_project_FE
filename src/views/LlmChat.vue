@@ -44,11 +44,8 @@ const showNewChatDialog = ref(false)
 const lastSubmitTime = ref(0)
 const debounceTime = 1000 // 1초 디바운스
 const chatContainer = ref(null)
-const isSummarizing = ref(false) // 요약 기능 로딩 상태
 const chatSummary = ref(null) // 채팅방 요약 정보
 const showSummary = ref(false) // 요약 보기 모달 표시 여부
-const showChatRoomDropdown = ref(false) // 데스크탑 채팅방 선택 드롭다운 표시 여부
-const showMobileChatRoomDropdown = ref(false) // 모바일 채팅방 선택 드롭다운 표시 여부
 
 // 스크롤 위치 감지
 const isUserScrolling = ref(false)
@@ -135,10 +132,23 @@ const getChatRooms = async () => {
     const response = await apiClient.get(`/v1/llm/chat/rooms/?user_id=${userId}`)
     chatRooms.value = response.data
 
-    // 채팅방이 있으면 첫 번째 채팅방 선택
-    if (chatRooms.value.length > 0 && !selectedChatId.value) {
-      selectedChatId.value = chatRooms.value[0].chat_id
+    // 오늘 생성된 채팅방이 있는지 확인
+    const today = new Date().toISOString().split('T')[0]
+    const todayChatRoom = chatRooms.value.find(room => {
+      const roomDate = new Date(room.created_at).toISOString().split('T')[0]
+      return roomDate === today
+    })
+
+    if (todayChatRoom) {
+      // 오늘 생성된 채팅방이 있으면 해당 채팅방 선택
+      selectedChatId.value = todayChatRoom.chat_id
       await loadChatRoom(selectedChatId.value)
+    } else if (chatRooms.value.length > 0) {
+      // 오늘 생성된 채팅방은 없지만 다른 채팅방이 있는 경우, 새 채팅방 생성 필요
+      await createChatRoom()
+    } else {
+      // 채팅방이 전혀 없는 경우 새 채팅방 생성
+      await createChatRoom()
     }
   } catch (error) {
     errorMessage.value = '채팅방 목록을 가져오는 중 오류가 발생했습니다.'
@@ -157,6 +167,21 @@ const createChatRoom = async () => {
 
   try {
     const userId = userInfo.value?.user_id
+    
+    // 오늘 생성된 채팅방이 있는지 확인
+    const today = new Date().toISOString().split('T')[0]
+    const todayChatRoom = chatRooms.value.find(room => {
+      const roomDate = new Date(room.created_at).toISOString().split('T')[0]
+      return roomDate === today
+    })
+
+    // 오늘 이미 채팅방이 생성되었으면 해당 채팅방 사용
+    if (todayChatRoom) {
+      selectedChatId.value = todayChatRoom.chat_id
+      await loadChatRoom(selectedChatId.value)
+      return
+    }
+
     // 임신 정보의 첫 번째 항목 ID 사용
     const pregnancyInfo = await apiClient.get('/v1/accounts/pregnancies/')
     const pregnancyId = pregnancyInfo.data && pregnancyInfo.data.length > 0
@@ -466,11 +491,6 @@ onMounted(async () => {
     // 채팅방 목록 가져오기
     await getChatRooms()
 
-    // 채팅방이 없으면 새 채팅방 생성
-    if (chatRooms.value.length === 0) {
-      await createChatRoom()
-    }
-
     // 창 크기 변경 이벤트 처리
     window.addEventListener('resize', scrollToBottom)
 
@@ -516,37 +536,6 @@ const getChatRoomName = (room, index) => {
 }
 
 // 채팅방 요약 함수
-const summarizeChat = async () => {
-  if (!selectedChatId.value || isSummarizing.value) return
-
-  isSummarizing.value = true
-  errorMessage.value = ''
-
-  try {
-    const response = await apiClient.post(`/v1/llm/chat/rooms/${selectedChatId.value}/summarize/`)
-    chatSummary.value = response.data
-
-    // 요약 모달 표시
-    showSummary.value = true
-
-    // 채팅방 정보 업데이트 (요약이 업데이트되었을 경우)
-    if (chatSummary.value.is_updated && currentChat.value) {
-      currentChat.value.topic = chatSummary.value.topic
-
-      // 채팅방 목록도 업데이트
-      const chatRoom = chatRooms.value.find(room => room.chat_id === selectedChatId.value)
-      if (chatRoom) {
-        chatRoom.topic = chatSummary.value.topic
-      }
-    }
-  } catch (error) {
-    errorMessage.value = '채팅방 요약 중 오류가 발생했습니다.'
-    logger.error(CONTEXT, '채팅방 요약 오류:', error)
-    handleError(error, `${CONTEXT}.summarizeChat`)
-  } finally {
-    isSummarizing.value = false
-  }
-}
 
 // 요약 모달 닫기
 const closeSummary = () => {
@@ -568,27 +557,6 @@ const closeSummary = () => {
         <h1 class="text-xl font-bold text-dark-gray">
           하트비트 AI 채팅
         </h1>
-      </div>
-      <div class="flex items-center space-x-2">
-        <button
-          class="p-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
-          @click="showNewChatDialog = true"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
       </div>
     </div>
 
@@ -617,25 +585,6 @@ const closeSummary = () => {
             <h2 class="font-bold text-dark-gray">
               채팅 목록
             </h2>
-            <button
-              class="p-1 rounded-full bg-point-yellow hover:bg-yellow-400 focus:outline-none"
-              @click="createChatRoom"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-dark-gray"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-            </button>
           </div>
 
           <div class="space-y-2">
@@ -665,106 +614,17 @@ const closeSummary = () => {
           class="bg-white p-3 border-b border-gray-200 hidden md:flex items-center justify-between fixed top-16 left-1/4 right-0 z-10"
         >
           <h2 class="font-semibold text-dark-gray">
-            {{ currentChat.topic || '새 대화' }}
+            {{ currentChat.topic || '오늘의 대화' }}
           </h2>
-          <!-- 데스크탑 채팅방 선택 드롭다운 -->
-          <div class="relative">
-            <button
-              class="p-2 bg-white border border-point-yellow text-dark-gray rounded-lg hover:bg-gray-100 focus:outline-none flex items-center"
-              @click="() => showChatRoomDropdown = !showChatRoomDropdown"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 9l4-4 4 4m0 6l-4 4-4-4"
-                />
-              </svg>
-              <span class="text-sm">채팅방 선택</span>
-            </button>
-
-            <!-- 채팅방 선택 드롭다운 메뉴 -->
-            <div
-              v-if="showChatRoomDropdown"
-              class="absolute right-0 mt-2 w-60 bg-white rounded-md shadow-lg z-50 max-h-80 overflow-y-auto border border-gray-200"
-            >
-              <div class="p-2">
-                <div
-                  v-for="(room, index) in chatRooms"
-                  :key="room.chat_id"
-                  class="p-2 rounded-md cursor-pointer hover:bg-gray-100 mb-1"
-                  :class="selectedChatId === room.chat_id ? 'bg-base-yellow' : ''"
-                  @click="selectChatRoom(room.chat_id); showChatRoomDropdown = false"
-                >
-                  <div class="text-sm font-medium text-dark-gray truncate">
-                    {{ getChatRoomName(room, index) }}
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1">
-                    {{ new Date(room.updated_at).toLocaleDateString() }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <!-- 모바일 채팅방 선택 드롭다운 - 상단에 고정 -->
+        <!-- 모바일 채팅방 제목 - 채팅방 선택 드롭다운 제거 -->
         <div
           v-if="selectedChatId"
           class="bg-ivory py-2 px-3 border-b border-gray-200 flex md:hidden items-center justify-between fixed top-16 left-0 right-0 z-10"
         >
           <div class="text-sm font-medium text-gray-600">
-            {{ currentChat?.topic || '새 대화' }}
-          </div>
-          <button
-            class="flex items-center py-1.5 px-3 bg-white border border-point-yellow text-dark-gray rounded-full hover:bg-gray-100 focus:outline-none shadow-sm text-sm"
-            @click="() => showMobileChatRoomDropdown = !showMobileChatRoomDropdown"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 mr-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-            <span>채팅방 선택</span>
-          </button>
-
-          <!-- 모바일 채팅방 선택 드롭다운 메뉴 -->
-          <div
-            v-if="showMobileChatRoomDropdown"
-            class="absolute top-full left-0 right-0 mt-1 bg-white rounded-b-md shadow-lg z-50 max-h-60 overflow-y-auto border-t border-gray-200"
-          >
-            <div class="p-2">
-              <div
-                v-for="(room, index) in chatRooms"
-                :key="room.chat_id"
-                class="p-2 rounded-md cursor-pointer hover:bg-gray-100 mb-1"
-                :class="selectedChatId === room.chat_id ? 'bg-base-yellow' : ''"
-                @click="selectChatRoom(room.chat_id); showMobileChatRoomDropdown = false"
-              >
-                <div class="text-sm font-medium text-dark-gray truncate">
-                  {{ getChatRoomName(room, index) }}
-                </div>
-                <div class="text-xs text-gray-500 mt-1">
-                  {{ new Date(room.updated_at).toLocaleDateString() }}
-                </div>
-              </div>
-            </div>
+            {{ currentChat?.topic || '오늘의 대화' }}
           </div>
         </div>
 
@@ -916,35 +776,6 @@ const closeSummary = () => {
             @click="closeSummary"
           >
             확인
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 새 채팅방 생성 다이얼로그 -->
-    <div
-      v-if="showNewChatDialog"
-      class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50"
-    >
-      <div class="bg-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
-        <h3 class="text-lg font-bold text-dark-gray mb-4">
-          새 채팅방 생성
-        </h3>
-        <p class="mb-6 text-gray-600">
-          새 채팅방을 생성하시겠습니까?
-        </p>
-        <div class="flex justify-end space-x-3">
-          <button
-            class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none"
-            @click="showNewChatDialog = false"
-          >
-            취소
-          </button>
-          <button
-            class="px-4 py-2 bg-point-yellow text-dark-gray rounded-md hover:bg-yellow-400 focus:outline-none"
-            @click="createChatRoom"
-          >
-            생성
           </button>
         </div>
       </div>
