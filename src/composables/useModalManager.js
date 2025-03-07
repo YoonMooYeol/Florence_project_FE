@@ -12,10 +12,13 @@ export function useModalManager () {
   const CONTEXT = 'useModalManager' // 로깅 컨텍스트
 
   // 모달 상태
+  const showDiaryTypeModal = ref(false)
   const showDayEventsModal = ref(false)
-  const showAddEventModal = ref(false)
   const showEventDetailModal = ref(false)
+  const showAddEventModal = ref(false)
   const showLLMDetailModal = ref(false)
+  const showDailyDiaryModal = ref(false)
+  const showBabyDiaryModal = ref(false)
 
   /**
    * 모달 열기 전 다른 모달들을 닫는 유틸리티 함수
@@ -26,12 +29,23 @@ export function useModalManager () {
     if (keepModalOpen !== 'addEvent') showAddEventModal.value = false
     if (keepModalOpen !== 'eventDetail') showEventDetailModal.value = false
     if (keepModalOpen !== 'llmDetail') showLLMDetailModal.value = false
+    if (keepModalOpen !== 'dailyDiary') showDailyDiaryModal.value = false
+    if (keepModalOpen !== 'babyDiary') showBabyDiaryModal.value = false
   }
 
-  // 일일 일정 모달 열기
-  const openDayEventsModal = (dateStr) => {
-    logger.info(CONTEXT, `일일 일정 모달 열기 요청 (날짜: ${dateStr})`)
-    calendarStore.setSelectedDate(dateStr)
+  // 일정 유형 선택 모달
+  const openDiaryTypeModal = () => {
+    showDiaryTypeModal.value = true
+  }
+
+  const closeDiaryTypeModal = () => {
+    showDiaryTypeModal.value = false
+  }
+
+  // 일일 일정 모달
+  const openDayEventsModal = (date) => {
+    logger.info(CONTEXT, `일일 일정 모달 열기 요청 (날짜: ${date})`)
+    calendarStore.setSelectedDate(date)
 
     // 다른 모달은 모두 닫기
     logger.debug(CONTEXT, '다른 모달들을 모두 닫습니다.')
@@ -42,7 +56,6 @@ export function useModalManager () {
     showDayEventsModal.value = true
   }
 
-  // 일일 일정 모달 닫기
   const closeDayEventsModal = () => {
     logger.info(CONTEXT, '일일 일정 모달 닫기')
     showDayEventsModal.value = false
@@ -50,23 +63,7 @@ export function useModalManager () {
     closeOtherModals(null)
   }
 
-  // 일정 추가 모달 열기
-  const openAddEventModal = () => {
-    logger.info(CONTEXT, '일정 추가 모달 열기')
-    // 모든 모달 닫기
-    closeOtherModals('addEvent')
-    // 일정 추가 모달만 표시
-    showAddEventModal.value = true
-  }
-
-  // 일정 추가 모달 닫기
-  const closeAddEventModal = () => {
-    logger.info(CONTEXT, '일정 추가 모달 닫기')
-    showAddEventModal.value = false
-    // 다른 모달로 돌아가지 않음
-  }
-
-  // 일정 상세 모달 열기
+  // 일정 상세 모달
   const openEventDetailModal = (event) => {
     logger.info(CONTEXT, '일정 상세 모달 열기 요청:', event)
 
@@ -80,14 +77,29 @@ export function useModalManager () {
     showEventDetailModal.value = true
   }
 
-  // 일정 상세 모달 닫기
   const closeEventDetailModal = () => {
     logger.info(CONTEXT, '일정 상세 모달 닫기')
     showEventDetailModal.value = false
+    calendarStore.setSelectedEvent(null)
     // 일일 일정 모달로 돌아가기 (이미 표시되어 있음)
   }
 
-  // LLM 대화 요약 상세 모달 열기
+  // 일정 추가 모달
+  const openAddEventModal = () => {
+    logger.info(CONTEXT, '일정 추가 모달 열기')
+    // 모든 모달 닫기
+    closeOtherModals('addEvent')
+    // 일정 추가 모달만 표시
+    showAddEventModal.value = true
+  }
+
+  const closeAddEventModal = () => {
+    logger.info(CONTEXT, '일정 추가 모달 닫기')
+    showAddEventModal.value = false
+    // 다른 모달로 돌아가지 않음
+  }
+
+  // LLM 요약 상세 모달
   const openLLMDetailModal = (summary) => {
     logger.info(CONTEXT, 'LLM 상세 모달 열기 요청:', summary)
 
@@ -101,19 +113,38 @@ export function useModalManager () {
     showLLMDetailModal.value = true
   }
 
-  // LLM 대화 요약 상세 모달 닫기
   const closeLLMDetailModal = () => {
     logger.info(CONTEXT, 'LLM 상세 모달 닫기')
     showLLMDetailModal.value = false
+    calendarStore.setSelectedLLMSummary(null)
     // 일일 일정 모달로 돌아가기 (이미 표시되어 있음)
+  }
+
+  // 오늘의 하루 모달
+  const openDailyDiaryModal = () => {
+    showDailyDiaryModal.value = true
+  }
+
+  const closeDailyDiaryModal = () => {
+    showDailyDiaryModal.value = false
+  }
+
+  // 아기와의 하루 모달
+  const openBabyDiaryModal = () => {
+    showBabyDiaryModal.value = true
+  }
+
+  const closeBabyDiaryModal = () => {
+    showBabyDiaryModal.value = false
   }
 
   // 일정 저장 - 비동기 에러 핸들링 적용
   const saveEvent = asyncErrorHandler((newEvent) => {
     logger.info(CONTEXT, '일정 저장:', newEvent)
-    calendarStore.addEvent(newEvent)
+    const savedEvent = calendarStore.addEvent(newEvent)
     closeAddEventModal()
     // 일일 일정 모달로 돌아가지 않음
+    return savedEvent
   }, CONTEXT)
 
   // 일정 삭제 - 비동기 에러 핸들링 적용
@@ -158,20 +189,29 @@ export function useModalManager () {
 
   return {
     // 모달 상태
+    showDiaryTypeModal,
     showDayEventsModal,
-    showAddEventModal,
     showEventDetailModal,
+    showAddEventModal,
     showLLMDetailModal,
+    showDailyDiaryModal,
+    showBabyDiaryModal,
 
     // 모달 관련 함수
+    openDiaryTypeModal,
+    closeDiaryTypeModal,
     openDayEventsModal,
     closeDayEventsModal,
-    openAddEventModal,
-    closeAddEventModal,
     openEventDetailModal,
     closeEventDetailModal,
+    openAddEventModal,
+    closeAddEventModal,
     openLLMDetailModal,
     closeLLMDetailModal,
+    openDailyDiaryModal,
+    closeDailyDiaryModal,
+    openBabyDiaryModal,
+    closeBabyDiaryModal,
 
     // 이벤트 관련 함수
     saveEvent,
