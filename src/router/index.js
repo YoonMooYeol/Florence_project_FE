@@ -77,6 +77,11 @@ const routes = [
     name: 'BabyDiary',
     component: () => import('../views/BabyDiary.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/kakao/callback',
+    name: 'KakaoCallback',
+    component: () => import('../views/KakaoCallback.vue')
   }
 ]
 

@@ -27,3 +27,9 @@ dist-ssr
 *-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json
 docs/graphite-space-*.json
 *credentials*.json
+
+# 환경 변수
+.env
+.env.local
+.env.development
+.env.production
