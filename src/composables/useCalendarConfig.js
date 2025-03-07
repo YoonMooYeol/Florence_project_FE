@@ -19,19 +19,21 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
 
   // 날짜 셀 컨텐츠 렌더링
   const dayCellContent = (info) => {
-    // 날짜를 YYYY-MM-DD 형식으로 변환 - 개선된 유틸리티 함수 사용
+    // 날짜를 YYYY-MM-DD 형식으로 변환
     const dateStr = normalizeDate(info.date)
 
     // 날짜 텍스트에서 '일' 제거
     const dayNumber = info.dayNumberText.replace('일', '')
 
-    // LLM 요약 존재 여부 확인
+    // LLM 요약과 아기 일기 존재 여부 확인
     const hasLLM = calendarStore.hasLLMSummary(dateStr)
+    const hasBabyDiary = calendarStore.hasBabyDiary(dateStr)
 
     return {
       html: `
         <div class="day-cell-content">
           <span class="fc-daygrid-day-number">${dayNumber}</span>
+          ${hasBabyDiary ? '<span class="baby-diary-indicator">👶</span>' : ''}
           ${hasLLM ? '<span class="llm-indicator">•</span>' : ''}
         </div>
       `
@@ -42,37 +44,67 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
   const calendarOptions = computed(() => ({
     plugins: [dayGridPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
-    headerToolbar: false, // 기본 헤더 숨기기 (커스텀 헤더 사용)
+    headerToolbar: false,
     height: 'auto',
-    fixedWeekCount: false, // 월에 따라 주 수 조정
-    selectable: true, // 선택 기능 활성화
-    dayMaxEvents: 2, // 최대 표시 이벤트 수
-    eventDisplay: 'block', // 이벤트 표시 방식
-    displayEventTime: false, // 이벤트 시간 표시 안함
-    eventTimeFormat: { hour: '2-digit', minute: '2-digit' },
-    firstDay: 0, // 일요일부터 시작
-    dayCellContent,
-    // 이벤트 표시 관련 설정
-    nextDayThreshold: '23:59:59', // 자정에 가까운 이벤트는 다음 날로 표시하지 않음
-    eventDurationEditable: false, // 이벤트 기간 편집 비활성화
+    fixedWeekCount: false,
+    selectable: true,
+    dayMaxEvents: 2,
+    eventMaxStack: 2,
+    eventMinHeight: 22,
+    eventShortHeight: 22,
+    eventTimeFormat: {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    },
+    displayEventTime: false,
+    displayEventEnd: false,
+    eventDisplay: 'block',
+    eventBackgroundColor: '#ffd600',
+    eventBorderColor: '#ffd600',
+    eventTextColor: '#353535',
+    eventClassNames: 'custom-event',
+    locale: koLocale,
+    dateClick: handleDateClick,
+    eventClick: handleEventClick,
     eventContent: (arg) => {
-      // 이벤트 콘텐츠 커스텀 렌더링
       return {
         html: `<div class="custom-event-content">${arg.event.title}</div>`
       }
     },
+    datesSet: (dateInfo) => {
+      const currentDate = new Date(dateInfo.view.currentStart)
+      calendarStore.updateCurrentYearMonth(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1
+      )
+    },
+    dayCellContent,
+    events: calendarStore.events,
+    initialDate: new Date(),
+    nextDayThreshold: '23:59:59',
+    eventDurationEditable: false,
+    contentHeight: 'auto',
+    expandRows: true,
+    stickyHeaderDates: true,
+    dayMaxEventRows: true,
+    firstDay: 0,
     locales: [koLocale],
     locale: 'ko',
-    events: calendarStore.events, // 스토어에서 이벤트 데이터 사용
-    initialDate: '2025-03-15', // 초기 표시 날짜
-    dateClick: handleDateClick,
-    eventClick: handleEventClick,
-    datesSet: (dateInfo) => {
-      // 날짜 변경 시 현재 표시 중인 년월 업데이트
-      calendarStore.updateCurrentYearMonth(
-        dateInfo.view.currentStart.getFullYear(),
-        dateInfo.view.currentStart.getMonth() + 1
-      )
+    allDaySlot: false,
+    slotMinTime: '00:00:00',
+    slotMaxTime: '24:00:00',
+    slotDuration: '01:00:00',
+    slotLabelFormat: {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    },
+    viewDidMount: (arg) => {
+      if (calendarRef.value) {
+        const calendarApi = calendarRef.value.getApi()
+        calendarApi.render()
+      }
     }
   }))
 

@@ -65,18 +65,6 @@ const routes = [
     path: '/user-search',
     name: 'UserSearch',
     component: () => import('../views/UserSearch.vue')
-  },
-  {
-    path: '/daily-diary',
-    name: 'DailyDiary',
-    component: () => import('../views/DailyDiary.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/baby-diary',
-    name: 'BabyDiary',
-    component: () => import('../views/BabyDiary.vue'),
-    meta: { requiresAuth: true }
   }
 ]
 
