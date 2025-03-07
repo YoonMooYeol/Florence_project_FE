@@ -107,6 +107,7 @@ onMounted(() => {
   if (checkAlreadyLoggedIn()) {
     return
   }
+
   // 저장된 로그인 정보 확인
   checkSavedLogin()
 })
@@ -147,6 +148,18 @@ const handleSubmit = async () => {
   } finally {
     isSubmitting.value = false
   }
+}
+
+// 카카오 로그인 실행 함수
+const initiateKakaoLogin = () => {
+  // 카카오 REST API 키
+  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || process.env.VUE_APP_KAKAO_REST_API_KEY
+  
+  // 카카오 로그인 콜백 URL (백엔드 콜백 URL과 일치해야 함)
+  const REDIRECT_URI = "http://127.0.0.1:8000/v1/accounts/kakao/callback"
+  
+  // 카카오 인증 페이지로 리다이렉션
+  window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
 }
 
 // 페이지 이동 함수들
@@ -285,6 +298,7 @@ const goToFindPassword = () => {
               <button
                 type="button"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-800 bg-[#FEE500] border border-[#FEE500] rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                @click="initiateKakaoLogin"
               >
                 <svg
                   class="w-5 h-5 mr-3"

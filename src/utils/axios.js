@@ -7,7 +7,8 @@ const api = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // 쿠키를 포함하여 요청을 보냄
 })
 
 // 요청 인터셉터 설정
@@ -88,18 +89,25 @@ api.interceptors.response.use(
 
 // 인증 데이터 초기화 함수
 const clearAuthData = () => {
+  // 로컬 스토리지와 세션 스토리지 정보 제거
   localStorage.removeItem('accessToken')
   localStorage.removeItem('refreshToken')
+  localStorage.removeItem('userId')
+  localStorage.removeItem('userName')
+  localStorage.removeItem('isPregnant')
+  localStorage.removeItem('rememberMe')
   sessionStorage.removeItem('accessToken')
   sessionStorage.removeItem('refreshToken')
-  localStorage.removeItem('userEmail')
-  localStorage.removeItem('userName')
-  localStorage.removeItem('userId')
-  localStorage.removeItem('isPregnant')
-  sessionStorage.removeItem('userEmail')
-  sessionStorage.removeItem('userName')
   sessionStorage.removeItem('userId')
+  sessionStorage.removeItem('userName')
   sessionStorage.removeItem('isPregnant')
 }
 
+// 인증 상태 확인 함수
+const isAuthenticated = () => {
+  // 쿠키 기반 인증에서는 사용자 정보의 존재 여부로 확인
+  return !!(localStorage.getItem('userId') || sessionStorage.getItem('userId'))
+}
+
 export default api
+export { clearAuthData, isAuthenticated }
