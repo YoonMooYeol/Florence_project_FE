@@ -1,7 +1,9 @@
 <script setup>
+import { ref, onMounted } from 'vue'
+import * as logger from '@/utils/logger'
 import { weekdays } from '@/utils/dateUtils'
 
-defineProps({
+const props = defineProps({
   currentYear: {
     type: Number,
     required: true
@@ -25,58 +27,42 @@ const nextMonth = () => {
 const goToToday = () => {
   emit('today')
 }
+
+onMounted(() => {
+  try {
+    logger.debug('CalendarHeader', '초기 날짜 설정:', `${props.currentYear}년 ${props.currentMonth}월`)
+  } catch (error) {
+    logger.error('CalendarHeader', '초기화 중 오류:', error)
+  }
+})
 </script>
 
 <template>
   <div class="pt-6 pb-4 px-6 border-b border-gray-200 bg-base">
     <h1 class="text-xl font-bold text-center text-dark-gray mb-4">
-      캘린더
+      {{ currentYear }}년 {{ currentMonth }}월
     </h1>
-
-    <!-- 월 네비게이션 -->
-    <div class="flex items-center justify-between mb-4">
-      <button
-        class="text-dark-gray px-2 py-1 rounded hover:bg-ivory"
-        @click="prevMonth"
-      >
-        <span class="text-lg">◀</span>
+    <div class="flex justify-between items-center">
+      <button @click="prevMonth" class="text-dark-gray hover:text-gray-600">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
       </button>
-      <div class="flex items-center">
-        <span class="text-center text-lg font-bold text-dark-gray">{{ currentYear }}년 {{ currentMonth }}월</span>
-        <button
-          class="ml-2 text-sm bg-point text-dark-gray px-2 py-1 rounded hover:bg-yellow-500 transition-colors"
-          @click="goToToday"
-        >
-          오늘
-        </button>
-      </div>
-      <button
-        class="text-dark-gray px-2 py-1 rounded hover:bg-ivory"
-        @click="nextMonth"
-      >
-        <span class="text-lg">▶</span>
+      <button @click="goToToday" class="text-dark-gray hover:text-gray-600">
+        오늘
       </button>
-    </div>
-
-    <!-- 요일 헤더 -->
-    <div class="grid grid-cols-7 text-center mb-2">
-      <div
-        v-for="(day, index) in weekdays"
-        :key="index"
-        :class="[
-          'py-1 text-sm font-bold',
-          index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-dark-gray'
-        ]"
-      >
-        {{ day }}
-      </div>
+      <button @click="nextMonth" class="text-dark-gray hover:text-gray-600">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
 .bg-base {
-  background-color: #FFED90;
+  background-color: var(--color-base);
 }
 .bg-ivory {
   background-color: #FFFAE0;
