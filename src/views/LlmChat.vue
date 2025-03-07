@@ -44,40 +44,37 @@ const showNewChatDialog = ref(false)
 const lastSubmitTime = ref(0)
 const debounceTime = 1000 // 1초 디바운스
 const chatContainer = ref(null)
-const isSummarizing = ref(false) // 요약 기능 로딩 상태
 const chatSummary = ref(null) // 채팅방 요약 정보
 const showSummary = ref(false) // 요약 보기 모달 표시 여부
-const showChatRoomDropdown = ref(false) // 데스크탑 채팅방 선택 드롭다운 표시 여부
-const showMobileChatRoomDropdown = ref(false) // 모바일 채팅방 선택 드롭다운 표시 여부
 
 // 스크롤 위치 감지
-const isUserScrolling = ref(false);
-const lastScrollTop = ref(0);
+const isUserScrolling = ref(false)
+const lastScrollTop = ref(0)
 
 // 스크롤 이벤트 핸들러
 const handleScroll = (event) => {
   // 현재 스크롤 위치
-  const currentScrollTop = event.target.scrollTop;
-  
+  const currentScrollTop = event.target.scrollTop
+
   // 스크롤 방향 (위로/아래로)
-  const isScrollingDown = currentScrollTop > lastScrollTop.value;
-  
+  const isScrollingDown = currentScrollTop > lastScrollTop.value
+
   // 스크롤이 거의 맨 아래에 도달했는지 확인
-  const isNearBottom = 
-    currentScrollTop + event.target.clientHeight >= 
-    event.target.scrollHeight - 50;
-    
+  const isNearBottom =
+    currentScrollTop + event.target.clientHeight >=
+    event.target.scrollHeight - 50
+
   // 스크롤이 거의 맨 아래거나 아래로 스크롤 중이면 사용자 스크롤 플래그 해제
   if (isNearBottom || isScrollingDown) {
-    isUserScrolling.value = false;
+    isUserScrolling.value = false
   } else {
     // 위로 스크롤하는 경우 사용자 스크롤 플래그 설정
-    isUserScrolling.value = true;
+    isUserScrolling.value = true
   }
-  
+
   // 마지막 스크롤 위치 저장
-  lastScrollTop.value = currentScrollTop;
-};
+  lastScrollTop.value = currentScrollTop
+}
 
 // 로컬 스토리지에서 토큰 가져오기
 const getTokenFromStorage = () => {
@@ -134,11 +131,24 @@ const getChatRooms = async () => {
 
     const response = await apiClient.get(`/v1/llm/chat/rooms/?user_id=${userId}`)
     chatRooms.value = response.data
-    
-    // 채팅방이 있으면 첫 번째 채팅방 선택
-    if (chatRooms.value.length > 0 && !selectedChatId.value) {
-      selectedChatId.value = chatRooms.value[0].chat_id
+
+    // 오늘 생성된 채팅방이 있는지 확인
+    const today = new Date().toISOString().split('T')[0]
+    const todayChatRoom = chatRooms.value.find(room => {
+      const roomDate = new Date(room.created_at).toISOString().split('T')[0]
+      return roomDate === today
+    })
+
+    if (todayChatRoom) {
+      // 오늘 생성된 채팅방이 있으면 해당 채팅방 선택
+      selectedChatId.value = todayChatRoom.chat_id
       await loadChatRoom(selectedChatId.value)
+    } else if (chatRooms.value.length > 0) {
+      // 오늘 생성된 채팅방은 없지만 다른 채팅방이 있는 경우, 새 채팅방 생성 필요
+      await createChatRoom()
+    } else {
+      // 채팅방이 전혀 없는 경우 새 채팅방 생성
+      await createChatRoom()
     }
   } catch (error) {
     errorMessage.value = '채팅방 목록을 가져오는 중 오류가 발생했습니다.'
@@ -157,6 +167,21 @@ const createChatRoom = async () => {
 
   try {
     const userId = userInfo.value?.user_id
+    
+    // 오늘 생성된 채팅방이 있는지 확인
+    const today = new Date().toISOString().split('T')[0]
+    const todayChatRoom = chatRooms.value.find(room => {
+      const roomDate = new Date(room.created_at).toISOString().split('T')[0]
+      return roomDate === today
+    })
+
+    // 오늘 이미 채팅방이 생성되었으면 해당 채팅방 사용
+    if (todayChatRoom) {
+      selectedChatId.value = todayChatRoom.chat_id
+      await loadChatRoom(selectedChatId.value)
+      return
+    }
+
     // 임신 정보의 첫 번째 항목 ID 사용
     const pregnancyInfo = await apiClient.get('/v1/accounts/pregnancies/')
     const pregnancyId = pregnancyInfo.data && pregnancyInfo.data.length > 0
@@ -174,11 +199,11 @@ const createChatRoom = async () => {
 
     // 새로 생성된 채팅방을 목록에 추가
     chatRooms.value.unshift(response.data)
-    
+
     // 새 채팅방 선택
     selectedChatId.value = response.data.chat_id
     await loadChatRoom(selectedChatId.value)
-    
+
     // 환영 메시지 추가
     messages.value = [{
       id: Date.now(),
@@ -203,10 +228,10 @@ const loadChatRoom = async (chatId) => {
   try {
     const response = await apiClient.get(`/v1/llm/chat/rooms/${chatId}/?include_messages=true`)
     currentChat.value = response.data
-    
+
     // 메시지 가공
     messages.value = []
-    
+
     if (response.data.all_messages && response.data.all_messages.length > 0) {
       response.data.all_messages.forEach(msg => {
         // 사용자 질문 추가
@@ -216,7 +241,7 @@ const loadChatRoom = async (chatId) => {
           content: msg.query,
           created_at: formatDate(msg.created_at)
         })
-        
+
         // AI 응답 추가
         messages.value.push({
           id: msg.id + '-response',
@@ -234,7 +259,7 @@ const loadChatRoom = async (chatId) => {
         created_at: getCurrentTime()
       }]
     }
-    
+
     // 채팅 목록 UI 업데이트 후 스크롤
     setTimeout(() => {
       scrollToBottom()
@@ -284,10 +309,10 @@ const sendMessage = async () => {
       created_at: getCurrentTime()
     }
     messages.value.push(userMessageObj)
-    
+
     // 스크롤 아래로 - 강제 스크롤 사용
     forceScrollToBottom()
-    
+
     // 응답 대기 메시지 추가
     const waitingId = `waiting-${Date.now()}`
     messages.value.push({
@@ -297,7 +322,7 @@ const sendMessage = async () => {
       isTyping: true,
       created_at: getCurrentTime()
     })
-    
+
     // 스크롤 아래로 - 강제 스크롤 사용
     forceScrollToBottom()
 
@@ -316,10 +341,10 @@ const sendMessage = async () => {
       content: response.data.response,
       created_at: getCurrentTime()
     })
-    
+
     // 채팅방 목록 새로고침
     await getChatRooms()
-    
+
     // 스크롤 아래로 - 강제 스크롤 사용
     forceScrollToBottom()
   } catch (error) {
@@ -338,7 +363,7 @@ const sendMessage = async () => {
         created_at: getCurrentTime()
       })
     }
-    
+
     errorMessage.value = '메시지를 전송하는 중 오류가 발생했습니다.'
     logger.error(CONTEXT, '메시지 전송 오류:', error)
     handleError(error, `${CONTEXT}.sendMessage`)
@@ -353,46 +378,46 @@ const sendMessage = async () => {
 const scrollToBottom = () => {
   // 사용자가 위로 스크롤 중이면 스크롤 안함
   if (isUserScrolling.value) {
-    return;
+    return
   }
-  
+
   nextTick(() => {
     if (chatContainer.value) {
       // 약간의 지연 후 스크롤 적용 (DOM 업데이트 완료 보장)
       setTimeout(() => {
-        chatContainer.value.scrollTop = chatContainer.value.scrollHeight + 1000;
-      }, 50);
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight + 1000
+      }, 50)
     }
-  });
-};
+  })
+}
 
 // 메시지 전송 후 무조건 스크롤
 const forceScrollToBottom = () => {
   // 사용자 스크롤 상태 무시하고 강제로 스크롤
-  isUserScrolling.value = false;
-  
+  isUserScrolling.value = false
+
   nextTick(() => {
     if (chatContainer.value) {
       // 더 긴 지연 시간으로 스크롤 적용
       setTimeout(() => {
-        chatContainer.value.scrollTop = chatContainer.value.scrollHeight + 1000;
-      }, 100);
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight + 1000
+      }, 100)
     }
-  });
-};
+  })
+}
 
 // 메시지 배열 변경 감시
 watch(messages, () => {
   // 메시지가 변경되면 스크롤 맨 아래로
-  scrollToBottom();
-  
+  scrollToBottom()
+
   // 메시지가 추가되면 시간차를 두고 한 번 더 스크롤 (애니메이션 등 완료 후)
   if (messages.value.length > 0) {
     setTimeout(() => {
-      scrollToBottom();
-    }, 300);
+      scrollToBottom()
+    }, 300)
   }
-}, { deep: true });
+}, { deep: true })
 
 // 메시지 전송 키보드 이벤트 처리
 const handleKeyDown = (event) => {
@@ -418,11 +443,11 @@ const selectChatRoom = async (chatId) => {
 // 날짜 포맷팅 함수
 const formatDate = (dateString) => {
   if (!dateString) return ''
-  
+
   const date = new Date(dateString)
   const hours = date.getHours().toString().padStart(2, '0')
   const minutes = date.getMinutes().toString().padStart(2, '0')
-  
+
   return `${hours}:${minutes}`
 }
 
@@ -439,13 +464,13 @@ onMounted(async () => {
   try {
     // 토큰 가져오기
     const token = getTokenFromStorage()
-    
+
     if (!token) {
       // 로그인 페이지로 이동
       router.push('/login?redirect=/llm-chat')
       return
     }
-    
+
     // 사용자 정보 가져오기
     const user = await getUserInfo()
     if (!user) {
@@ -453,7 +478,7 @@ onMounted(async () => {
       router.push('/login?redirect=/llm-chat')
       return
     }
-    
+
     // 임신 정보 확인
     const hasPregnancyInfo = await checkPregnancyInfo()
     if (!hasPregnancyInfo) {
@@ -462,22 +487,17 @@ onMounted(async () => {
       router.push('/profile')
       return
     }
-    
+
     // 채팅방 목록 가져오기
     await getChatRooms()
-    
-    // 채팅방이 없으면 새 채팅방 생성
-    if (chatRooms.value.length === 0) {
-      await createChatRoom()
-    }
 
     // 창 크기 변경 이벤트 처리
     window.addEventListener('resize', scrollToBottom)
-    
+
     // 초기 로딩 후 스크롤 처리
     setTimeout(() => {
-      scrollToBottom();
-    }, 500);
+      scrollToBottom()
+    }, 500)
   } catch (error) {
     errorMessage.value = '데이터를 불러오는 중 오류가 발생했습니다.'
     logger.error(CONTEXT, '초기화 오류:', error)
@@ -503,7 +523,7 @@ const getChatRoomName = (room, index) => {
       ? room.topic.substring(0, 25) + '...'
       : room.topic
   }
-  
+
   // 첫 번째 메시지가 있는 경우
   const allMessages = currentChat.value?.all_messages || []
   if (room.chat_id === selectedChatId.value && allMessages.length > 0) {
@@ -511,42 +531,11 @@ const getChatRoomName = (room, index) => {
       ? allMessages[0].query.substring(0, 20) + '...'
       : allMessages[0].query
   }
-  
+
   return `새 대화 ${index + 1}`
 }
 
 // 채팅방 요약 함수
-const summarizeChat = async () => {
-  if (!selectedChatId.value || isSummarizing.value) return
-  
-  isSummarizing.value = true
-  errorMessage.value = ''
-  
-  try {
-    const response = await apiClient.post(`/v1/llm/chat/rooms/${selectedChatId.value}/summarize/`)
-    chatSummary.value = response.data
-    
-    // 요약 모달 표시
-    showSummary.value = true
-    
-    // 채팅방 정보 업데이트 (요약이 업데이트되었을 경우)
-    if (chatSummary.value.is_updated && currentChat.value) {
-      currentChat.value.topic = chatSummary.value.topic
-      
-      // 채팅방 목록도 업데이트
-      const chatRoom = chatRooms.value.find(room => room.chat_id === selectedChatId.value)
-      if (chatRoom) {
-        chatRoom.topic = chatSummary.value.topic
-      }
-    }
-  } catch (error) {
-    errorMessage.value = '채팅방 요약 중 오류가 발생했습니다.'
-    logger.error(CONTEXT, '채팅방 요약 오류:', error)
-    handleError(error, `${CONTEXT}.summarizeChat`)
-  } finally {
-    isSummarizing.value = false
-  }
-}
 
 // 요약 모달 닫기
 const closeSummary = () => {
@@ -557,7 +546,10 @@ const closeSummary = () => {
 <template>
   <div class="min-h-screen bg-ivory flex flex-col">
     <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="chat" class="bottom-nav" />
+    <BottomNavBar
+      active-tab="chat"
+      class="bottom-nav"
+    />
 
     <!-- 헤더 -->
     <div class="bg-white p-4 shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-20">
@@ -565,27 +557,6 @@ const closeSummary = () => {
         <h1 class="text-xl font-bold text-dark-gray">
           하트비트 AI 채팅
         </h1>
-      </div>
-      <div class="flex items-center space-x-2">
-        <button
-          class="p-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
-          @click="showNewChatDialog = true"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
       </div>
     </div>
 
@@ -614,27 +585,8 @@ const closeSummary = () => {
             <h2 class="font-bold text-dark-gray">
               채팅 목록
             </h2>
-            <button
-              class="p-1 rounded-full bg-point-yellow hover:bg-yellow-400 focus:outline-none"
-              @click="createChatRoom"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-dark-gray"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-            </button>
           </div>
-          
+
           <div class="space-y-2">
             <div
               v-for="(room, index) in chatRooms"
@@ -657,101 +609,22 @@ const closeSummary = () => {
       <!-- 채팅 내용 영역 -->
       <div class="flex-1 flex flex-col md:pl-1/4 w-full">
         <!-- 현재 채팅방 제목 (MD 이상 화면에서만 표시) -->
-        <div 
-          v-if="selectedChatId && currentChat" 
+        <div
+          v-if="selectedChatId && currentChat"
           class="bg-white p-3 border-b border-gray-200 hidden md:flex items-center justify-between fixed top-16 left-1/4 right-0 z-10"
         >
           <h2 class="font-semibold text-dark-gray">
-            {{ currentChat.topic || '새 대화' }}
+            {{ currentChat.topic || '오늘의 대화' }}
           </h2>
-          <!-- 데스크탑 채팅방 선택 드롭다운 -->
-          <div class="relative">
-            <button
-              class="p-2 bg-white border border-point-yellow text-dark-gray rounded-lg hover:bg-gray-100 focus:outline-none flex items-center"
-              @click="() => showChatRoomDropdown = !showChatRoomDropdown"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                class="h-5 w-5 mr-1" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-              </svg>
-              <span class="text-sm">채팅방 선택</span>
-            </button>
-            
-            <!-- 채팅방 선택 드롭다운 메뉴 -->
-            <div 
-              v-if="showChatRoomDropdown"
-              class="absolute right-0 mt-2 w-60 bg-white rounded-md shadow-lg z-50 max-h-80 overflow-y-auto border border-gray-200"
-            >
-              <div class="p-2">
-                <div
-                  v-for="(room, index) in chatRooms"
-                  :key="room.chat_id"
-                  class="p-2 rounded-md cursor-pointer hover:bg-gray-100 mb-1"
-                  :class="selectedChatId === room.chat_id ? 'bg-base-yellow' : ''"
-                  @click="selectChatRoom(room.chat_id); showChatRoomDropdown = false"
-                >
-                  <div class="text-sm font-medium text-dark-gray truncate">
-                    {{ getChatRoomName(room, index) }}
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1">
-                    {{ new Date(room.updated_at).toLocaleDateString() }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <!-- 모바일 채팅방 선택 드롭다운 - 상단에 고정 -->
-        <div 
-          v-if="selectedChatId" 
+        <!-- 모바일 채팅방 제목 - 채팅방 선택 드롭다운 제거 -->
+        <div
+          v-if="selectedChatId"
           class="bg-ivory py-2 px-3 border-b border-gray-200 flex md:hidden items-center justify-between fixed top-16 left-0 right-0 z-10"
         >
           <div class="text-sm font-medium text-gray-600">
-            {{ currentChat?.topic || '새 대화' }}
-          </div>
-          <button
-            class="flex items-center py-1.5 px-3 bg-white border border-point-yellow text-dark-gray rounded-full hover:bg-gray-100 focus:outline-none shadow-sm text-sm"
-            @click="() => showMobileChatRoomDropdown = !showMobileChatRoomDropdown"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              class="h-4 w-4 mr-1" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-            <span>채팅방 선택</span>
-          </button>
-          
-          <!-- 모바일 채팅방 선택 드롭다운 메뉴 -->
-          <div 
-            v-if="showMobileChatRoomDropdown"
-            class="absolute top-full left-0 right-0 mt-1 bg-white rounded-b-md shadow-lg z-50 max-h-60 overflow-y-auto border-t border-gray-200"
-          >
-            <div class="p-2">
-              <div
-                v-for="(room, index) in chatRooms"
-                :key="room.chat_id"
-                class="p-2 rounded-md cursor-pointer hover:bg-gray-100 mb-1"
-                :class="selectedChatId === room.chat_id ? 'bg-base-yellow' : ''"
-                @click="selectChatRoom(room.chat_id); showMobileChatRoomDropdown = false"
-              >
-                <div class="text-sm font-medium text-dark-gray truncate">
-                  {{ getChatRoomName(room, index) }}
-                </div>
-                <div class="text-xs text-gray-500 mt-1">
-                  {{ new Date(room.updated_at).toLocaleDateString() }}
-                </div>
-              </div>
-            </div>
+            {{ currentChat?.topic || '오늘의 대화' }}
           </div>
         </div>
 
@@ -805,7 +678,7 @@ const closeSummary = () => {
                   </div>
                 </div>
               </div>
-              
+
               <!-- 사용자 메시지 -->
               <div
                 v-else-if="message.role === 'user'"
@@ -818,13 +691,13 @@ const closeSummary = () => {
                   {{ message.created_at }}
                 </div>
               </div>
-              
+
               <!-- 시스템 메시지 (에러 등) -->
               <div
                 v-else
                 class="max-w-[90%] mx-auto"
               >
-                <div 
+                <div
                   class="p-2 px-4 rounded-lg text-sm whitespace-pre-wrap text-center"
                   :class="message.isError ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'"
                 >
@@ -833,7 +706,7 @@ const closeSummary = () => {
               </div>
             </div>
             <!-- 하단 여백 -->
-            <div class="h-10"></div>
+            <div class="h-10" />
           </div>
         </div>
 
@@ -881,10 +754,17 @@ const closeSummary = () => {
         <h3 class="text-lg font-bold text-dark-gray mb-4">
           대화 요약
         </h3>
-        <div v-if="chatSummary" class="mb-6">
+        <div
+          v-if="chatSummary"
+          class="mb-6"
+        >
           <div class="bg-gray-50 p-4 rounded-lg mb-4">
-            <p class="text-gray-800 font-medium mb-2">주제</p>
-            <p class="text-gray-700">{{ chatSummary.topic }}</p>
+            <p class="text-gray-800 font-medium mb-2">
+              주제
+            </p>
+            <p class="text-gray-700">
+              {{ chatSummary.topic }}
+            </p>
           </div>
           <div class="bg-gray-50 p-3 rounded-lg text-gray-600 text-sm">
             <p>메시지 수: {{ chatSummary.message_count }}개</p>
@@ -896,35 +776,6 @@ const closeSummary = () => {
             @click="closeSummary"
           >
             확인
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 새 채팅방 생성 다이얼로그 -->
-    <div
-      v-if="showNewChatDialog"
-      class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50"
-    >
-      <div class="bg-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
-        <h3 class="text-lg font-bold text-dark-gray mb-4">
-          새 채팅방 생성
-        </h3>
-        <p class="mb-6 text-gray-600">
-          새 채팅방을 생성하시겠습니까?
-        </p>
-        <div class="flex justify-end space-x-3">
-          <button
-            class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none"
-            @click="showNewChatDialog = false"
-          >
-            취소
-          </button>
-          <button
-            class="px-4 py-2 bg-point-yellow text-dark-gray rounded-md hover:bg-yellow-400 focus:outline-none"
-            @click="createChatRoom"
-          >
-            생성
           </button>
         </div>
       </div>
@@ -951,11 +802,11 @@ const closeSummary = () => {
   .md\:pl-1\/4 {
     padding-left: 25%;
   }
-  
+
   .md\:w-1\/4 {
     width: 25%;
   }
-  
+
   .left-1\/4 {
     left: 25%;
   }
@@ -1031,7 +882,7 @@ const closeSummary = () => {
     padding-top: 10px;
     bottom: 112px; /* 입력 필드 + 하단 네비게이션 바 */
   }
-  
+
   .input-container {
     padding: 0 12px; /* 모바일에서는 좁은 패딩 */
   }
@@ -1044,11 +895,11 @@ const closeSummary = () => {
     top: 104px; /* 헤더 + 채팅방 제목 높이 */
     bottom: 112px; /* 입력 필드 + 하단 네비게이션 바 */
   }
-  
+
   .message-input-area {
     left: 25%; /* 채팅방 목록 너비만큼 오른쪽으로 이동 */
   }
-  
+
   .input-container {
     padding: 0; /* 데스크탑에서는 패딩 제거 */
   }
@@ -1068,7 +919,7 @@ textarea {
     padding-bottom: 260px; /* 모바일에서 더 큰 하단 패딩 */
     height: calc(100vh - 170px);
   }
-  
+
   .message-input-area {
     bottom: 56px; /* 모바일에서의 하단 네비게이션 바 높이 */
   }
@@ -1132,4 +983,4 @@ textarea {
   z-index: 30; /* 가장 높은 z-index로 설정 */
   height: 56px;
 }
-</style> 
+</style>
