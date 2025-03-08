@@ -153,7 +153,7 @@ const handleSubmit = async () => {
 // 카카오 로그인 실행 함수
 const initiateKakaoLogin = () => {
   // 카카오 REST API 키
-  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || process.env.VUE_APP_KAKAO_REST_API_KEY
+  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
   // 현재 환경에 따라 적절한 리디렉션 URL 사용
   const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI || 'http://127.0.0.1:8000/v1/accounts/kakao/callback'
   // 카카오 인증 페이지로 리다이렉션
