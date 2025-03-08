@@ -155,8 +155,8 @@ const initiateKakaoLogin = () => {
   // 카카오 REST API 키
   const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || process.env.VUE_APP_KAKAO_REST_API_KEY
   
-  // 카카오 로그인 콜백 URL (백엔드 콜백 URL과 일치해야 함)
-  const REDIRECT_URI = "http://127.0.0.1:8000/v1/accounts/kakao/callback"
+  // 현재 환경에 따라 적절한 리디렉션 URL 사용
+  const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI || 'http://127.0.0.1:8000/v1/accounts/kakao/callback'
   
   // 카카오 인증 페이지로 리다이렉션
   window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
