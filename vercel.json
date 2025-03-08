@@ -1,0 +1,14 @@
+{
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/v1/accounts/kakao/callback",
+            "dest": "/index.html"
+        }
+    ]
+}
