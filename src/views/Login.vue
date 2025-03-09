@@ -152,29 +152,60 @@ const handleSubmit = async () => {
 
 // 카카오 로그인 실행 함수
 const initiateKakaoLogin = () => {
-  // 카카오 REST API 키
-  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
-  // 현재 환경에 따라 적절한 리디렉션 URL 사용
-  const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI || 'http://127.0.0.1:8000/v1/accounts/kakao/callback'
-  // 카카오 인증 페이지로 리다이렉션
-  window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
+  try {
+    // 카카오 REST API 키
+    const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
+    if (!KAKAO_REST_API_KEY) {
+      console.error('카카오 API 키가 설정되지 않았습니다.')
+      alert('카카오 로그인을 위한 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
+      return
+    }
+
+    // 환경에 맞는 리디렉션 URL 사용
+    const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI
+    console.log('카카오 로그인 리디렉션 URL:', REDIRECT_URI)
+
+    // 카카오 인증 페이지로 리다이렉션
+    window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
+  } catch (error) {
+    console.error('카카오 로그인 초기화 오류:', error)
+    alert('카카오 로그인 초기화 중 오류가 발생했습니다: ' + error.message)
+  }
 }
 
 // 네이버 로그인 실행 함수
 const initiateNaverLogin = () => {
   try {
+    console.log('네이버 로그인 시작...')
     // 네이버 Client ID
     const NAVER_CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID
-    // 현재 환경에 따라 적절한 리디렉션 URL 사용
-    const REDIRECT_URI = encodeURIComponent('http://127.0.0.1:8000/v1/accounts/naver/callback')
+    console.log('네이버 클라이언트 ID:', NAVER_CLIENT_ID ? '설정됨' : '설정되지 않음')
+
+    if (!NAVER_CLIENT_ID) {
+      console.error('네이버 클라이언트 ID가 설정되지 않았습니다.')
+      alert('네이버 로그인을 위한 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
+      return
+    }
+
+    // 환경에 맞는 리디렉션 URL 사용
+    const REDIRECT_URI_RAW = import.meta.env.VITE_NAVER_REDIRECT_URI
+    const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
+
+    console.log('네이버 로그인 환경:', import.meta.env.VITE_APP_ENV || 'undefined')
+    console.log('네이버 로그인 리디렉션 URL (원본):', REDIRECT_URI_RAW)
+    console.log('네이버 로그인 리디렉션 URL (인코딩됨):', REDIRECT_URI)
+
     // 상태 토큰 (CSRF 방지)
     const STATE = Math.random().toString(36).substring(2, 15)
+    console.log('네이버 로그인 상태 토큰:', STATE)
+
     // 상태 토큰 저장
     localStorage.setItem('naverLoginState', STATE)
-    
+
     // 네이버 인증 URL 생성
     const authUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${NAVER_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&state=${STATE}`
-    
+    console.log('네이버 인증 URL:', authUrl)
+
     // 네이버 인증 페이지로 리다이렉션
     window.location.href = authUrl
   } catch (error) {
