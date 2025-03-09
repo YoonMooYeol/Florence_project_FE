@@ -160,6 +160,29 @@ const initiateKakaoLogin = () => {
   window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
 }
 
+// 네이버 로그인 실행 함수
+const initiateNaverLogin = () => {
+  try {
+    // 네이버 Client ID
+    const NAVER_CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID
+    // 현재 환경에 따라 적절한 리디렉션 URL 사용
+    const REDIRECT_URI = encodeURIComponent('http://127.0.0.1:8000/v1/accounts/naver/callback')
+    // 상태 토큰 (CSRF 방지)
+    const STATE = Math.random().toString(36).substring(2, 15)
+    // 상태 토큰 저장
+    localStorage.setItem('naverLoginState', STATE)
+    
+    // 네이버 인증 URL 생성
+    const authUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${NAVER_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&state=${STATE}`
+    
+    // 네이버 인증 페이지로 리다이렉션
+    window.location.href = authUrl
+  } catch (error) {
+    console.error('네이버 로그인 초기화 오류:', error)
+    alert('네이버 로그인 초기화 중 오류가 발생했습니다: ' + error.message)
+  }
+}
+
 // 페이지 이동 함수들
 const goToRegister = () => {
   router.push('/register')
@@ -314,6 +337,7 @@ const goToFindPassword = () => {
               <button
                 type="button"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-[#03C75A] border border-[#03C75A] rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                @click="initiateNaverLogin"
               >
                 <svg
                   class="w-5 h-5 mr-3"

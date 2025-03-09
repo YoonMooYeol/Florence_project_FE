@@ -82,6 +82,11 @@ const routes = [
     path: '/kakao/callback',
     name: 'KakaoCallback',
     component: () => import('../views/KakaoCallback.vue')
+  },
+  {
+    path: '/naver/callback',
+    name: 'NaverCallback',
+    component: () => import('../views/NaverCallback.vue')
   }
 ]
 
