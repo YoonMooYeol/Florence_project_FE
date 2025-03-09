@@ -1,3 +1,4 @@
+/* eslint-disable no-trailing-spaces */
 import { createRouter, createWebHistory } from 'vue-router'
 import NaverCallback from '../views/NaverCallback.vue'
 import GoogleCallback from '../views/GoogleCallback.vue'
@@ -104,8 +105,26 @@ const router = createRouter({
 
 // 네비게이션 가드 설정
 router.beforeEach((to, from, next) => {
+  // 토큰 확인
   const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
-  if (to.meta.requiresAuth && !token) {
+  
+  // 인증이 필요하지 않은 경로 목록
+  const publicPages = [
+    '/', // 홈 페이지는 인증 없이 접근 가능
+    '/login',
+    '/register',
+    '/pregnancy-info-register',
+    '/kakao/callback',
+    '/naver/callback',
+    '/google/callback'
+  ]
+  
+  // 현재 경로가 인증이 필요한지 확인
+  const authRequired = !publicPages.includes(to.path)
+  
+  // 인증이 필요하고 토큰이 없는 경우 로그인 페이지로 리디렉션
+  if (authRequired && !token) {
+    console.log('인증이 필요한 페이지입니다. 로그인 페이지로 이동합니다.')
     next('/login')
   } else {
     next()
