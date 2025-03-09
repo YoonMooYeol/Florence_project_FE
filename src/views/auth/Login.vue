@@ -1,8 +1,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../store/auth'
-import api from '../utils/axios'
+import { useAuthStore } from '@/store/auth'
+import api from '@/utils/axios'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -161,12 +161,16 @@ const initiateKakaoLogin = () => {
       return
     }
 
-    // 환경에 맞는 리디렉션 URL 사용
+    // 향후 통합된 콜백 URL로 변경할 수 있지만, 현재는 호환성을 위해 원래 URL 유지
     const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI
     console.log('카카오 로그인 리디렉션 URL:', REDIRECT_URI)
 
     // 카카오 인증 페이지로 리다이렉션
     window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
+    
+    // 새로운 통합 콜백 사용 시:
+    // const NEW_REDIRECT_URI = `${window.location.origin}/auth/callback/kakao`
+    // window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${NEW_REDIRECT_URI}&response_type=code`
   } catch (error) {
     console.error('카카오 로그인 초기화 오류:', error)
     alert('카카오 로그인 초기화 중 오류가 발생했습니다: ' + error.message)
@@ -187,7 +191,7 @@ const initiateNaverLogin = () => {
       return
     }
 
-    // 환경에 맞는 리디렉션 URL 사용
+    // 향후 통합된 콜백 URL로 변경할 수 있지만, 현재는 호환성을 위해 원래 URL 유지
     const REDIRECT_URI_RAW = import.meta.env.VITE_NAVER_REDIRECT_URI
     const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
 
@@ -208,6 +212,10 @@ const initiateNaverLogin = () => {
 
     // 네이버 인증 페이지로 리다이렉션
     window.location.href = authUrl
+    
+    // 새로운 통합 콜백 사용 시:
+    // const NEW_REDIRECT_URI = encodeURIComponent(`${window.location.origin}/auth/callback/naver`)
+    // const authUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${NAVER_CLIENT_ID}&redirect_uri=${NEW_REDIRECT_URI}&state=${STATE}`
   } catch (error) {
     console.error('네이버 로그인 초기화 오류:', error)
     alert('네이버 로그인 초기화 중 오류가 발생했습니다: ' + error.message)
@@ -228,7 +236,7 @@ const initiateGoogleLogin = () => {
       return
     }
 
-    // 환경에 맞는 리디렉션 URL 사용
+    // 향후 통합된 콜백 URL로 변경할 수 있지만, 현재는 호환성을 위해 원래 URL 유지
     const REDIRECT_URI_RAW = import.meta.env.VITE_GOOGLE_REDIRECT_URI
     const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
 
@@ -245,6 +253,10 @@ const initiateGoogleLogin = () => {
 
     // 구글 인증 페이지로 리다이렉션
     window.location.href = authUrl
+    
+    // 새로운 통합 콜백 사용 시:
+    // const NEW_REDIRECT_URI = encodeURIComponent(`${window.location.origin}/auth/callback/google`)
+    // const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${NEW_REDIRECT_URI}&scope=${SCOPE}&access_type=offline&include_granted_scopes=true`
   } catch (error) {
     console.error('구글 로그인 초기화 오류:', error)
     alert('구글 로그인 초기화 중 오류가 발생했습니다: ' + error.message)

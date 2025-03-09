@@ -1,3 +1,4 @@
+<!-- eslint-disable import/no-duplicates -->
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'

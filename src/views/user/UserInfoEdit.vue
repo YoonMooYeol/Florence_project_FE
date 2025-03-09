@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '../utils/axios'
+import api from '@/utils/axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
 
 const router = useRouter()
