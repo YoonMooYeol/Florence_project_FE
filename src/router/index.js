@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import NaverCallback from '../views/NaverCallback.vue'
+import GoogleCallback from '../views/GoogleCallback.vue'
 
 const routes = [
   {
@@ -85,8 +87,13 @@ const routes = [
   },
   {
     path: '/naver/callback',
-    name: 'NaverCallback',
-    component: () => import('../views/NaverCallback.vue')
+    name: 'naver-callback',
+    component: NaverCallback
+  },
+  {
+    path: '/google/callback',
+    name: 'google-callback',
+    component: GoogleCallback
   }
 ]
 

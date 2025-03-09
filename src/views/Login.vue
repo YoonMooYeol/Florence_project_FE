@@ -214,6 +214,43 @@ const initiateNaverLogin = () => {
   }
 }
 
+// 구글 로그인 실행 함수
+const initiateGoogleLogin = () => {
+  try {
+    console.log('구글 로그인 시작...')
+    // 구글 Client ID
+    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    console.log('구글 클라이언트 ID:', GOOGLE_CLIENT_ID ? '설정됨' : '설정되지 않음')
+
+    if (!GOOGLE_CLIENT_ID) {
+      console.error('구글 클라이언트 ID가 설정되지 않았습니다.')
+      alert('구글 로그인을 위한 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
+      return
+    }
+
+    // 환경에 맞는 리디렉션 URL 사용
+    const REDIRECT_URI_RAW = import.meta.env.VITE_GOOGLE_REDIRECT_URI
+    const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
+
+    console.log('구글 로그인 환경:', import.meta.env.VITE_APP_ENV || 'undefined')
+    console.log('구글 로그인 리디렉션 URL (원본):', REDIRECT_URI_RAW)
+    console.log('구글 로그인 리디렉션 URL (인코딩됨):', REDIRECT_URI)
+
+    // 범위 설정 (이메일, 프로필 정보)
+    const SCOPE = encodeURIComponent('email profile')
+
+    // 구글 인증 URL 생성
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=${SCOPE}&access_type=offline&include_granted_scopes=true`
+    console.log('구글 인증 URL:', authUrl)
+
+    // 구글 인증 페이지로 리다이렉션
+    window.location.href = authUrl
+  } catch (error) {
+    console.error('구글 로그인 초기화 오류:', error)
+    alert('구글 로그인 초기화 중 오류가 발생했습니다: ' + error.message)
+  }
+}
+
 // 페이지 이동 함수들
 const goToRegister = () => {
   router.push('/register')
@@ -333,6 +370,7 @@ const goToFindPassword = () => {
               <button
                 type="button"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                @click="initiateGoogleLogin"
               >
                 <svg
                   class="w-5 h-5 mr-3"
