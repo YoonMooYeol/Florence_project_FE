@@ -105,7 +105,6 @@ const router = createRouter({
 // 네비게이션 가드 설정
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
-  
   if (to.meta.requiresAuth && !token) {
     next('/login')
   } else {

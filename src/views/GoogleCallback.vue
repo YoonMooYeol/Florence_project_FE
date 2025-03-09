@@ -13,20 +13,16 @@ const error = ref(null)
 onMounted(() => {
   console.log('구글 콜백 컴포넌트가 마운트되었습니다.')
   console.log('현재 URL:', window.location.href)
-  
   // 서버 오류 확인 (URL에 error 파라미터가 있는지 확인)
   const urlParams = new URLSearchParams(window.location.search)
   const errorParam = urlParams.get('error')
-  
   console.log('URL 파라미터:', Object.fromEntries(urlParams.entries()))
-  
   if (errorParam) {
     // 서버에서 전달한 오류가 있는 경우
     console.error('서버 오류 파라미터 발견:', errorParam)
     handleError(`서버 오류: ${errorParam}`)
     return
   }
-  
   try {
     // URL 파라미터에서 토큰 및 사용자 정보 추출
     const token = urlParams.get('token')
@@ -34,31 +30,26 @@ onMounted(() => {
     const userId = urlParams.get('user_id')
     const name = urlParams.get('name')
     const isPregnant = urlParams.get('is_pregnant') === 'true'
-    
-    console.log('구글 콜백 파라미터:', { 
-      token: token ? `${token.substring(0, 10)}...` : '없음', 
+    console.log('구글 콜백 파라미터:', {
+      token: token ? `${token.substring(0, 10)}...` : '없음',
       refresh: refresh ? '있음' : '없음',
-      userId, 
-      name, 
-      isPregnant 
+      userId,
+      name,
+      isPregnant
     })
-    
     if (token && refresh) {
       console.log('토큰과 리프레시 토큰이 존재합니다. 저장을 시작합니다.')
       // 토큰 저장
       authStore.setAccessToken(token)
       authStore.setRefreshToken(refresh)
-      
       // 사용자 정보 저장
       localStorage.setItem('userId', userId)
       localStorage.setItem('userName', name)
       localStorage.setItem('isPregnant', isPregnant)
-      
       console.log('로그인 정보 저장 완료:', {
         userId: localStorage.getItem('userId'),
         userName: localStorage.getItem('userName')
       })
-      
       // 성공 알림
       setTimeout(() => {
         alert('구글 로그인에 성공했습니다')
@@ -79,11 +70,11 @@ onMounted(() => {
 })
 
 // 오류 처리를 위한 함수
-function handleError(message) {
+function handleError (message) {
   error.value = message
   console.error('오류 처리:', message)
   isLoading.value = false
-  
+
   // 사용자에게 알림
   setTimeout(() => {
     alert(message)
@@ -114,7 +105,7 @@ function handleError(message) {
         <p class="text-gray-700">
           {{ error }}
         </p>
-        <button 
+        <button
           class="mt-4 px-4 py-2 bg-point-yellow text-dark-gray rounded-[20px] font-medium hover:bg-yellow-400"
           @click="router.push('/login')"
         >
@@ -123,4 +114,4 @@ function handleError(message) {
       </template>
     </div>
   </div>
-</template> 
+</template>
