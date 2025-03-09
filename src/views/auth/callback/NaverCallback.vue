@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../store/auth'
+import { useAuthStore } from '@/store/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -14,13 +14,13 @@ onMounted(() => {
   // 서버 오류 확인 (URL에 error 파라미터가 있는지 확인)
   const urlParams = new URLSearchParams(window.location.search)
   const errorParam = urlParams.get('error')
-  
+
   if (errorParam) {
     // 서버에서 전달한 오류가 있는 경우
     handleError(`서버 오류: ${errorParam}`)
     return
   }
-  
+
   try {
     // URL 파라미터에서 토큰 및 사용자 정보 추출
     const token = urlParams.get('token')
@@ -28,24 +28,24 @@ onMounted(() => {
     const userId = urlParams.get('user_id')
     const name = urlParams.get('name')
     const isPregnant = urlParams.get('is_pregnant') === 'true'
-    
-    console.log('네이버 콜백 파라미터:', { 
-      token: token ? token.substring(0, 10) + '...' : '없음', 
-      userId, 
-      name, 
-      isPregnant 
+
+    console.log('네이버 콜백 파라미터:', {
+      token: token ? token.substring(0, 10) + '...' : '없음',
+      userId,
+      name,
+      isPregnant
     })
-    
+
     if (token && refresh) {
       // 토큰 저장
       authStore.setAccessToken(token)
       authStore.setRefreshToken(refresh)
-      
+
       // 사용자 정보 저장
       localStorage.setItem('userId', userId)
       localStorage.setItem('userName', name)
       localStorage.setItem('isPregnant', isPregnant)
-      
+
       // 성공 알림
       setTimeout(() => {
         alert('네이버 로그인에 성공했습니다')
@@ -63,11 +63,11 @@ onMounted(() => {
 })
 
 // 오류 처리를 위한 함수
-function handleError(message) {
+function handleError (message) {
   error.value = message
   console.error(message)
   isLoading.value = false
-  
+
   // 사용자에게 알림
   setTimeout(() => {
     alert(message)
@@ -97,7 +97,7 @@ function handleError(message) {
         <p class="text-gray-700">
           {{ error }}
         </p>
-        <button 
+        <button
           class="mt-4 px-4 py-2 bg-point-yellow text-dark-gray rounded-[20px] font-medium hover:bg-yellow-400"
           @click="router.push('/login')"
         >
@@ -106,4 +106,4 @@ function handleError(message) {
       </template>
     </div>
   </div>
-</template> 
+</template>

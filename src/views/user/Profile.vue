@@ -2,8 +2,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../store/auth'
-import api from '../utils/axios'
+import { useAuthStore } from '@/store/auth'
+import api from '@/utils/axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
 
 const router = useRouter()
