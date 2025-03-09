@@ -1,8 +1,9 @@
+<!-- eslint-disable no-trailing-spaces -->
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../store/auth'
-import api from '../utils/axios'
+import { useAuthStore } from '@/store/auth'
+import api from '@/utils/axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
 
 const router = useRouter()
@@ -149,15 +150,23 @@ const getJosa = (word, josa1, josa2) => {
 // 임신 정보 삭제 함수
 
 // 로그아웃 함수
-const handleLogout = () => {
-  // auth 스토어의 로그아웃 함수 호출
-  authStore.logout()
+const handleLogout = async () => {
+  try {
+    // auth 스토어의 로그아웃 함수 호출
+    await authStore.logout()
 
-  // 로그아웃 메시지 표시
-  alert('로그아웃 되었습니다.')
+    // 로그아웃 메시지 표시
+    alert('로그아웃 되었습니다.')
 
-  // 로그인 페이지로 이동
-  router.push('/login')
+    // 로그인 페이지로 명시적 이동
+    router.push('/login')
+  } catch (error) {
+    console.error('로그아웃 처리 중 오류:', error)
+    alert('로그아웃 처리 중 오류가 발생했습니다.')
+    
+    // 오류가 발생해도 로그인 페이지로 이동
+    router.push('/login')
+  }
 }
 </script>
 

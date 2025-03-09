@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../store/auth'
+import { useAuthStore } from '@/store/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -19,24 +19,24 @@ onMounted(() => {
     const userId = urlParams.get('user_id')
     const name = urlParams.get('name')
     const isPregnant = urlParams.get('is_pregnant') === 'true'
-    
-    console.log('카카오 콜백 파라미터:', { 
-      token: token ? token.substring(0, 10) + '...' : '없음', 
-      userId, 
-      name, 
-      isPregnant 
+
+    console.log('카카오 콜백 파라미터:', {
+      token: token ? token.substring(0, 10) + '...' : '없음',
+      userId,
+      name,
+      isPregnant
     })
-    
+
     if (token && refresh) {
       // 토큰 저장
       authStore.setAccessToken(token)
       authStore.setRefreshToken(refresh)
-      
+
       // 사용자 정보 저장
       localStorage.setItem('userId', userId)
       localStorage.setItem('userName', name)
       localStorage.setItem('isPregnant', isPregnant)
-      
+
       // 성공 알림
       setTimeout(() => {
         alert('카카오 로그인에 성공했습니다')
@@ -87,7 +87,7 @@ onMounted(() => {
         <p class="text-gray-700">
           {{ error }}
         </p>
-        <button 
+        <button
           class="mt-4 px-4 py-2 bg-point-yellow text-dark-gray rounded-[20px] font-medium hover:bg-yellow-400"
           @click="router.push('/login')"
         >

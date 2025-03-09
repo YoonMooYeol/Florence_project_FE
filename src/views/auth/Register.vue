@@ -2,8 +2,8 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { useAuthStore } from '../store/auth'
-import api from '../utils/axios'
+import { useAuthStore } from '@/store/auth'
+import api from '@/utils/axios'
 
 // Daum 지도 API 초기화
 let geocoder
