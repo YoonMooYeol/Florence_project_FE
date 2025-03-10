@@ -102,6 +102,11 @@ const routes = [
     path: '/auth/callback/:provider',
     name: 'SocialCallback',
     component: SocialCallback
+  },
+  {
+    path: '/find-password',
+    name: 'FindPassword',
+    component: () => import('../views/FindPassword.vue')
   }
 ]
 
