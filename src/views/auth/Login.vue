@@ -268,12 +268,8 @@ const goToRegister = () => {
   router.push('/register')
 }
 
-const goToFindId = () => {
-  // 아이디 찾기 구현 예정
-}
-
 const goToFindPassword = () => {
-  // 비밀번호 찾기 구현 예정
+  router.push('/find-password')
 }
 </script>
 
@@ -454,14 +450,6 @@ const goToFindPassword = () => {
 
           <!-- 링크 모음 -->
           <div class="flex justify-center items-center space-x-4 mt-4 text-sm">
-            <a
-              href="#"
-              class="text-dark-gray hover:underline"
-              @click.prevent="goToFindId"
-            >
-              아이디 찾기
-            </a>
-            <span class="text-gray-300">|</span>
             <a
               href="#"
               class="text-dark-gray hover:underline"
