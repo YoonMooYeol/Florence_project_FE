@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
 import * as logger from '@/utils/logger'
@@ -47,27 +47,26 @@ const getTokenFromStorage = () => {
 }
 
 // 라우터 및 라우트 설정
-const route = useRoute()
 const router = useRouter()
 
 // 상태 관리
-const conversationId = ref(null)
 const messages = ref([])
 const userAnswer = ref('')
 const isSubmitting = ref(false)
-const isConversationComplete = ref(false)
-const isLoading = ref(false)
 const errorMessage = ref('')
-const currentStep = ref(0)
-const totalSteps = ref(10)
 const isAuthenticated = ref(false)
 const retryCount = ref(0)
 const maxRetries = 3
 const lastSubmitTime = ref(0)
 const debounceTime = 1000 // 1초 디바운스
 const chatContainer = ref(null) // 채팅 컨테이너 ref 추가
+const userId = ref(null) // 사용자 ID 저장
+const hasPregnancyInfo = ref(false) // 임신 정보 유무
+const babyName = ref('') // 태명
+const pregnancyWeek = ref(0) // 임신 주차
+const currentSearchQuery = ref('') // 현재 검색 쿼리 표시
 
-// 대화 시작 또는 기존 대화 불러오기
+// 시작 시 초기화
 onMounted(async () => {
   try {
     // 로컬 스토리지에서 토큰 가져오기
@@ -80,176 +79,77 @@ onMounted(async () => {
       return
     }
 
-    if (route.params.conversationId) {
-      conversationId.value = route.params.conversationId
-      await loadConversation()
-    } else {
-      // 새 대화 시작 시 환영 메시지 추가
-      messages.value.push({
-        id: Date.now(),
-        sender: 'bot',
-        content: '안녕하세요! 하트비트인지 플로렌스인지 여러가지 이름이 있는 AI입니다. 저는 산모의 감정과 상황을 분석하여 건강한 출산과 육아를 위한 조언을 드리는 AI 상담사입니다. 편안하게 대화해주세요.',
-        time: getCurrentTime()
-      })
-
-      // 메시지가 추가되면 스크롤을 맨 아래로 이동
-      scrollToBottom()
-
-      await startNewConversation()
+    // 사용자 정보 가져오기
+    await getUserInfo()
+    
+    // 사용자 ID가 없으면 로그인 페이지로 리다이렉트
+    if (!userId.value) {
+      logger.warn(CONTEXT, '사용자 정보를 가져오지 못했습니다. 로그인 페이지로 이동합니다.')
+      router.push('/login')
+      return
     }
+    
+    // 임신 정보 가져오기
+    await getPregnancyInfo()
+    
+    // 임신 정보가 없으면 사용자 정보 페이지로 리다이렉트
+    if (!hasPregnancyInfo.value) {
+      logger.warn(CONTEXT, '임신 정보가 없습니다. 사용자 정보 페이지로 이동합니다.')
+      router.push('/profile')
+      return
+    }
+    
+    // 환영 메시지 추가
+    messages.value.push({
+      id: Date.now(),
+      sender: 'bot',
+      content: `안녕하세요! 하트비트 AI입니다. ${babyName.value || '태아'}는 현재 ${pregnancyWeek.value}주차네요. 임신과 출산에 관한 궁금한 점을 물어보세요. 일상적인 질문도 답변해 드립니다.`,
+      time: getCurrentTime()
+    })
 
-    // 초기 로딩 후 스크롤 처리
+    // 메시지가 추가되면 스크롤을 맨 아래로 이동
     scrollToBottom()
   } catch (error) {
     handleError(error, CONTEXT)
   }
 })
 
-// 새 대화 시작
-const startNewConversation = async () => {
-  isLoading.value = true
-  errorMessage.value = ''
-
+// 사용자 정보 가져오기
+const getUserInfo = async () => {
   try {
-    logger.info(CONTEXT, '새 대화 시작')
-    const response = await apiClient.post('/v1/healthcare/conversations/')
-    logger.info(CONTEXT, '새 대화 생성 응답:', response.data)
-
-    conversationId.value = response.data.id
-
-    // conversationId가 유효한지 확인
-    if (!conversationId.value) {
-      throw new Error('대화 ID가 유효하지 않습니다.')
-    }
-
-    await getNextQuestion()
+    // 올바른 API 엔드포인트로 수정
+    const response = await apiClient.get('/v1/accounts/users/me/')
+    userId.value = response.data.user_id
+    logger.info(CONTEXT, '사용자 정보 로드 완료:', userId.value)
   } catch (error) {
-    errorMessage.value = '대화를 시작하는 중 오류가 발생했습니다.'
-    logger.error(CONTEXT, '대화 시작 오류:', error)
-    handleError(error, `${CONTEXT}.startNewConversation`)
-
-    // 인증 오류인 경우 로그인 페이지로 리다이렉트
+    logger.error(CONTEXT, '사용자 정보 로드 실패:', error)
     if (error.response && error.response.status === 401) {
-      logger.warn(CONTEXT, '인증이 필요합니다. 로그인 페이지로 이동합니다.')
       router.push('/login')
     }
-  } finally {
-    isLoading.value = false
   }
 }
 
-// 기존 대화 불러오기
-const loadConversation = async () => {
-  isLoading.value = true
-  errorMessage.value = ''
-
+// 임신 정보 가져오기
+const getPregnancyInfo = async () => {
   try {
-    // conversationId가 유효한지 확인
-    if (!conversationId.value) {
-      throw new Error('대화 ID가 유효하지 않습니다.')
-    }
-
-    logger.info(CONTEXT, '대화 불러오기:', conversationId.value)
-    const response = await apiClient.get(`/v1/healthcare/conversations/${conversationId.value}/`)
-    messages.value = response.data.messages || []
-    isConversationComplete.value = response.data.is_completed
-
-    // 현재 단계 설정
-    if (response.data.current_step) {
-      currentStep.value = response.data.current_step
-      totalSteps.value = response.data.total_steps || 10
-    }
-
-    if (!isConversationComplete.value) {
-      await getNextQuestion()
+    const response = await apiClient.get('/v1/accounts/pregnancies/')
+    // 임신 정보가 하나 이상 있는지 확인
+    if (response.data && response.data.length > 0) {
+      hasPregnancyInfo.value = true
+      // 첫 번째 임신 정보 사용
+      const pregnancy = response.data[0]
+      babyName.value = pregnancy.baby_name || ''
+      pregnancyWeek.value = pregnancy.current_week || 0
+      logger.info(CONTEXT, '임신 정보 로드 완료:', {
+        babyName: babyName.value,
+        week: pregnancyWeek.value
+      })
+    } else {
+      hasPregnancyInfo.value = false
     }
   } catch (error) {
-    errorMessage.value = '대화를 불러오는 중 오류가 발생했습니다.'
-    logger.error(CONTEXT, '대화 불러오기 오류:', error)
-    handleError(error, `${CONTEXT}.loadConversation`)
-
-    // 인증 오류인 경우 로그인 페이지로 리다이렉트
-    if (error.response && error.response.status === 401) {
-      logger.warn(CONTEXT, '인증이 필요합니다. 로그인 페이지로 이동합니다.')
-      router.push('/login')
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// 다음 질문 가져오기
-const getNextQuestion = async () => {
-  isLoading.value = true
-  errorMessage.value = ''
-  retryCount.value = 0
-
-  try {
-    // conversationId가 유효한지 확인
-    if (!conversationId.value) {
-      throw new Error('대화 ID가 유효하지 않습니다.')
-    }
-
-    logger.info(CONTEXT, '다음 질문 요청')
-
-    // 먼저 타이핑 중 메시지 추가 (질문이 9번까지)
-    if (currentStep.value < 9) {
-      const typingMessage = {
-        id: Date.now() + messages.value.length,
-        sender: 'bot',
-        time: getCurrentTime(),
-        isLoading: true,
-        isTyping: true // 타이핑 효과를 위한 플래그 추가
-      }
-      messages.value.push(typingMessage)
-      scrollToBottom()
-    }
-
-    const response = await apiClient.get(`/v1/healthcare/conversations/${conversationId.value}/next-question/`)
-    logger.info(CONTEXT, '다음 질문 응답:', response.data)
-
-    // 단계 정보 업데이트
-    currentStep.value = response.data.step || currentStep.value + 1
-    totalSteps.value = response.data.total_steps || 10
-
-    // 타이핑 중 메시지 제거
-    messages.value = messages.value.filter(msg => !msg.isLoading)
-
-    messages.value.push({
-      id: Date.now() + messages.value.length,
-      sender: 'bot',
-      content: response.data.question,
-      time: getCurrentTime()
-    })
-    // 메시지가 추가되면 스크롤을 맨 아래로 이동
-    scrollToBottom()
-  } catch (error) {
-    // 타이핑 중 메시지 제거
-    messages.value = messages.value.filter(msg => !msg.isLoading)
-
-    errorMessage.value = '다음 질문을 가져오는 중 오류가 발생했습니다.'
-    logger.error(CONTEXT, '질문 가져오기 오류:', error)
-    handleError(error, `${CONTEXT}.getNextQuestion`)
-
-    // 서버 오류(500)인 경우 재시도 로직 실행
-    if (error.response && error.response.status === 500 && retryCount.value < maxRetries) {
-      retryCount.value++
-      errorMessage.value = `서버 오류가 발생했습니다. 자동으로 재시도합니다. (${retryCount.value}/${maxRetries})`
-      logger.warn(CONTEXT, `다음 질문 요청 재시도 중 (${retryCount.value}/${maxRetries})`)
-      // 1초 후 재시도
-      setTimeout(() => {
-        getNextQuestion()
-      }, 1000)
-      return
-    }
-
-    // 인증 오류인 경우 로그인 페이지로 리다이렉트
-    if (error.response && error.response.status === 401) {
-      logger.warn(CONTEXT, '인증이 필요합니다. 로그인 페이지로 이동합니다.')
-      router.push('/login')
-    }
-  } finally {
-    isLoading.value = false
+    logger.error(CONTEXT, '임신 정보 로드 실패:', error)
+    hasPregnancyInfo.value = false
   }
 }
 
@@ -273,6 +173,7 @@ const submitAnswer = async () => {
 
   isSubmitting.value = true
   errorMessage.value = ''
+  currentSearchQuery.value = '' // 검색 쿼리 초기화
   const currentAnswer = userAnswer.value.trim()
   retryCount.value = 0
 
@@ -288,95 +189,77 @@ const submitAnswer = async () => {
   }, 50)
 
   try {
-    // conversationId가 유효한지 확인
-    if (!conversationId.value) {
-      throw new Error('대화 ID가 유효하지 않습니다.')
+    // 사용자 ID 확인
+    if (!userId.value) {
+      throw new Error('사용자 ID가 없습니다.')
     }
 
-    // 사용자 메시지 추가 - 고유한 ID 생성을 위해 타임스탬프 추가
-    const newMessage = {
-      id: Date.now() + messages.value.length,
+    // 사용자 메시지 추가
+    const userMessage = {
+      id: Date.now(),
       sender: 'user',
       content: currentAnswer,
       time: getCurrentTime()
     }
-
-    messages.value.push(newMessage)
+    messages.value.push(userMessage)
 
     // 메시지가 추가되면 즉시 스크롤을 맨 아래로 이동
     scrollToBottom()
 
-    // 마지막 질문인지 확인 (현재 단계가 총 단계 - 1인 경우)
-    const isLastQuestion = currentStep.value >= totalSteps.value - 1
-
-    // 마지막 질문이면 "분석 중..." 메시지 추가
-    if (isLastQuestion) {
-      // 분석 중 메시지 추가
-      setTimeout(() => {
-        messages.value.push({
-          id: Date.now() + messages.value.length,
-          sender: 'bot',
-          content: '답변을 분석 중입니다...',
-          time: getCurrentTime(),
-          isLoading: true
-        })
-        scrollToBottom()
-      }, 500)
-    }
-
-    logger.info(CONTEXT, '답변 제출')
-    const response = await apiClient.post(`/v1/healthcare/conversations/${conversationId.value}/answer/`, {
-      answer: currentAnswer
+    // 로딩 메시지 추가
+    const loadingMessageId = Date.now() + 1
+    messages.value.push({
+      id: loadingMessageId,
+      sender: 'bot',
+      isLoading: true,
+      isTyping: true,
+      time: getCurrentTime()
     })
-    logger.info(CONTEXT, '답변 제출 응답:', response.data)
+    scrollToBottom()
 
-    if (response.data.is_completed) {
-      // 마지막 질문이었다면 로딩 메시지 제거
-      if (isLastQuestion) {
-        // 로딩 메시지 제거
-        messages.value = messages.value.filter(msg => !msg.isLoading)
-      }
+    // 새 LLM 에이전트 API 호출 - 태명과 임신 주차 정보 추가
+    logger.info(CONTEXT, 'LLM 에이전트 API 호출')
+    const response = await apiClient.post('/v1/llm/agent/', {
+      user_id: userId.value,
+      query_text: currentAnswer,
+      baby_name: babyName.value || '태아',
+      pregnancy_week: pregnancyWeek.value || 0
+    })
+    logger.info(CONTEXT, 'LLM 에이전트 응답:', response.data)
 
-      isConversationComplete.value = true
-      logger.info(CONTEXT, '대화 완료')
-
-      // 완료 메시지 추가
-      messages.value.push({
-        id: Date.now() + messages.value.length,
-        sender: 'bot',
-        content: '모든 질문이 완료되었습니다. 답변을 분석하여 피드백을 생성 중입니다.',
-        time: getCurrentTime()
-      })
-
-      // 대화 완료 후 스크롤 처리
-      scrollToBottom()
-
-      // 피드백 페이지로 즉시 이동
-      logger.info(CONTEXT, '피드백 페이지로 자동 이동:', conversationId.value)
-      router.push(`/feedback/${conversationId.value}`)
-    } else {
-      // 마지막 질문이었다면 로딩 메시지 제거
-      if (isLastQuestion) {
-        // 로딩 메시지 제거
-        messages.value = messages.value.filter(msg => !msg.isLoading)
-      }
-
-      // 다음 질문 가져오기
-      await getNextQuestion()
+    // 검색 쿼리 정보 저장 (응답에 포함되어 있다면)
+    if (response.data.search_queries && response.data.search_queries.length > 0) {
+      currentSearchQuery.value = response.data.search_queries[0]
     }
+
+    // 로딩 메시지 제거
+    messages.value = messages.value.filter(msg => msg.id !== loadingMessageId)
+
+    // 봇 응답 메시지 추가
+    messages.value.push({
+      id: Date.now() + 2,
+      sender: 'bot',
+      content: response.data.response,
+      time: getCurrentTime()
+    })
+
+    // 스크롤 처리
+    scrollToBottom()
   } catch (error) {
-    errorMessage.value = '답변을 제출하는 중 오류가 발생했습니다.'
-    logger.error(CONTEXT, '답변 제출 오류:', error)
+    // 로딩 메시지 제거
+    messages.value = messages.value.filter(msg => msg.isLoading)
+
+    errorMessage.value = '답변을 생성하는 중 오류가 발생했습니다.'
+    logger.error(CONTEXT, 'LLM 에이전트 API 오류:', error)
     handleError(error, `${CONTEXT}.submitAnswer`)
 
     // 서버 오류(500)인 경우 재시도 로직 실행
     if (error.response && error.response.status === 500 && retryCount.value < maxRetries) {
       retryCount.value++
       errorMessage.value = `서버 오류가 발생했습니다. 자동으로 재시도합니다. (${retryCount.value}/${maxRetries})`
-      logger.warn(CONTEXT, `답변 제출 재시도 중 (${retryCount.value}/${maxRetries})`)
+      logger.warn(CONTEXT, `LLM 에이전트 호출 재시도 중 (${retryCount.value}/${maxRetries})`)
       // 1초 후 재시도
       setTimeout(() => {
-        // 이미 메시지는 추가되었으므로 다시 추가하지 않음
         submitAnswerRetry(currentAnswer)
       }, 1000)
       return
@@ -399,28 +282,35 @@ const submitAnswer = async () => {
 // 답변 제출 재시도 (메시지 추가 없이)
 const submitAnswerRetry = async (answer) => {
   try {
-    logger.info(CONTEXT, '답변 제출 재시도')
-    const response = await apiClient.post(`/v1/healthcare/conversations/${conversationId.value}/answer/`, {
-      answer
+    logger.info(CONTEXT, 'LLM 에이전트 API 재시도')
+    const response = await apiClient.post('/v1/llm/agent/', {
+      user_id: userId.value,
+      query_text: answer,
+      baby_name: babyName.value || '태아',
+      pregnancy_week: pregnancyWeek.value || 0
     })
-    logger.info(CONTEXT, '답변 제출 재시도 응답:', response.data)
+    logger.info(CONTEXT, 'LLM 에이전트 API 재시도 응답:', response.data)
 
     errorMessage.value = ''
 
-    if (response.data.is_completed) {
-      isConversationComplete.value = true
-      logger.info(CONTEXT, '대화 완료')
-
-      // 피드백 페이지로 즉시 이동
-      logger.info(CONTEXT, '피드백 페이지로 자동 이동:', conversationId.value)
-      router.push(`/feedback/${conversationId.value}`)
-    } else {
-      // 다음 질문 가져오기
-      await getNextQuestion()
+    // 검색 쿼리 정보 저장 (응답에 포함되어 있다면)
+    if (response.data.search_queries && response.data.search_queries.length > 0) {
+      currentSearchQuery.value = response.data.search_queries[0]
     }
+
+    // 봇 응답 메시지 추가
+    messages.value.push({
+      id: Date.now(),
+      sender: 'bot',
+      content: response.data.response,
+      time: getCurrentTime()
+    })
+
+    // 스크롤 처리
+    scrollToBottom()
   } catch (error) {
-    errorMessage.value = '답변을 제출하는 중 오류가 발생했습니다. 다시 시도해주세요.'
-    logger.error(CONTEXT, '답변 제출 재시도 오류:', error)
+    errorMessage.value = '답변을 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.'
+    logger.error(CONTEXT, 'LLM 에이전트 API 재시도 오류:', error)
     handleError(error, `${CONTEXT}.submitAnswerRetry`)
   } finally {
     isSubmitting.value = false
@@ -493,15 +383,8 @@ const handleSendClick = () => {
     <!-- 헤더 -->
     <div class="bg-white p-4 shadow-md flex items-center justify-center fixed top-0 left-0 right-0 z-20">
       <h1 class="text-xl font-bold text-center text-dark-gray">
-        AI 상담사
+        AI 상담사 - 검색 기능
       </h1>
-      <!-- 진행 상태 표시 - 숫자만 표시하고 프로그레스 바는 제거 -->
-      <div
-        v-if="currentStep > 0 && !isConversationComplete"
-        class="absolute right-4 text-sm text-gray-600"
-      >
-        {{ currentStep }} / {{ totalSteps }}
-      </div>
     </div>
 
     <!-- 에러 메시지 -->
@@ -511,16 +394,6 @@ const handleSendClick = () => {
     >
       <p>{{ errorMessage }}</p>
     </div>
-
-    <!-- 로딩 표시 -->
-    <!-- <div
-      v-if="isLoading"
-      class="flex justify-center items-center p-4 mt-14"
-    >
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-point-yellow" />
-    </div> -->
-
-    <!-- 진행 상태 바 제거 -->
 
     <!-- 대화 메시지 영역 -->
     <div
@@ -594,29 +467,37 @@ const handleSendClick = () => {
       </div>
     </div>
 
-    <!-- 전체 화면 오버레이 (마지막 질문 제출 시 표시) -->
+    <!-- 전체 화면 오버레이 (답변 생성 중 표시) -->
     <div
-      v-if="isSubmitting && currentStep >= totalSteps - 1"
+      v-if="isSubmitting"
       class="fixed inset-0 bg-gray-800 bg-opacity-70 flex flex-col items-center justify-center z-50"
     >
       <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-white mb-4" />
       <p class="text-white text-xl font-semibold">
-        답변을 분석 중입니다...
+        답변을 생성 중입니다...
       </p>
-      <p class="text-white text-sm mt-2">
-        잠시만 기다려주세요
+      
+      <!-- 검색 쿼리 표시 -->
+      <div class="text-white text-center max-w-md px-4 mt-3">
+        <p v-if="currentSearchQuery" class="text mb-2">
+          <span class="font-medium">검색 중:</span> "{{ currentSearchQuery }}"
+        </p>
+        <p v-else class="text-sm mb-2">
+          정보를 찾는 중입니다...
+        </p>
+      </div>
+      
+      <p class="text-white text-sm mt-4">
+        사용자 질문을 분석하고 신뢰할 수 있는 정보를 찾고 있습니다
       </p>
     </div>
 
     <!-- 메시지 입력 영역 -->
-    <div
-      v-if="!isConversationComplete"
-      class="bg-white p-3 border-t border-gray-200 fixed bottom-16 left-0 right-0 z-10"
-    >
+    <div class="bg-white p-3 border-t border-gray-200 fixed bottom-16 left-0 right-0 z-10">
       <div class="flex items-center">
         <textarea
           v-model="userAnswer"
-          placeholder="메시지를 입력하세요"
+          placeholder="임신과 출산에 관한 질문을 입력하세요"
           class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-point-yellow resize-none"
           rows="1"
           @keydown="handleKeyDown"
@@ -772,5 +653,25 @@ textarea {
     transform: scale(1);
     opacity: 0.3;
   }
+}
+
+/* 진행 막대 애니메이션 */
+@keyframes pulse-width {
+  0% {
+    width: 20%;
+    opacity: 0.6;
+  }
+  50% {
+    width: 100%;
+    opacity: 1;
+  }
+  100% {
+    width: 20%;
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-width {
+  animation: pulse-width 2s ease-in-out infinite;
 }
 </style>

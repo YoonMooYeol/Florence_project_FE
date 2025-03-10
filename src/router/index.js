@@ -5,6 +5,7 @@ import NaverCallback from '../views/auth/callback/NaverCallback.vue'
 import GoogleCallback from '../views/auth/callback/GoogleCallback.vue'
 import SocialCallback from '../views/auth/callback/SocialCallback.vue'
 import FindPassword from '../views/FindPassword.vue'
+import ChatAgent from '../views/chat/Chat.vue'
 
 const routes = [
   {
@@ -108,6 +109,11 @@ const routes = [
     path: '/auth/callback/:provider',
     name: 'SocialCallback',
     component: SocialCallback
+  },
+  {
+    path: '/agent',
+    name: 'Agent',
+    component: ChatAgent
   }
 ]
 
