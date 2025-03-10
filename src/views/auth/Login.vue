@@ -1,10 +1,12 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import api from '@/utils/axios'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const authStore = useAuthStore()
 
 // 폼 데이터 관리
@@ -54,6 +56,11 @@ const saveLoginState = (userData) => {
   authStore.setRefreshToken(userData.tokens.refresh)
 
   // 로그인 유지를 선택한 경우 로컬 스토리지에 저장 (브라우저를 닫아도 유지)
+  // 액세스 토큰과 리프레시 토큰 저장
+  authStore.setAccessToken(userData.tokens.access)
+  authStore.setRefreshToken(userData.tokens.refresh)
+
+  // 로그인 유지를 선택한 경우 로컬 스토리지에 저장 (브라우저를 닫아도 유지)
   if (formData.rememberMe) {
     localStorage.setItem('rememberMe', 'true')
     localStorage.setItem('userEmail', formData.email)
@@ -80,6 +87,7 @@ const saveLoginState = (userData) => {
 const checkSavedLogin = () => {
   const savedRememberMe = localStorage.getItem('rememberMe')
   const savedEmail = localStorage.getItem('userEmail')
+  const accessToken = localStorage.getItem('accessToken') || authStore.accessToken
   const accessToken = localStorage.getItem('accessToken') || authStore.accessToken
 
   if (savedRememberMe === 'true' && savedEmail && accessToken) {
@@ -114,6 +122,7 @@ onMounted(() => {
 
 // 로그인 API 호출 함수
 const loginApi = async (email, password) => {
+  const response = await api.post('/accounts/login/', {
   const response = await api.post('/accounts/login/', {
     email,
     password
@@ -268,12 +277,8 @@ const goToRegister = () => {
   router.push('/register')
 }
 
-const goToFindId = () => {
-  // 아이디 찾기 구현 예정
-}
-
 const goToFindPassword = () => {
-  // 비밀번호 찾기 구현 예정
+  router.push('/find-password')
 }
 </script>
 
@@ -293,6 +298,7 @@ const goToFindPassword = () => {
       <!-- 폼 에러 메시지 -->
       <div
         v-if="errors.form"
+        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-[20px]"
         class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-[20px]"
       >
         {{ errors.form }}
@@ -314,6 +320,7 @@ const goToFindPassword = () => {
             v-model="formData.email"
             type="email"
             class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="이메일을 입력하세요"
           >
           <p
@@ -334,6 +341,7 @@ const goToFindPassword = () => {
             id="password"
             v-model="formData.password"
             type="password"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 입력하세요"
           >
@@ -362,6 +370,7 @@ const goToFindPassword = () => {
           <!-- 로그인 버튼 -->
           <button
             type="submit"
+            class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             :disabled="isSubmitting"
           >
@@ -394,6 +403,7 @@ const goToFindPassword = () => {
                     fill="#4285F4"
                   />
                 </svg>
+                <span>Google 계정으로 로그인</span>
                 <span>Google 계정으로 로그인</span>
               </button>
 
@@ -436,6 +446,7 @@ const goToFindPassword = () => {
               <button
                 type="button"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-black border border-black rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-black border border-black rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
               >
                 <svg
                   class="w-5 h-5 mr-3"
@@ -454,14 +465,6 @@ const goToFindPassword = () => {
 
           <!-- 링크 모음 -->
           <div class="flex justify-center items-center space-x-4 mt-4 text-sm">
-            <a
-              href="#"
-              class="text-dark-gray hover:underline"
-              @click.prevent="goToFindId"
-            >
-              아이디 찾기
-            </a>
-            <span class="text-gray-300">|</span>
             <a
               href="#"
               class="text-dark-gray hover:underline"

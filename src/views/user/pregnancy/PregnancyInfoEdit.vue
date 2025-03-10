@@ -1,16 +1,20 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 
 const router = useRouter()
 
 // 임신 정보
+// 임신 정보
 const pregnancyInfo = ref({
   babyName: '',
   dueDate: '',
   currentWeek: 1,
   highRisk: false,
+  isPregnant: false,
+  pregnancyId: null
   isPregnant: false,
   pregnancyId: null
 })
@@ -27,8 +31,54 @@ const isLoading = ref(false)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 
+// 로딩 상태 관리
+const isLoading = ref(false)
+const isSubmitting = ref(false)
+const errorMessage = ref('')
+
 // 현재 주차 옵션
 const weekOptions = Array.from({ length: 40 }, (_, i) => i + 1)
+
+// 임신 정보 불러오기
+const fetchPregnancyInfo = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await api.get('/accounts/pregnancies/')
+
+    // 임신 정보가 있는 경우
+    if (response.data && response.data.length > 0) {
+      const data = response.data[0] // 가장 최근 임신 정보 사용
+
+      pregnancyInfo.value = {
+        babyName: data.baby_name,
+        dueDate: data.due_date,
+        currentWeek: data.current_week,
+        highRisk: data.high_risk,
+        isPregnant: true,
+        pregnancyId: data.pregnancy_id
+      }
+
+      // 임신 상태 저장
+      localStorage.setItem('isPregnant', 'true')
+      sessionStorage.setItem('isPregnant', 'true')
+    } else {
+      // 임신 정보가 없는 경우
+      pregnancyInfo.value.isPregnant = false
+      localStorage.setItem('isPregnant', 'false')
+      sessionStorage.setItem('isPregnant', 'false')
+    }
+  } catch (error) {
+    console.error('임신 정보 불러오기 오류:', error)
+    errorMessage.value = error.response?.data?.detail || '임신 정보를 불러오는 중 오류가 발생했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 컴포넌트 마운트 시 임신 정보 불러오기
+onMounted(fetchPregnancyInfo)
 
 // 임신 정보 불러오기
 const fetchPregnancyInfo = async () => {
@@ -110,8 +160,32 @@ watch(() => unknownInfo.value.currentWeek, (isUnknown) => {
 
 // 임신 정보 저장 함수
 const savePregnancyInfo = async () => {
+// 임신 정보 저장 함수
+const savePregnancyInfo = async () => {
   // 임신이 아닌 경우 바로 저장
   if (!pregnancyInfo.value.isPregnant) {
+    try {
+      isSubmitting.value = true
+
+      // 기존 임신 정보가 있는 경우 삭제 요청
+      if (pregnancyInfo.value.pregnancyId) {
+        await api.delete(`/accounts/pregnancies/${pregnancyInfo.value.pregnancyId}/`)
+      }
+
+      // 임신 상태 저장
+      localStorage.setItem('isPregnant', 'false')
+      sessionStorage.setItem('isPregnant', 'false')
+
+      alert('임신 정보가 성공적으로 저장되었습니다.')
+      router.push('/profile')
+      return
+    } catch (error) {
+      console.error('임신 정보 삭제 오류:', error)
+      errorMessage.value = error.response?.data?.detail || '임신 정보 삭제 중 오류가 발생했습니다.'
+      alert(errorMessage.value)
+    } finally {
+      isSubmitting.value = false
+    }
     try {
       isSubmitting.value = true
 
@@ -145,6 +219,45 @@ const savePregnancyInfo = async () => {
   if (!pregnancyInfo.value.dueDate && !unknownInfo.value.dueDate) {
     alert('출산 예정일을 선택하거나 모름을 체크해주세요.')
     return
+  }
+
+  isSubmitting.value = true
+  errorMessage.value = ''
+
+  try {
+    // API 요청 데이터 준비
+    const requestData = {
+      baby_name: pregnancyInfo.value.babyName,
+      due_date: pregnancyInfo.value.dueDate || null,
+      current_week: pregnancyInfo.value.currentWeek,
+      high_risk: pregnancyInfo.value.highRisk
+    }
+
+    let response
+
+    // 기존 임신 정보가 있는 경우 업데이트, 없는 경우 새로 생성
+    if (pregnancyInfo.value.pregnancyId) {
+      response = await api.put(`/accounts/pregnancies/${pregnancyInfo.value.pregnancyId}/`, requestData)
+    } else {
+      response = await api.post('/accounts/pregnancies/', requestData)
+      pregnancyInfo.value.pregnancyId = response.data.pregnancy_id
+    }
+
+    // 임신 상태 저장
+    localStorage.setItem('isPregnant', 'true')
+    sessionStorage.setItem('isPregnant', 'true')
+
+    // 저장 성공 메시지
+    alert('임신 정보가 성공적으로 저장되었습니다.')
+
+    // 프로필 페이지로 이동
+    router.push('/profile')
+  } catch (error) {
+    console.error('임신 정보 저장 오류:', error)
+    errorMessage.value = error.response?.data?.detail || '임신 정보 저장 중 오류가 발생했습니다.'
+    alert(errorMessage.value)
+  } finally {
+    isSubmitting.value = false
   }
 
   isSubmitting.value = true
@@ -241,7 +354,30 @@ const goBack = () => {
       {{ errorMessage }}
     </div>
 
+    <!-- 로딩 표시 -->
+    <div
+      v-if="isLoading"
+      class="p-4 text-center"
+    >
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
+      <p class="mt-2 text-dark-gray">
+        정보를 불러오는 중...
+      </p>
+    </div>
+
+    <!-- 에러 메시지 표시 -->
+    <div
+      v-if="errorMessage"
+      class="p-4 mb-4 text-center text-red-700 bg-red-100"
+    >
+      {{ errorMessage }}
+    </div>
+
     <!-- 임신 정보 폼 -->
+    <div
+      v-if="!isLoading"
+      class="p-4"
+    >
     <div
       v-if="!isLoading"
       class="p-4"
@@ -382,8 +518,11 @@ const goBack = () => {
         <button
           class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
           :disabled="isSubmitting"
+          :disabled="isSubmitting"
           @click="savePregnancyInfo"
         >
+          <span v-if="isSubmitting">처리 중...</span>
+          <span v-else>저장하기</span>
           <span v-if="isSubmitting">처리 중...</span>
           <span v-else>저장하기</span>
         </button>

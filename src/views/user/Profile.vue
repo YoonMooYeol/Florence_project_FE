@@ -1,6 +1,7 @@
 <!-- eslint-disable no-trailing-spaces -->
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import api from '@/utils/axios'
@@ -8,14 +9,25 @@ import BottomNavBar from '@/components/common/BottomNavBar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const authStore = useAuthStore()
 
+// 사용자 정보
 // 사용자 정보
 const userInfo = ref({
   name: '',
   email: '',
   phone: '',
   gender: '',
+  name: '',
+  email: '',
+  phone: '',
+  gender: '',
   isPregnant: false,
+  dueDate: '',
+  pregnancyWeek: null,
+  babyNickname: '',
+  highRisk: false,
+  pregnancyId: null
   dueDate: '',
   pregnancyWeek: null,
   babyNickname: '',
@@ -113,8 +125,100 @@ const fetchPregnancyInfo = async () => {
 // 컴포넌트 마운트 시 사용자 정보 불러오기
 onMounted(fetchUserInfo)
 
+// 로딩 상태 관리
+const isLoading = ref(false)
+const errorMessage = ref('')
+
+// 사용자 정보 불러오기
+const fetchUserInfo = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    // 토큰 확인
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+    if (!token) {
+      throw new Error('인증 토큰이 없습니다.')
+    }
+
+    // API를 통해 본인 정보 조회
+    const response = await api.get('/accounts/users/me/')
+    console.log('사용자 정보 응답:', response.data)
+
+    // 사용자 기본 정보 설정
+    userInfo.value.name = response.data.name || '사용자'
+    userInfo.value.email = response.data.email || ''
+    userInfo.value.phone = response.data.phone || ''
+    userInfo.value.gender = response.data.gender || ''
+
+    // 로컬 스토리지 및 세션 스토리지에 사용자 정보 저장
+    if (localStorage.getItem('rememberMe') === 'true') {
+      localStorage.setItem('userName', userInfo.value.name)
+      localStorage.setItem('userEmail', userInfo.value.email)
+    } else {
+      sessionStorage.setItem('userName', userInfo.value.name)
+      sessionStorage.setItem('userEmail', userInfo.value.email)
+    }
+
+    // 임신 정보 불러오기
+    await fetchPregnancyInfo()
+  } catch (error) {
+    console.error('사용자 정보 불러오기 오류:', error)
+    
+    if (error.response?.status === 401) {
+      // 인증 오류인 경우 로그인 페이지로 리다이렉트
+      router.push('/login')
+      return
+    }
+    
+    errorMessage.value = error.response?.data?.detail || error.message || '사용자 정보를 불러오는 중 오류가 발생했습니다.'
+
+    // API 호출 실패 시 로컬 스토리지에서 정보 가져오기
+    userInfo.value.name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '사용자'
+    userInfo.value.email = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail') || ''
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 임신 정보 불러오기
+const fetchPregnancyInfo = async () => {
+  try {
+    const response = await api.get('/accounts/pregnancies/')
+
+    // 임신 정보가 있는 경우
+    if (response.data && response.data.length > 0) {
+      const data = response.data[0] // 가장 최근 임신 정보 사용
+
+      userInfo.value.isPregnant = true
+      userInfo.value.babyNickname = data.baby_name
+      userInfo.value.dueDate = data.due_date
+      userInfo.value.pregnancyWeek = data.current_week
+      userInfo.value.highRisk = data.high_risk
+      userInfo.value.pregnancyId = data.pregnancy_id
+
+      // 임신 상태 저장
+      localStorage.setItem('isPregnant', 'true')
+      sessionStorage.setItem('isPregnant', 'true')
+    } else {
+      // 임신 정보가 없는 경우
+      userInfo.value.isPregnant = false
+      localStorage.setItem('isPregnant', 'false')
+      sessionStorage.setItem('isPregnant', 'false')
+    }
+  } catch (error) {
+    console.error('임신 정보 불러오기 오류:', error)
+    throw error
+  }
+}
+
+// 컴포넌트 마운트 시 사용자 정보 불러오기
+onMounted(fetchUserInfo)
+
 // 출산 예정일까지 남은 일수 계산 함수
 const getDaysUntilDueDate = () => {
+  if (!userInfo.value.dueDate) return 0
+
   if (!userInfo.value.dueDate) return 0
 
   const today = new Date()
@@ -198,7 +302,30 @@ const handleLogout = async () => {
       {{ errorMessage }}
     </div>
 
+    <!-- 로딩 표시 -->
+    <div
+      v-if="isLoading"
+      class="p-4 text-center"
+    >
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
+      <p class="mt-2 text-dark-gray">
+        정보를 불러오는 중...
+      </p>
+    </div>
+
+    <!-- 에러 메시지 표시 -->
+    <div
+      v-if="errorMessage"
+      class="p-4 mb-4 text-center text-red-700 bg-red-100"
+    >
+      {{ errorMessage }}
+    </div>
+
     <!-- 사용자 정보 섹션 -->
+    <div
+      v-if="!isLoading"
+      class="p-4 mt-4 pb-20"
+    >
     <div
       v-if="!isLoading"
       class="p-4 mt-4 pb-20"
@@ -259,8 +386,39 @@ const handleLogout = async () => {
             class="space-y-4"
           >
             <!-- <div class="flex justify-between items-center">
+        <!-- 임신 정보 섹션 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-dark-gray">
+              ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
+            </h2>
+            <div
+              v-if="userInfo.isPregnant"
+              class="flex space-x-2"
+            >
+              <!-- <button
+                class="px-3 py-1 text-sm bg-base-yellow rounded-md hover:bg-point-yellow text-dark-gray"
+                @click="router.push('/pregnancy-info-edit')"
+              >
+                수정
+              </button>
+              <button
+                class="px-3 py-1 text-sm bg-red-100 rounded-md hover:bg-red-200 text-red-600"
+                @click="deletePregnancyInfo"
+              >
+                삭제
+              </button> -->
+            </div>
+          </div>
+
+          <div
+            v-if="userInfo.isPregnant"
+            class="space-y-4"
+          >
+            <!-- <div class="flex justify-between items-center">
               <span class="text-gray-600">태명</span>
               <span class="font-medium">{{ userInfo.babyNickname }}</span>
+            </div> -->
             </div> -->
             <div class="flex justify-between items-center">
               <span class="text-gray-600">출산 예정일</span>
@@ -270,6 +428,14 @@ const handleLogout = async () => {
               <span class="text-gray-600">현재 임신 주차</span>
               <span class="font-medium">{{ userInfo.pregnancyWeek }}주차</span>
             </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">출산까지 남은 일수</span>
+              <span class="font-medium">{{ getDaysUntilDueDate() }}일</span>
+            </div>
+            <div
+              v-if="userInfo.highRisk"
+              class="flex items-center text-red-500"
+            >
             <div class="flex justify-between items-center">
               <span class="text-gray-600">출산까지 남은 일수</span>
               <span class="font-medium">{{ getDaysUntilDueDate() }}일</span>
@@ -293,6 +459,13 @@ const handleLogout = async () => {
               <span class="text-sm">고위험 임신</span>
             </div>
           </div>
+          <div
+            v-else
+            class="text-center"
+          >
+            <p class="text-gray-500 mb-4">
+              아직 임신 정보가 등록되지 않았습니다
+            </p>
           <div
             v-else
             class="text-center"
