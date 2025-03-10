@@ -1,12 +1,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import api from '@/utils/axios'
 
 const router = useRouter()
-const authStore = useAuthStore()
 const authStore = useAuthStore()
 
 // 폼 데이터 관리
@@ -88,7 +86,6 @@ const checkSavedLogin = () => {
   const savedRememberMe = localStorage.getItem('rememberMe')
   const savedEmail = localStorage.getItem('userEmail')
   const accessToken = localStorage.getItem('accessToken') || authStore.accessToken
-  const accessToken = localStorage.getItem('accessToken') || authStore.accessToken
 
   if (savedRememberMe === 'true' && savedEmail && accessToken) {
     formData.email = savedEmail
@@ -122,7 +119,6 @@ onMounted(() => {
 
 // 로그인 API 호출 함수
 const loginApi = async (email, password) => {
-  const response = await api.post('/accounts/login/', {
   const response = await api.post('/accounts/login/', {
     email,
     password
@@ -299,7 +295,6 @@ const goToFindPassword = () => {
       <div
         v-if="errors.form"
         class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-[20px]"
-        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-[20px]"
       >
         {{ errors.form }}
       </div>
@@ -319,7 +314,6 @@ const goToFindPassword = () => {
             id="email"
             v-model="formData.email"
             type="email"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="이메일을 입력하세요"
           >
@@ -341,7 +335,6 @@ const goToFindPassword = () => {
             id="password"
             v-model="formData.password"
             type="password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             class="w-full px-3 py-2 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 입력하세요"
           >
@@ -370,7 +363,6 @@ const goToFindPassword = () => {
           <!-- 로그인 버튼 -->
           <button
             type="submit"
-            class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             :disabled="isSubmitting"
           >
@@ -445,7 +437,6 @@ const goToFindPassword = () => {
 
               <button
                 type="button"
-                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-black border border-black rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
                 class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-black border border-black rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
               >
                 <svg
