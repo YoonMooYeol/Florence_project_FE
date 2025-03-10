@@ -5,6 +5,8 @@ import axios from 'axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
 import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 const CONTEXT = 'Chat'
 
@@ -376,6 +378,19 @@ const handleSendClick = () => {
     }, 10)
   }
 }
+
+// 마크다운을 HTML로 안전하게 변환하는 함수
+const parseMarkdown = (text) => {
+  if (!text) return ''
+  try {
+    // 마크다운을 HTML로 변환한 후 XSS 공격 방지를 위해 정화
+    const parsed = marked(text)
+    return DOMPurify.sanitize(parsed)
+  } catch (error) {
+    logger.error(CONTEXT, '마크다운 파싱 오류:', error)
+    return text // 오류 발생 시 원본 텍스트 반환
+  }
+}
 </script>
 
 <template>
@@ -424,27 +439,32 @@ const handleSendClick = () => {
             </div>
             <div>
               <div
-                class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
+                class="bg-white p-3 rounded-lg shadow-sm markdown-content"
                 :class="{
                   'loading-message': message.isLoading,
                   'typing-message': message.isTyping
                 }"
               >
-                {{ message.content }}
-                <span
-                  v-if="message.isLoading && !message.isTyping"
-                  class="loading-dots"
-                >
-                  <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
-                </span>
-                <span
-                  v-if="message.isTyping"
-                  class="typing-indicator"
-                >
-                  <span class="typing-dot" />
-                  <span class="typing-dot" />
-                  <span class="typing-dot" />
-                </span>
+                <!-- 마크다운 렌더링 -->
+                <div v-if="!message.isLoading" v-html="parseMarkdown(message.content)"></div>
+                <!-- 로딩 표시는 기존대로 유지 -->
+                <template v-else>
+                  {{ message.content }}
+                  <span
+                    v-if="message.isLoading && !message.isTyping"
+                    class="loading-dots"
+                  >
+                    <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+                  </span>
+                  <span
+                    v-if="message.isTyping"
+                    class="typing-indicator"
+                  >
+                    <span class="typing-dot" />
+                    <span class="typing-dot" />
+                    <span class="typing-dot" />
+                  </span>
+                </template>
               </div>
               <div class="text-xs text-gray-500 mt-1 ml-1">
                 {{ message.time }}
@@ -482,11 +502,7 @@ const handleSendClick = () => {
         <p v-if="currentSearchQuery" class="text mb-2">
           <span class="font-medium">검색 중:</span> "{{ currentSearchQuery }}"
         </p>
-        <p v-else class="text-sm mb-2">
-          정보를 찾는 중입니다...
-        </p>
       </div>
-      
       <p class="text-white text-sm mt-4">
         사용자 질문을 분석하고 신뢰할 수 있는 정보를 찾고 있습니다
       </p>
@@ -673,5 +689,88 @@ textarea {
 
 .animate-pulse-width {
   animation: pulse-width 2s ease-in-out infinite;
+}
+
+/* 마크다운 콘텐츠 스타일 */
+:deep(.markdown-content) {
+  line-height: 1.6;
+}
+
+:deep(.markdown-content h1) {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+:deep(.markdown-content h2) {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-top: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+:deep(.markdown-content h3) {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.6rem;
+  margin-bottom: 0.3rem;
+}
+
+:deep(.markdown-content p) {
+  margin-bottom: 0.75rem;
+}
+
+:deep(.markdown-content ul, .markdown-content ol) {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+:deep(.markdown-content li) {
+  margin-bottom: 0.25rem;
+}
+
+:deep(.markdown-content pre) {
+  background-color: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+:deep(.markdown-content code) {
+  font-family: monospace;
+  background-color: #f8f9fa;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+:deep(.markdown-content blockquote) {
+  border-left: 4px solid #e2e8f0;
+  padding-left: 1rem;
+  color: #4a5568;
+  font-style: italic;
+  margin-bottom: 0.75rem;
+}
+
+:deep(.markdown-content a) {
+  color: #3182ce;
+  text-decoration: underline;
+}
+
+:deep(.markdown-content table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+}
+
+:deep(.markdown-content th, .markdown-content td) {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem;
+}
+
+:deep(.markdown-content img) {
+  max-width: 100%;
+  height: auto;
 }
 </style>
