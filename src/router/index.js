@@ -103,6 +103,7 @@ const routes = [
     name: 'SocialCallback',
     component: SocialCallback
   }
+  
 ]
 
 const router = createRouter({
