@@ -4,6 +4,7 @@ import KakaoCallback from '../views/auth/callback/KakaoCallback.vue'
 import NaverCallback from '../views/auth/callback/NaverCallback.vue'
 import GoogleCallback from '../views/auth/callback/GoogleCallback.vue'
 import SocialCallback from '../views/auth/callback/SocialCallback.vue'
+import FindPassword from '../views/FindPassword.vue'
 
 const routes = [
   {
@@ -108,7 +109,6 @@ const routes = [
     name: 'SocialCallback',
     component: SocialCallback
   }
-  
 ]
 
 const router = createRouter({

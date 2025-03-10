@@ -271,6 +271,8 @@ const goToRegister = () => {
 const goToFindPassword = () => {
   router.push('/find-password')
 }
+
+
 </script>
 
 <template>
