@@ -126,6 +126,7 @@ router.beforeEach((to, from, next) => {
     '/', // 홈 페이지는 인증 없이 접근 가능
     '/login',
     '/register',
+    '/find-password',
     '/pregnancy-info-register',
     '/kakao/callback',
     '/naver/callback',
