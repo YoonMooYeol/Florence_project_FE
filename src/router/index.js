@@ -17,6 +17,11 @@ const routes = [
     component: () => import('../views/Login.vue')
   },
   {
+    path: '/find-password',
+    name: 'FindPassword',
+    component: () => import('../views/FindPassword.vue')
+  },
+  {
     path: '/calendar',
     name: 'Calendar',
     component: () => import('../views/Calendar.vue')
