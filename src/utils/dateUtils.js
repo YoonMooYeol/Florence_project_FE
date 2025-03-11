@@ -3,13 +3,14 @@
  */
 
 /**
- * 날짜를 한국어 형식으로 포맷팅 (YYYY년 MM월 DD일)
+ * 날짜를 한국어 형식으로 포맷팅 (YYYY년 MM월 DD일 (요일))
  * @param {string|Date} date - 날짜 문자열 또는 Date 객체
  * @returns {string} 포맷팅된 날짜 문자열
  */
 export function formatDate (date) {
   const dateObj = date instanceof Date ? date : new Date(date)
-  return `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일`
+  const dayOfWeek = weekdays[dateObj.getDay()]
+  return `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일 (${dayOfWeek})`
 }
 
 /**
@@ -107,3 +108,75 @@ export const koLocale = {
  * 요일 배열 (한국어)
  */
 export const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+
+/**
+ * 출산예정일로부터 현재 임신 주차 계산
+ * @param {string|Date} dueDate - 출산예정일
+ * @returns {number} 현재 임신 주차 (1-40)
+ */
+export function calculateWeekFromDueDate(dueDate) {
+  if (!dueDate) return 0
+  
+  const today = new Date()
+  const dueDateObj = dueDate instanceof Date ? dueDate : new Date(dueDate)
+  
+  // 출산예정일에서 오늘까지 남은 일수 계산
+  const daysLeft = Math.floor((dueDateObj - today) / (1000 * 60 * 60 * 24))
+  
+  // 정상 임신 기간은 40주(280일)
+  // 남은 일수를 기반으로 현재 주차 계산 (40주 - 남은 주)
+  const weeksLeft = Math.ceil(daysLeft / 7)
+  const currentWeek = 40 - weeksLeft
+  
+  // 1주차와 40주차 사이로 제한
+  return Math.max(1, Math.min(40, currentWeek))
+}
+
+/**
+ * 현재 임신 주차로부터 출산예정일 계산
+ * @param {number} currentWeek - 현재 임신 주차 (1-40)
+ * @returns {string} 출산예정일 (YYYY-MM-DD 형식)
+ */
+export function calculateDueDateFromWeek(currentWeek) {
+  if (!currentWeek || currentWeek < 1 || currentWeek > 40) return ''
+  
+  const today = new Date()
+  
+  // 남은 주차 계산
+  const weeksLeft = 40 - currentWeek
+  
+  // 남은 주차를 일수로 변환하여 오늘 날짜에 더함
+  const daysLeft = weeksLeft * 7
+  const dueDate = new Date(today.getTime() + daysLeft * 24 * 60 * 60 * 1000)
+  
+  return normalizeDate(dueDate)
+}
+
+/**
+ * 마지막 생리일로부터 임신 주차와 출산예정일 계산
+ * @param {string|Date} lastPeriodDate - 마지막 생리 시작일
+ * @returns {Object} 현재 임신 주차와 출산예정일 객체
+ */
+export function calculateFromLastPeriod(lastPeriodDate) {
+  if (!lastPeriodDate) return { currentWeek: 0, dueDate: '' }
+  
+  const periodDate = lastPeriodDate instanceof Date ? lastPeriodDate : new Date(lastPeriodDate)
+  const today = new Date()
+  
+  // 1. 출산예정일 계산 (마지막 생리일 + 280일)
+  const dueDateObj = new Date(periodDate)
+  dueDateObj.setDate(periodDate.getDate() + 280)
+  const dueDate = normalizeDate(dueDateObj)
+  
+  // 2. 임신 주차 계산 (오늘 - 마지막 생리일) / 7
+  const daysPassed = Math.floor((today - periodDate) / (1000 * 60 * 60 * 24))
+  const currentWeek = Math.floor(daysPassed / 7) + 1 // 1주차부터 시작
+  
+  // 현재 주차가 1~40 사이인지 검증
+  const validWeek = Math.max(1, Math.min(40, currentWeek))
+  
+  return {
+    currentWeek: validWeek,
+    dueDate
+  }
+}

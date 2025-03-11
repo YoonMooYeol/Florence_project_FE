@@ -39,7 +39,7 @@ const validateForm = () => {
 // 비밀번호 찾기 API 호출
 const findPasswordApi = async (email) => {
   try {
-    const response = await api.post('/accounts/password-reset/', { email })
+    const response = await api.post('/accounts/reset_code/', { email })
     return response.data
   } catch (error) {
     throw new Error(error.response?.data?.message || '비밀번호 찾기 요청 실패')

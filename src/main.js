@@ -5,6 +5,7 @@ import router from './router'
 import './assets/main.css'
 import { handleComponentError } from './utils/errorHandler'
 import * as logger from './utils/logger'
+import SvgIcon from '@jamescoyle/vue-icon'
 
 // Tailwind CSS 적용
 import 'tailwindcss/tailwind.css'
@@ -14,6 +15,9 @@ const app = createApp(App)
 
 // 전역 에러 핸들러 설정
 app.config.errorHandler = handleComponentError
+
+// SvgIcon 컴포넌트 전역 등록
+app.component('SvgIcon', SvgIcon)
 
 // 개발 환경일 때만 로깅 워닝과 에러 가로채기
 if (process.env.NODE_ENV !== 'production') {

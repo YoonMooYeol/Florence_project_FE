@@ -20,7 +20,8 @@ const userInfo = ref({
   pregnancyWeek: null,
   babyNickname: '',
   highRisk: false,
-  pregnancyId: null
+  pregnancyId: null,
+  isFromRegistration: false
 })
 
 // 로딩 상태 관리
@@ -94,6 +95,7 @@ const fetchPregnancyInfo = async () => {
       userInfo.value.pregnancyWeek = data.current_week
       userInfo.value.highRisk = data.high_risk
       userInfo.value.pregnancyId = data.pregnancy_id
+      userInfo.value.isFromRegistration = data.is_from_registration || false // 회원가입 시 등록 여부 설정
 
       // 임신 상태 저장
       localStorage.setItem('isPregnant', 'true')
@@ -145,6 +147,24 @@ const getJosa = (word, josa1, josa2) => {
 
   // 한글이 아닌 경우 기본값 반환
   return josa1
+}
+
+// 임신 정보 수정 페이지로 이동
+const goToPregnancyEdit = () => {
+  if (userInfo.value.isFromRegistration) {
+    // 회원가입 시 등록한 경우 수정 모드가 false인 상태로 임신정보 페이지로 이동
+    router.push('/pregnancy-info-edit')
+  } else {
+    // 회원가입 시 등록하지 않은 경우 바로 수정 페이지로 이동 (이미 수정 모드가 true 상태)
+    router.push('/pregnancy-info-edit')
+  }
+}
+
+// 수정 모드로 임신정보 수정 페이지로 이동
+const editPregnancyInfo = () => {
+  // 로컬 스토리지에 수정 모드 활성화 표시
+  sessionStorage.setItem('pregnancyEditMode', 'true')
+  router.push('/pregnancy-info-edit')
 }
 
 // 임신 정보 삭제 함수
@@ -235,33 +255,12 @@ const handleLogout = async () => {
             <h2 class="text-lg font-bold text-dark-gray">
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
-            <div
-              v-if="userInfo.isPregnant"
-              class="flex space-x-2"
-            >
-              <!-- <button
-                class="px-3 py-1 text-sm bg-base-yellow rounded-md hover:bg-point-yellow text-dark-gray"
-                @click="router.push('/pregnancy-info-edit')"
-              >
-                수정
-              </button>
-              <button
-                class="px-3 py-1 text-sm bg-red-100 rounded-md hover:bg-red-200 text-red-600"
-                @click="deletePregnancyInfo"
-              >
-                삭제
-              </button> -->
-            </div>
           </div>
 
           <div
             v-if="userInfo.isPregnant"
             class="space-y-4"
           >
-            <!-- <div class="flex justify-between items-center">
-              <span class="text-gray-600">태명</span>
-              <span class="font-medium">{{ userInfo.babyNickname }}</span>
-            </div> -->
             <div class="flex justify-between items-center">
               <span class="text-gray-600">출산 예정일</span>
               <span class="font-medium">{{ userInfo.dueDate }}</span>
@@ -335,7 +334,7 @@ const handleLogout = async () => {
 
           <button
             class="w-full p-4 text-left flex items-center"
-            @click="router.push('/pregnancy-info-edit')"
+            @click="goToPregnancyEdit"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -345,7 +344,7 @@ const handleLogout = async () => {
             >
               <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
             </svg>
-            <span class="text-dark-gray">임신 정보 입력</span>
+            <span class="text-dark-gray">임신 정보 관리</span>
           </button>
 
           <button class="w-full p-4 text-left flex items-center">

@@ -6,8 +6,12 @@ import socket, { connectSocket, isConnected } from '@/utils/socket'
 import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import * as chatService from '@/services/chatService'
+import SvgIcon from '@jamescoyle/vue-icon'
+import { mdiBabyFaceOutline, mdiSend } from '@mdi/js'
 
 const CONTEXT = 'ChatSocketView'
+const path = mdiBabyFaceOutline
+const sendIconPath = mdiSend // 전송 아이콘 경로 설정
 
 // 라우터 및 기본 상태 설정
 const router = useRouter()
@@ -349,23 +353,10 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
         
         <!-- 새 대화 버튼 -->
         <button
-          class="p-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
+          class="p-1 rounded-full bg-point-yellow hover:bg-yellow-400 focus:outline-none"
           @click="showNewChatDialog = true"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
+          <svg-icon type="mdi" :path="path" size="20" :fill="true" color="#353535"></svg-icon>
         </button>
       </div>
     </div>
@@ -399,20 +390,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
               class="p-1 rounded-full bg-point-yellow hover:bg-yellow-400 focus:outline-none"
               @click="createNewConversation"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-dark-gray"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
+              <svg-icon type="mdi" :path="path" size="20" :fill="true" color="#353535"></svg-icon>
             </button>
           </div>
           
@@ -490,20 +468,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
             class="p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
             @click="createNewConversation"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
+            <svg-icon type="mdi" :path="path" size="20" :fill="true" color="#353535"></svg-icon>
           </button>
         </div>
 
@@ -514,146 +479,117 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
           class="flex-1 p-4 overflow-y-auto chat-messages pb-24"
         >
           <div class="flex flex-col space-y-4">
-            <!-- 환영 메시지 -->
-            <div v-if="!chatService.selectedConversation.value.messages || chatService.selectedConversation.value.messages.length === 0" class="flex justify-start">
-              <div class="flex max-w-[80%]">
-                <div class="w-8 h-8 bg-point-yellow rounded-full flex items-center justify-center mr-2 flex-shrink-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 text-dark-gray"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8 5a1 1 0 100-2 1 1 0 000 2zm-2-7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5z" />
-                  </svg>
+            <div class="flex">
+              <svg-icon type="mdi" :path="path" size="32" :fill="true" color="#FFD600" class="mr-2 flex-shrink-0"></svg-icon>
+              
+              <div>
+                <div class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap">
+                  안녕하세요! 플로렌스 AI 상담사입니다. 임신 및 출산에 관한 질문이 있으시면 언제든지 물어보세요.
                 </div>
-                <div>
-                  <div class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-                    안녕하세요! 플로렌스 AI 상담사입니다. 임신 및 출산에 관한 질문이 있으시면 언제든지 물어보세요.
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1 ml-1">
-                    {{ getCurrentTime() }}
-                  </div>
+                <div class="text-xs text-gray-500 mt-1 ml-1">
+                  {{ getCurrentTime() }}
                 </div>
               </div>
             </div>
+          </div>
+          
+          <!-- 메시지 목록 -->
+          <template v-for="(message, index) in chatService.selectedConversation.value.messages" :key="message.id">
+            <!-- 날짜 구분선 (날짜가 바뀌는 경우) -->
+            <div
+              v-if="index === 0 || new Date(message.created_at).toDateString() !== new Date(chatService.selectedConversation.value.messages[index-1].created_at).toDateString()"
+              class="flex justify-center my-4"
+            >
+              <div class="px-4 py-1 bg-gray-200 rounded-full text-xs text-gray-700">
+                {{ new Date(message.created_at).toLocaleDateString() }}
+              </div>
+            </div>
             
-            <!-- 메시지 목록 -->
-            <template v-for="(message, index) in chatService.selectedConversation.value.messages" :key="message.id">
-              <!-- 날짜 구분선 (날짜가 바뀌는 경우) -->
+            <!-- 메시지 아이템 -->
+            <div
+              class="flex"
+              :class="message.sender === 'user' || message.role === 'user' ? 'justify-end' : 'justify-start'"
+            >
+              <!-- AI 메시지 -->
               <div
-                v-if="index === 0 || new Date(message.created_at).toDateString() !== new Date(chatService.selectedConversation.value.messages[index-1].created_at).toDateString()"
-                class="flex justify-center my-4"
+                v-if="message.sender === 'assistant' || message.role === 'assistant'"
+                class="flex max-w-[80%]"
               >
-                <div class="px-4 py-1 bg-gray-200 rounded-full text-xs text-gray-700">
-                  {{ new Date(message.created_at).toLocaleDateString() }}
+                <svg-icon type="mdi" :path="path" size="32" :fill="true" color="#FFD600" class="mr-2 flex-shrink-0"></svg-icon>
+                <div>
+                  <div
+                    class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
+                    :class="{
+                      'typing-message': message.isTyping
+                    }"
+                  >
+                    {{ message.content || message.response }}
+                    <span
+                      v-if="message.isTyping"
+                      class="typing-indicator"
+                    >
+                      <span class="typing-dot" />
+                      <span class="typing-dot" />
+                      <span class="typing-dot" />
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1 ml-1 flex items-center">
+                    <span>{{ typeof message.created_at === 'string' ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : message.created_at }}</span>
+                  </div>
                 </div>
               </div>
               
-              <!-- 메시지 아이템 -->
+              <!-- 사용자 메시지 -->
               <div
-                class="flex"
-                :class="message.sender === 'user' || message.role === 'user' ? 'justify-end' : 'justify-start'"
+                v-else-if="message.sender === 'user' || message.role === 'user'"
+                class="flex flex-col items-end max-w-[80%]"
               >
-                <!-- AI 메시지 -->
-                <div
-                  v-if="message.sender === 'assistant' || message.role === 'assistant'"
-                  class="flex max-w-[80%]"
+                <div 
+                  class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap"
+                  :class="{ 'opacity-70': message.isPending }"
                 >
-                  <div class="w-8 h-8 bg-point-yellow rounded-full flex items-center justify-center mr-2 flex-shrink-0">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-5 w-5 text-dark-gray"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8 5a1 1 0 100-2 1 1 0 000 2zm-2-7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <div
-                      class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
-                      :class="{
-                        'typing-message': message.isTyping
-                      }"
-                    >
-                      {{ message.content || message.response }}
-                      <span
-                        v-if="message.isTyping"
-                        class="typing-indicator"
-                      >
-                        <span class="typing-dot" />
-                        <span class="typing-dot" />
-                        <span class="typing-dot" />
-                      </span>
-                    </div>
-                    <div class="text-xs text-gray-500 mt-1 ml-1 flex items-center">
-                      <span>{{ typeof message.created_at === 'string' ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : message.created_at }}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 사용자 메시지 -->
-                <div
-                  v-else-if="message.sender === 'user' || message.role === 'user'"
-                  class="flex flex-col items-end max-w-[80%]"
-                >
-                  <div 
-                    class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap"
-                    :class="{ 'opacity-70': message.isPending }"
+                  {{ message.content || message.query }}
+                  <span
+                    v-if="message.isPending"
+                    class="ml-2 inline-block"
                   >
-                    {{ message.content || message.query }}
-                    <span
-                      v-if="message.isPending"
-                      class="ml-2 inline-block"
-                    >
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                    </span>
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1 mr-1 flex items-center">
-                    <span>{{ typeof message.created_at === 'string' ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : message.created_at }}</span>
-                    
-                    <!-- 읽음 표시 -->
-                    <svg
-                      v-if="message.isRead"
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-4 w-4 ml-1 text-blue-500"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
-                    </svg>
-                  </div>
+                    <span class="typing-dot" />
+                    <span class="typing-dot" />
+                    <span class="typing-dot" />
+                  </span>
                 </div>
-              </div>
-            </template>
-            
-            <!-- 타이핑 상태 표시 -->
-            <div
-              v-if="chatService.typingUsers.value[chatService.selectedConversation.value?.id]"
-              class="flex justify-start"
-            >
-              <div class="flex max-w-[80%]">
-                <div class="w-8 h-8 bg-point-yellow rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                <div class="text-xs text-gray-500 mt-1 mr-1 flex items-center">
+                  <span>{{ typeof message.created_at === 'string' ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : message.created_at }}</span>
+                  
+                  <!-- 읽음 표시 -->
                   <svg
+                    v-if="message.isRead"
                     xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 text-dark-gray"
+                    class="h-4 w-4 ml-1 text-blue-500"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
-                    <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8 5a1 1 0 100-2 1 1 0 000 2zm-2-7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5z" />
+                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
                   </svg>
                 </div>
-                <div>
-                  <div class="bg-gray-100 p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-                    <span class="typing-indicator">
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                    </span>
-                  </div>
+              </div>
+            </div>
+          </template>
+          
+          <!-- 타이핑 상태 표시 -->
+          <div
+            v-if="chatService.typingUsers.value[chatService.selectedConversation.value?.id]"
+            class="flex justify-start"
+          >
+            <div class="flex max-w-[80%]">
+              <svg-icon type="mdi" :path="path" size="32" :fill="true" color="#FFD600" class="mr-2 flex-shrink-0"></svg-icon>
+              <div>
+                <div class="bg-gray-100 p-3 rounded-lg shadow-sm whitespace-pre-wrap">
+                  <span class="typing-indicator">
+                    <span class="typing-dot" />
+                    <span class="typing-dot" />
+                    <span class="typing-dot" />
+                  </span>
                 </div>
               </div>
             </div>
@@ -662,7 +598,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
         
         <!-- 대화 선택 안내 (대화가 선택되지 않은 경우) -->
         <div
-          v-else
+          v-if="!chatService.selectedConversation.value"
           class="flex-1 flex flex-col items-center justify-center p-4"
         >
           <svg
@@ -708,19 +644,8 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
               :disabled="isSubmitting || !userInput.trim()"
               @click="handleSendMessage"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="#000000">
+                <path d="M13,8A4,4 0 0,1 9,12A4,4 0 0,1 5,8A4,4 0 0,1 9,4A4,4 0 0,1 13,8M17,8A4,4 0 0,1 13,12A4,4 0 0,1 9,8A4,4 0 0,1 13,4A4,4 0 0,1 17,8M19.5,13.5L21.2,15.2L19.5,16.9L17.8,15.2L19.5,13.5M9.5,13.5L11.2,15.2L9.5,16.9L7.8,15.2L9.5,13.5M3.5,13.5L5.2,15.2L3.5,16.9L1.8,15.2L3.5,13.5M13,14A8,8 0 0,0 5,22H9A4,4 0 0,1 13,18A4,4 0 0,1 17,22H21A8,8 0 0,0 13,14Z" />
               </svg>
             </button>
           </div>
@@ -759,7 +684,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
 
     <!-- 하단 네비게이션 바 -->
     <BottomNavBar active-tab="chat" />
-  </div>
+  </div> 
 </template>
 
 <style scoped>
@@ -849,4 +774,4 @@ textarea {
     opacity: 0.3;
   }
 }
-</style> 
+</style>
