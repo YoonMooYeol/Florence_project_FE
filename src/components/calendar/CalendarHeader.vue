@@ -38,19 +38,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="pt-6 pb-4 px-6 border-b border-gray-200 bg-base">
-    <h1 class="text-xl font-bold text-center text-dark-gray mb-4">
-      {{ currentYear }}년 {{ currentMonth }}월
-    </h1>
+  <div class="p-4 border-b border-gray-200 bg-base">
     <div class="flex justify-between items-center">
       <button @click="prevMonth" class="text-dark-gray hover:text-gray-600">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
-      <button @click="goToToday" class="text-dark-gray hover:text-gray-600">
-        오늘
-      </button>
+      <span class="text-lg font-bold text-dark-gray">{{ currentYear }}년 {{ currentMonth }}월</span>
       <button @click="nextMonth" class="text-dark-gray hover:text-gray-600">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

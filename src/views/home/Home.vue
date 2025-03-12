@@ -3,8 +3,20 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-const goToLogin = () => {
-  router.push('/login')
+const goToLogin = async () => {
+  console.log('시작하기 버튼 클릭')
+  try {
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+    if (token) {
+      // 이미 로그인된 경우 캘린더 페이지로 이동
+      await router.push('/calendar')
+    } else {
+      // 로그인되지 않은 경우 로그인 페이지로 이동
+      await router.push('/login')
+    }
+  } catch (error) {
+    console.error('라우팅 에러:', error)
+  }
 }
 </script>
 

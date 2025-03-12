@@ -33,8 +33,8 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
       html: `
         <div class="day-cell-content">
           <span class="fc-daygrid-day-number">${dayNumber}</span>
-          ${hasBabyDiary ? '<span class="baby-diary-indicator">👶</span>' : ''}
           ${hasLLM ? '<span class="llm-indicator">•</span>' : ''}
+          ${hasBabyDiary ? '<span class="baby-diary-indicator">♥︎</span>' : ''}
         </div>
       `
     }

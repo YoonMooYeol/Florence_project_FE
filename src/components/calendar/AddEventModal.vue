@@ -16,19 +16,40 @@ const emit = defineEmits(['close', 'save'])
 
 // 폼 데이터
 const title = ref('')
-const date = ref('')
+const dates = ref([]) // 다중 날짜를 위한 배열
 const isAllDay = ref(false)
 const startTime = ref('09:00')
 const endTime = ref('10:00')
 const notification = ref('none')
 const memo = ref('')
+const isRecurring = ref(false)
+const recurrenceType = ref('none')
 
 // 선택된 날짜가 변경되면 폼 데이터 업데이트
 watch(() => props.selectedDate, (newDate) => {
   if (newDate) {
-    date.value = newDate.split('T')[0]
+    dates.value = [newDate.split('T')[0]]
   }
 }, { immediate: true })
+
+// 반복 설정 체크박스 변경 감지
+watch(isRecurring, (newValue) => {
+  if (newValue) {
+    recurrenceType.value = 'daily'
+  } else {
+    recurrenceType.value = 'none'
+  }
+})
+
+// 날짜 추가
+const addDate = () => {
+  dates.value.push('')
+}
+
+// 날짜 삭제
+const removeDate = (index) => {
+  dates.value.splice(index, 1)
+}
 
 // 모달 닫기
 const closeModal = () => {
@@ -39,18 +60,36 @@ const closeModal = () => {
 // 폼 초기화
 const resetForm = () => {
   title.value = ''
-  date.value = props.selectedDate ? props.selectedDate.split('T')[0] : ''
+  dates.value = props.selectedDate ? [props.selectedDate.split('T')[0]] : ['']
   isAllDay.value = false
   startTime.value = '09:00'
   endTime.value = '10:00'
   notification.value = 'none'
   memo.value = ''
+  isRecurring.value = false
+  recurrenceType.value = 'none'
+}
+
+// 반복 주기 텍스트 가져오기
+const getRecurringText = (type) => {
+  switch (type) {
+    case 'daily':
+      return '매일'
+    case 'weekly':
+      return '매주'
+    case 'monthly':
+      return '매월'
+    case 'yearly':
+      return '매년'
+    default:
+      return ''
+  }
 }
 
 // 일정 저장
 const saveEvent = () => {
   // 필수 입력값 검증
-  if (!title.value || !date.value) {
+  if (!title.value || dates.value.length === 0 || dates.value.some(date => !date)) {
     alert('제목과 날짜는 필수 입력 항목입니다.')
     return
   }
@@ -61,31 +100,37 @@ const saveEvent = () => {
     return
   }
 
-  // 이벤트 객체 생성
-  const newEvent = {
-    title: title.value,
-    allDay: isAllDay.value,
-    description: memo.value,
-    backgroundColor: '#FFD600',
-    borderColor: '#FFD600',
-    textColor: '#353535',
-    display: 'block'
-  }
+  // 각 날짜별로 이벤트 생성
+  const events = dates.value.map(date => {
+    const recurringText = isRecurring.value ? `[${getRecurringText(recurrenceType.value)}] ` : ''
+    const newEvent = {
+      title: `${recurringText}${title.value}`,
+      allDay: isAllDay.value,
+      description: memo.value,
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
+      display: 'block',
+      recurring: isRecurring.value ? recurrenceType.value : 'none'
+    }
 
-  // 종일 이벤트인 경우
-  if (isAllDay.value) {
-    newEvent.start = date.value
-  } else {
-    // 시간이 있는 이벤트인 경우
-    newEvent.start = `${date.value}T${startTime.value}:00`
-    newEvent.end = `${date.value}T${endTime.value}:00`
-  }
+    // 종일 이벤트인 경우
+    if (isAllDay.value) {
+      newEvent.start = date
+    } else {
+      // 시간이 있는 이벤트인 경우
+      newEvent.start = `${date}T${startTime.value}:00`
+      newEvent.end = `${date}T${endTime.value}:00`
+    }
 
-  // 알림 설정 추가
-  newEvent.notification = notification.value
+    // 알림 설정 추가
+    newEvent.notification = notification.value
+
+    return newEvent
+  })
 
   // 부모 컴포넌트로 이벤트 전달
-  emit('save', newEvent)
+  events.forEach(event => emit('save', event))
 
   // 폼 초기화 및 모달 닫기
   resetForm()
@@ -144,16 +189,34 @@ const saveEvent = () => {
 
         <!-- 날짜 선택 -->
         <div class="mb-4">
-          <label
-            for="event-date"
-            class="block text-dark-gray font-medium mb-2"
-          >날짜</label>
-          <input
-            id="event-date"
-            v-model="date"
-            type="date"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+          <label class="block text-dark-gray font-medium mb-2">날짜</label>
+          <div v-for="(date, index) in dates" :key="index" class="flex items-center mb-2">
+            <input
+              :id="'event-date-' + index"
+              v-model="dates[index]"
+              type="date"
+              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+            >
+            <button
+              v-if="index > 0"
+              class="ml-2 p-2 text-red-500 hover:text-red-700"
+              @click="removeDate(index)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          <button
+            type="button"
+            class="mt-2 py-2 text-dark-gray hover:text-gray-600 transition-colors font-medium flex items-center"
+            @click="addDate"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            날짜 추가
+          </button>
         </div>
 
         <!-- 시간 선택 -->
@@ -199,6 +262,34 @@ const saveEvent = () => {
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
               >
             </div>
+          </div>
+        </div>
+
+        <!-- 반복 설정 -->
+        <div class="mb-4">
+          <div class="flex items-center mb-2">
+            <input
+              id="recurring"
+              v-model="isRecurring"
+              type="checkbox"
+              class="mr-2"
+            >
+            <label
+              for="recurring"
+              class="text-dark-gray font-medium"
+            >반복</label>
+          </div>
+
+          <div v-if="isRecurring" class="mt-2">
+            <select
+              v-model="recurrenceType"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+            >
+              <option value="daily">매일</option>
+              <option value="weekly">매주</option>
+              <option value="monthly">매월</option>
+              <option value="yearly">매년</option>
+            </select>
           </div>
         </div>
 

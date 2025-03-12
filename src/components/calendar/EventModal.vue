@@ -20,15 +20,72 @@ const eventData = ref({
   start: props.date,
   end: props.date,
   allDay: true,
-  description: ''
+  description: '',
+  recurring: 'none'
 })
 
-const handleSave = () => {
-  if (eventData.value.title.trim()) {
-    emit('save', { ...eventData.value })
-  } else {
-    alert('일정 제목을 입력해주세요.')
+const isRecurring = ref(false)
+const recurrenceType = ref('daily')
+
+// 반복 주기 텍스트 가져오기
+const getRecurringText = (type) => {
+  switch (type) {
+    case 'daily':
+      return '매일'
+    case 'weekly':
+      return '매주'
+    case 'monthly':
+      return '매월'
+    case 'yearly':
+      return '매년'
+    default:
+      return ''
   }
+}
+
+const handleSave = () => {
+  console.log('이벤트 저장 시작')
+  
+  // 필수 입력값 검증
+  if (!eventData.value.title.trim()) {
+    alert('일정 제목을 입력해주세요.')
+    return
+  }
+
+  // 시작 시간이 종료 시간보다 늦은 경우 검증
+  if (!eventData.value.allDay && eventData.value.start >= eventData.value.end) {
+    alert('종료 시간은 시작 시간보다 늦어야 합니다.')
+    return
+  }
+
+  // 이벤트 데이터 생성
+  const newEvent = {
+    ...eventData.value,
+    recurring: isRecurring.value ? recurrenceType.value : 'none'
+  }
+
+  // 반복 일정인 경우 제목에 표시
+  if (isRecurring.value) {
+    newEvent.title = `[${getRecurringText(recurrenceType.value)}] ${newEvent.title}`
+  }
+
+  console.log('저장할 이벤트:', newEvent)
+  emit('save', newEvent)
+
+  // 폼 초기화 및 모달 닫기
+  resetForm()
+  emit('close')
+}
+
+const resetForm = () => {
+  eventData.value.title = ''
+  eventData.value.start = props.date
+  eventData.value.end = props.date
+  eventData.value.allDay = true
+  eventData.value.description = ''
+  eventData.value.recurring = 'none'
+  isRecurring.value = false
+  recurrenceType.value = 'daily'
 }
 </script>
 
@@ -107,6 +164,31 @@ const handleSave = () => {
           <label class="ml-2 text-sm text-gray-700">
             종일 일정
           </label>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex items-center">
+            <input
+              type="checkbox"
+              v-model="isRecurring"
+              class="h-4 w-4 text-point focus:ring-point border-gray-300 rounded"
+            />
+            <label class="ml-2 text-sm text-gray-700">
+              반복 일정
+            </label>
+          </div>
+
+          <div v-if="isRecurring" class="mt-2">
+            <select
+              v-model="recurrenceType"
+              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+            >
+              <option value="daily">매일</option>
+              <option value="weekly">매주</option>
+              <option value="monthly">매월</option>
+              <option value="yearly">매년</option>
+            </select>
+          </div>
         </div>
 
         <div class="flex justify-end space-x-2 mt-6">

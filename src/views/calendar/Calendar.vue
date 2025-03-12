@@ -50,24 +50,20 @@ const handleEventClick = (info) => {
   logger.debug(CONTEXT, '이벤트 클릭됨:', eventId)
 
   try {
+    // events 배열에서 해당 이벤트 찾기
     const eventObj = calendarStore.events.find((e) => e.id === eventId)
     if (eventObj) {
-      const dateStr = normalizeDate(eventObj.start)
-      logger.debug(CONTEXT, '이벤트 날짜:', dateStr)
-
-      // 먼저 현재 표시된 모든 모달 닫기
-      modalManager.closeDayEventsModal()
-
-      // 그런 다음 선택된 날짜를 설정하고 일일 일정 모달 열기
-      calendarStore.setSelectedDate(dateStr)
-      modalManager.openDayEventsModal(dateStr)
+      console.log('찾은 이벤트:', eventObj)
+      // 이벤트 객체를 선택된 이벤트로 설정
+      calendarStore.setSelectedEvent(eventObj)
+      // 이벤트 상세 모달 열기
+      modalManager.openEventDetailModal()
     } else {
-      logger.warn(
-        CONTEXT,
-        `이벤트 ID(${eventId})에 해당하는 이벤트를 찾을 수 없음`
-      )
+      console.warn('이벤트를 찾을 수 없음:', eventId)
+      alert('해당 일정을 찾을 수 없습니다.')
     }
   } catch (error) {
+    console.error('이벤트 클릭 처리 중 오류:', error)
     handleError(error, CONTEXT)
   }
 }
@@ -132,7 +128,7 @@ onMounted(() => {
     
     logger.debug(CONTEXT, '현재 날짜 정보 업데이트됨')
     
-    // 임신 상태 설정 (서버에서 가져온 값 사용)
+    // 임신 상태 설정
     calendarStore.setPregnancyInfo(true, '애기')
     logger.debug(CONTEXT, '임신 상태 설정됨')
     
@@ -140,6 +136,7 @@ onMounted(() => {
     calendarStore.fetchBabyDiaries()
     logger.debug(CONTEXT, '아기 일기 데이터 로드됨')
   } catch (error) {
+    console.error('캘린더 초기화 중 오류:', error)
     handleError(error, `${CONTEXT}.onMounted`)
   }
 
@@ -205,21 +202,103 @@ const handleFABMenuClick = (action) => {
 
 const handleEventSave = async (eventData) => {
   try {
-    await calendarStore.addEvent(eventData)
-    showEventModal.value = false
+    console.log('일정 저장 시작:', eventData)
+    // 반복 일정 여부 확인
+    if (eventData.recurring && eventData.recurring !== 'none') {
+      console.log('반복 일정 감지:', eventData.recurring)
+    }
+
+    const savedEvent = await calendarStore.addEvent(eventData)
+    console.log('저장된 일정:', savedEvent)
+
+    if (savedEvent) {
+      console.log('일정 저장 성공')
+      showEventModal.value = false
+      
+      // 캘린더 새로고침
+      if (calendarRef.value) {
+        const calendarApi = calendarRef.value.getApi()
+        // 이벤트를 다시 가져오고 즉시 렌더링
+        await calendarApi.refetchEvents()
+        requestAnimationFrame(() => {
+          calendarApi.render()
+          console.log('캘린더 렌더링 완료')
+        })
+      }
+    } else {
+      console.error('일정 저장 실패: savedEvent가 없음')
+      alert('일정 저장에 실패했습니다. 다시 시도해주세요.')
+    }
   } catch (error) {
     console.error('일정 저장 중 오류 발생:', error)
     alert('일정 저장에 실패했습니다. 다시 시도해주세요.')
   }
 }
 
+const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
+  try {
+    console.log('삭제 시도:', {
+      eventId,
+      isRecurring,
+      deleteOptions,
+      event: calendarStore.events.find(e => e.id === eventId)
+    })
+
+    let success = false
+    
+    if (isRecurring) {
+      if (deleteOptions?.option === 'until') {
+        if (!deleteOptions.untilDate) {
+          alert('유지할 마지막 날짜를 선택해주세요.')
+          return
+        }
+        console.log('특정 날짜까지 일정 유지 시도:', deleteOptions.untilDate)
+        await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
+        success = true
+      } else {
+        console.log('모든 반복 일정 삭제 시도')
+        await calendarStore.deleteRecurringEvents(eventId)
+        success = true
+      }
+    } else {
+      console.log('단일 일정 삭제 시도')
+      await calendarStore.deleteEvent(eventId)
+      success = true
+    }
+
+    if (success) {
+      console.log('일정 삭제 성공')
+      modalManager.closeEventDetailModal()
+      
+      // 캘린더 새로고침
+      if (calendarRef.value) {
+        const calendarApi = calendarRef.value.getApi()
+        await calendarApi.refetchEvents()
+        requestAnimationFrame(() => {
+          calendarApi.render()
+          console.log('캘린더 렌더링 완료')
+        })
+      }
+    }
+  } catch (error) {
+    console.error('일정 삭제 중 오류:', error)
+    alert(error.message || '일정 삭제 중 오류가 발생했습니다.')
+  }
+}
+
 const handleBabyDiarySave = async (diaryData) => {
   try {
+    // 로딩 상태 표시 등을 추가할 수 있습니다
     await calendarStore.addBabyDiary(diaryData)
     showBabyDiaryModal.value = false
+    // 성공 메시지 표시
+    alert('아기와의 하루가 저장되었습니다.')
+    
+    // 캘린더 데이터 새로고침
+    await calendarStore.fetchBabyDiaries()
   } catch (error) {
     console.error('일기 저장 중 오류 발생:', error)
-    alert('일기 저장에 실패했습니다. 다시 시도해주세요.')
+    alert(error.response?.data?.message || '일기 저장에 실패했습니다. 다시 시도해주세요.')
   }
 }
 </script>
@@ -350,7 +429,7 @@ const handleBabyDiarySave = async (diaryData) => {
       :show="modalManager.showEventDetailModal.value"
       :event="calendarStore.selectedEvent"
       @close="modalManager.closeEventDetailModal"
-      @delete="modalManager.deleteEvent"
+      @delete="handleEventDelete"
     />
 
     <!-- LLM 대화 요약 상세 모달 -->
@@ -366,7 +445,7 @@ const handleBabyDiarySave = async (diaryData) => {
       :show="modalManager.showAddEventModal.value"
       :selected-date="calendarStore.selectedDate"
       @close="modalManager.closeAddEventModal"
-      @save="modalManager.saveEvent"
+      @save="handleEventSave"
     />
 
     <!-- 일정 유형 선택 모달 -->
@@ -389,12 +468,13 @@ const handleBabyDiarySave = async (diaryData) => {
 
 /* 캘린더 컨테이너 스타일 */
 .calendar-container {
-  min-height: calc(10vh - 120px);
+  flex: 2;
   background-color: var(--color-ivory);
-  padding: 1rem;
-  margin-bottom: 60px;
+  padding: 2rem 0.5rem 0.5rem 0.5rem;
   position: relative;
-  z-index: 1;
+  z-index: 2;
+  height: calc(100vh - 64px);
+  margin-bottom: 0;
 }
 
 /* FullCalendar 기본 스타일 */
@@ -402,7 +482,7 @@ const handleBabyDiarySave = async (diaryData) => {
   font-family: "Noto Sans KR", "Roboto", sans-serif;
   border: none;
   background-color: transparent;
-  height: 100%;
+  max-height: calc(100vh - 150px);
   width: 100%;
 }
 
@@ -437,13 +517,13 @@ const handleBabyDiarySave = async (diaryData) => {
   background-color: transparent;
   cursor: pointer;
   position: relative;
-  min-height: 80px;
+  min-height: 50px;
 }
 
 .fc-daygrid-day-frame {
   padding: 4px;
   border-radius: 8px;
-  min-height: 80px;
+  min-height: 50px;
   background-color: rgba(255, 255, 255, 0.6);
   transition: background-color 0.2s ease;
 }
@@ -454,9 +534,11 @@ const handleBabyDiarySave = async (diaryData) => {
 
 /* 날짜 상단 영역 스타일 */
 .fc-daygrid-day-top {
-  justify-content: flex-start;
-  flex-direction: row;
-  padding: 2px 0 0 4px;
+  justify-content: flex-start !important;
+  flex-direction: row !important;
+  padding: 4px 0 12px 4px !important;
+  text-align: left !important;
+  min-height: 40px !important;
 }
 
 /* 날짜와 표시 아이콘 컨테이너 */
@@ -474,13 +556,14 @@ const handleBabyDiarySave = async (diaryData) => {
 /* 날짜 숫자 스타일 */
 .fc-daygrid-day-number {
   font-size: 0.9rem;
-  padding: 0;
+  padding: 0 !important;
   color: #353535;
   font-weight: 400;
-  text-align: left;
-  position: static;
+  text-align: left !important;
+  position: static !important;
   width: auto;
-  margin: 0;
+  margin: 0 !important;
+  line-height: 1.5 !important;
 }
 
 /* 요일별 날짜 색상 */
@@ -499,6 +582,7 @@ const handleBabyDiarySave = async (diaryData) => {
   font-weight: 800;
   line-height: 1;
   margin-top: -4px;
+  margin-right: 2px;
 }
 
 /* 아기 일기 표시 스타일 */
@@ -507,6 +591,7 @@ const handleBabyDiarySave = async (diaryData) => {
   line-height: 1;
   vertical-align: middle;
   margin-top: -2px;
+  color: #e53e3e;
 }
 
 /* 이벤트 스타일 */
@@ -623,7 +708,9 @@ const handleBabyDiarySave = async (diaryData) => {
   left: 0;
   right: 0;
   z-index: 30;
-  height: 56px;
+  height: 64px;
+  background-color: white;
+  padding-bottom: 0px;
 }
 
 /* 플로팅 액션 버튼 스타일 */

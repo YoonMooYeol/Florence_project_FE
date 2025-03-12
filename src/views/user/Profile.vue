@@ -151,12 +151,12 @@ const getJosa = (word, josa1, josa2) => {
 
 // 임신 정보 수정 페이지로 이동
 const goToPregnancyEdit = () => {
-  if (userInfo.value.isFromRegistration) {
-    // 회원가입 시 등록한 경우 수정 모드가 false인 상태로 임신정보 페이지로 이동
+  if (userInfo.value.isPregnant) {
+    // 임신 정보가 있는 경우 수정 페이지로 이동
     router.push('/pregnancy-info-edit')
   } else {
-    // 회원가입 시 등록하지 않은 경우 바로 수정 페이지로 이동 (이미 수정 모드가 true 상태)
-    router.push('/pregnancy-info-edit')
+    // 임신 정보가 없는 경우 등록 페이지로 이동
+    router.push('/pregnancy-info-register')
   }
 }
 
@@ -168,6 +168,12 @@ const editPregnancyInfo = () => {
 }
 
 // 임신 정보 삭제 함수
+
+// 비밀번호 변경 페이지로 이동
+const goToPasswordChange = () => {
+  console.log('비밀번호 변경 페이지로 이동')
+  router.push('/password-change')
+}
 
 // 로그아웃 함수
 const handleLogout = async () => {
@@ -301,7 +307,7 @@ const handleLogout = async () => {
             </p>
             <button
               class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
-              @click="router.push('/pregnancy-info-edit')"
+              @click="router.push('/pregnancy-info-register')"
             >
               임신 정보 등록하기
             </button>
@@ -347,7 +353,10 @@ const handleLogout = async () => {
             <span class="text-dark-gray">임신 정보 관리</span>
           </button>
 
-          <button class="w-full p-4 text-left flex items-center">
+          <button
+            class="w-full p-4 text-left flex items-center"
+            @click="goToPasswordChange"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5 mr-3 text-gray-500"
@@ -372,7 +381,7 @@ const handleLogout = async () => {
             >
               <path
                 fill-rule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
                 clip-rule="evenodd"
               />
             </svg>
