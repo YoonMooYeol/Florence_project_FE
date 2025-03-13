@@ -17,7 +17,7 @@ import LLMSummaryModal from '@/components/calendar/LLMSummaryModal.vue'
 import AddEventModal from '@/components/calendar/AddEventModal.vue'
 import AddDiaryTypeModal from '@/components/calendar/AddDiaryTypeModal.vue'
 import EventModal from '@/components/calendar/EventModal.vue'
-import BabyDiaryModal from '@/components/calendar/BabyDiaryModal.vue'
+
 // import TodoList from './TodoList.vue'
 
 // 로깅 컨텍스트 설정
@@ -426,13 +426,18 @@ const handleBabyDiarySave = async (diaryData) => {
       @save="handleEventSave"
     />
 
-    <!-- 아기와의 하루 모달 -->
-    <BabyDiaryModal
-      v-if="showBabyDiaryModal"
-      :show="showBabyDiaryModal"
-      :date="selectedDate"
-      @close="showBabyDiaryModal = false"
-      @save="handleBabyDiarySave"
+    <!-- 일정 등록 모달 -->
+    <AddEventModal
+      :show="modalManager.showAddEventModal.value"
+      :selected-date="calendarStore.selectedDate"
+      @close="modalManager.closeAddEventModal"
+      @save="handleEventSave"
+    />
+
+    <!-- 일정 유형 선택 모달 -->
+    <AddDiaryTypeModal
+      :show="modalManager.showDiaryTypeModal.value"
+      @close="modalManager.closeDiaryTypeModal"
     />
 
     <!-- Popup 배경 오버레이 -->
@@ -465,20 +470,6 @@ const handleBabyDiarySave = async (diaryData) => {
       :summary="calendarStore.selectedLLMSummary"
       @close="modalManager.closeLLMDetailModal"
       @delete="modalManager.deleteLLMSummary"
-    />
-
-    <!-- 일정 등록 모달 -->
-    <AddEventModal
-      :show="modalManager.showAddEventModal.value"
-      :selected-date="calendarStore.selectedDate"
-      @close="modalManager.closeAddEventModal"
-      @save="handleEventSave"
-    />
-
-    <!-- 일정 유형 선택 모달 -->
-    <AddDiaryTypeModal
-      :show="modalManager.showDiaryTypeModal.value"
-      @close="modalManager.closeDiaryTypeModal"
     />
   </div>
 </template>

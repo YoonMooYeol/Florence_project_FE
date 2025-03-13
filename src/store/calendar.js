@@ -342,7 +342,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await api.get('/baby-diaries/')
+      const response = await api.get('calendars/baby-diaries/')
       babyDiaries.value = response.data
     } catch (err) {
       error.value = '아기 일기를 불러오는데 실패했습니다.'
@@ -356,7 +356,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await api.get(`/baby-diaries/${date}/`)
+      const response = await api.get(`calendars/baby-diaries/${date}/`)
       return response.data
     } catch (err) {
       error.value = '아기 일기를 불러오는데 실패했습니다.'
@@ -371,7 +371,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await api.post('/baby-diaries/', newDiary)
+      const response = await api.post('calendars/baby-diaries/', newDiary)
       babyDiaries.value.push(response.data)
       return response.data
     } catch (err) {
@@ -387,7 +387,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await api.put(`/baby-diaries/${date}/`, { content })
+      const response = await api.put(`calendars/baby-diaries/${date}/`, { content })
       const index = babyDiaries.value.findIndex(d => d.date === date)
       if (index !== -1) {
         babyDiaries.value[index] = response.data
@@ -406,7 +406,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true
     error.value = null
     try {
-      await api.delete(`/baby-diaries/${date}/`)
+      await api.delete(`calendars/baby-diaries/${date}/`)
       const index = babyDiaries.value.findIndex(d => d.date === date)
       if (index !== -1) {
         babyDiaries.value.splice(index, 1)

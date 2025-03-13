@@ -17,6 +17,8 @@ api.interceptors.request.use(
     // 로컬 스토리지 또는 세션 스토리지에서 직접 토큰 가져오기
     const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
 
+    console.log('Local Storage Token:', localStorage.getItem('accessToken'));
+    console.log('Session Storage Token:', sessionStorage.getItem('accessToken'));  
     // 액세스 토큰이 있으면 헤더에 추가
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`

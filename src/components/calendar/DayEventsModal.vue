@@ -2,6 +2,7 @@
 import { watch, ref } from 'vue'
 import { formatDate, formatTime } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
+import api from '@/utils/axios'
 
 const props = defineProps({
   show: {
@@ -59,6 +60,12 @@ const emit = defineEmits(['close', 'add-event', 'view-event', 'view-llm-summary'
 
 const calendarStore = useCalendarStore()
 
+const baseUrl = 'calendars/baby-diaries/'
+
+const createBabyDiary = (diaryData) => {
+  return api.post(baseUrl, diaryData, { headers: { Authorization: 'Bearer 실제_유효한_토큰' } })
+}
+
 const closeModal = () => {
   console.log('일일 일정 모달 닫기 버튼 클릭')
   emit('close')
@@ -98,21 +105,27 @@ const getRecurringText = (recurring) => {
 }
 
 const saveBabyDiary = async () => {
-  if (diaryContent.value.trim()) {
-    try {
-      if (props.babyDiary) {
-        await calendarStore.updateBabyDiary(props.date, diaryContent.value.trim())
-      } else {
-        await calendarStore.addBabyDiary({
-          date: props.date,
-          content: diaryContent.value.trim()
-        })
-      }
-      emit('close')
-    } catch (error) {
-      console.error('일기 저장 중 오류 발생:', error)
-      alert('일기 저장에 실패했습니다. 다시 시도해주세요.')
+  try {
+    // Format the selected date to 'YYYY-MM-DD'
+    const diaryDate = formatDate(new Date(props.date), 'yyyy-MM-dd')
+
+    // Construct the payload as required by the API
+    const payload = {
+      pregnancy: calendarStore.pregnancyId,
+      content: diaryContent.value,
+      diary_date: diaryDate
     }
+
+    // Call the createBabyDiary API function (which is inlined in this file)
+    const response = await createBabyDiary(payload)
+
+    console.log('Baby Diary Created:', response.data)
+
+    // Add any additional success handling (e.g., close modal, refresh list)
+    emit('close')
+  } catch (error) {
+    console.error('일기 저장 중 오류 발생:', error)
+    alert('일기 저장에 실패했습니다. 다시 시도해주세요.')
   }
 }
 </script>
