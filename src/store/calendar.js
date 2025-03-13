@@ -1,86 +1,22 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { normalizeDate, isSameDay } from '@/utils/dateUtils'
 import api from '@/utils/axios'
 
 // 캘린더 스토어 정의
 export const useCalendarStore = defineStore('calendar', () => {
   // 상태 (state)
-  const events = ref([
-    {
-      id: '1',
-      title: '운동',
-      start: '2025-03-12T10:00:00',
-      end: '2025-03-12T12:00:00',
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
-      display: 'block'
-    },
-    {
-      id: '2',
-      title: '약 복용',
-      start: '2025-03-15T14:00:00',
-      end: '2025-03-15T15:30:00',
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
-      display: 'block'
-    },
-    {
-      id: '3',
-      title: '병원 방문',
-      start: '2025-03-18',
-      allDay: true,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
-      display: 'block'
-    },
-    {
-      id: '4',
-      title: '혈압 측정',
-      start: '2025-03-22T13:00:00',
-      end: '2025-03-22T14:30:00',
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
-      display: 'block'
-    },
-    {
-      id: '5',
-      title: '건강검진',
-      start: '2025-03-28T09:00:00',
-      end: '2025-03-28T18:00:00',
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
-      display: 'block'
-    }
-  ])
+  const events = ref(JSON.parse(localStorage.getItem('calendar_events') || '[]'))
 
   // LLM 대화 요약 데이터
-  const llmSummaries = ref([
-    {
-      date: '2025-03-12',
-      summary: '오늘의 건강 상태가 양호하여 운동 강도를 올려보기로 했습니다. 유산소 운동 30분, 근력 운동 20분을 권장받았습니다.'
-    },
-    {
-      date: '2025-03-15',
-      summary: '약 복용 후 부작용이 있는지 확인했습니다. 특별한 이상 증상은 없었고, 계속해서 처방된 약을 복용하기로 했습니다.'
-    },
-    {
-      date: '2025-03-22',
-      summary: '최근 혈압이 약간 높아져 식이요법과 가벼운 운동을 통해 관리하기로 했습니다. 저염식 식단과 매일 30분 걷기를 추천받았습니다.'
-    }
-  ])
+  const llmSummaries = ref([])
 
   // 아기 일기 데이터
   const babyDiaries = ref([])
 
   // 현재 표시 중인 년월
-  const currentYear = ref(2025)
-  const currentMonth = ref(3)
+  const currentYear = ref(new Date().getFullYear())
+  const currentMonth = ref(new Date().getMonth() + 1)
 
   // 선택된 날짜 및 이벤트
   const selectedDate = ref(null)
@@ -94,26 +30,197 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   // 액션 (actions)
   function addEvent (newEvent) {
-    // 새 ID 생성 (실제 구현에서는 서버에서 ID를 받아올 수 있음)
-    const newId = String(Math.max(...events.value.map(e => Number(e.id))) + 1)
-    const eventWithId = { ...newEvent, id: newId }
-    events.value.push(eventWithId)
-    return eventWithId
+    console.log('캘린더 스토어: 일정 추가 시도', newEvent)
+    
+    try {
+      // 새 ID 생성
+      const newId = String(Math.max(...events.value.map(e => Number(e.id)), 0) + 1)
+      const eventWithId = { 
+        ...newEvent, 
+        id: newId,
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
+        display: 'block'
+      }
+
+      // 반복 일정인 경우 처리
+      if (eventWithId.recurring && eventWithId.recurring !== 'none') {
+        console.log('캘린더 스토어: 반복 일정 생성 시작', eventWithId)
+        const recurringEvents = generateRecurringEvents(eventWithId)
+        console.log('캘린더 스토어: 생성된 반복 일정', recurringEvents)
+        
+        if (recurringEvents.length > 0) {
+          events.value.push(...recurringEvents)
+          console.log('캘린더 스토어: 반복 일정 추가 완료', events.value)
+          return eventWithId
+        }
+        return null
+      }
+
+      // 일반 일정인 경우
+      console.log('캘린더 스토어: 일반 일정 추가')
+      events.value.push(eventWithId)
+      return eventWithId
+    } catch (error) {
+      console.error('일정 추가 중 오류 발생:', error)
+      return null
+    }
+  }
+
+  // 반복 일정 생성 함수
+  function generateRecurringEvents(baseEvent) {
+    console.log('캘린더 스토어: 반복 일정 생성 함수 호출', baseEvent)
+    const recurringEvents = []
+    const startDate = new Date(baseEvent.start)
+    const endDate = new Date(startDate)
+    endDate.setFullYear(endDate.getFullYear() + 1) // 1년치 일정 생성
+
+    let currentDate = new Date(startDate)
+    let count = 0
+    const maxEvents = 365 // 최대 생성 개수 제한
+
+    // 시작 요일, 일자, 월 저장
+    const startDay = startDate.getDay() // 요일 (0-6, 0은 일요일)
+    const startDayOfMonth = startDate.getDate() // 일
+    const startMonth = startDate.getMonth() // 월 (0-11)
+
+    while (currentDate <= endDate && count < maxEvents) {
+      // 반복 유형에 따른 조건 체크
+      let isValidDate = false
+      switch (baseEvent.recurring) {
+        case 'daily':
+          isValidDate = true
+          break
+        case 'weekly':
+          // 같은 요일인 경우만 생성
+          isValidDate = currentDate.getDay() === startDay
+          break
+        case 'monthly':
+          // 같은 일자인 경우만 생성
+          isValidDate = currentDate.getDate() === startDayOfMonth
+          break
+        case 'yearly':
+          // 같은 월, 같은 일자인 경우만 생성
+          isValidDate = currentDate.getMonth() === startMonth && 
+                       currentDate.getDate() === startDayOfMonth
+          break
+      }
+
+      if (isValidDate) {
+        const event = { 
+          ...baseEvent,
+          id: String(Math.max(...events.value.map(e => Number(e.id)), 0) + recurringEvents.length + 1)
+        }
+        
+        if (baseEvent.allDay) {
+          event.start = currentDate.toISOString().split('T')[0]
+          event.end = currentDate.toISOString().split('T')[0]
+        } else {
+          const [startDate, startTime] = baseEvent.start.split('T')
+          const [endDate, endTime] = baseEvent.end ? baseEvent.end.split('T') : [startDate, startTime]
+          
+          event.start = `${currentDate.toISOString().split('T')[0]}T${startTime}`
+          event.end = `${currentDate.toISOString().split('T')[0]}T${endTime}`
+        }
+
+        console.log('캘린더 스토어: 반복 일정 생성', event)
+        recurringEvents.push(event)
+        count++
+      }
+
+      // 다음 날짜로 이동
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+
+    console.log('캘린더 스토어: 생성된 반복 일정 수', recurringEvents.length)
+    return recurringEvents
+  }
+
+  // 특정 날짜까지의 반복 일정 유지 함수
+  function deleteRecurringEventsUntil(eventId, untilDate) {
+    console.log('특정 날짜까지 반복 일정 유지 함수 호출:', { eventId, untilDate })
+    const baseEvent = events.value.find(e => e.id === eventId)
+    
+    if (!baseEvent) {
+      console.error('기준 이벤트를 찾을 수 없음:', eventId)
+      return false
+    }
+
+    if (!baseEvent.recurring || baseEvent.recurring === 'none') {
+      console.log('반복 일정이 아님, 단일 일정 삭제')
+      return deleteEvent(eventId)
+    }
+
+    try {
+      console.log('삭제 전 이벤트 수:', events.value.length)
+      const untilDateObj = new Date(untilDate)
+      untilDateObj.setHours(23, 59, 59, 999)
+
+      // 같은 제목과 반복 설정을 가진 이벤트 중 지정된 날짜 이후의 일정만 삭제
+      events.value = events.value.filter(event => {
+        if (event.title === baseEvent.title && event.recurring === baseEvent.recurring) {
+          const eventDate = new Date(event.start)
+          // 지정된 날짜까지의 일정은 유지
+          return eventDate <= untilDateObj
+        }
+        return true
+      })
+
+      console.log('삭제 후 이벤트 수:', events.value.length)
+      return true
+    } catch (error) {
+      console.error('반복 일정 삭제 중 오류:', error)
+      return false
+    }
+  }
+
+  // 반복 일정 삭제 함수
+  function deleteRecurringEvents(eventId) {
+    console.log('반복 일정 삭제 함수 호출:', eventId)
+    const baseEvent = events.value.find(e => e.id === eventId)
+    
+    if (!baseEvent) {
+      console.error('기준 이벤트를 찾을 수 없음:', eventId)
+      return false
+    }
+
+    if (!baseEvent.recurring || baseEvent.recurring === 'none') {
+      return deleteEvent(eventId)
+    }
+
+    try {
+      console.log('삭제 전 이벤트 수:', events.value.length)
+      // 같은 제목과 반복 설정을 가진 모든 이벤트 삭제
+      events.value = events.value.filter(event => 
+        !(event.title === baseEvent.title && 
+          event.recurring === baseEvent.recurring)
+      )
+      console.log('삭제 후 이벤트 수:', events.value.length)
+      return true
+    } catch (error) {
+      console.error('반복 일정 삭제 중 오류:', error)
+      return false
+    }
+  }
+
+  // 단일 일정 삭제 함수
+  function deleteEvent(eventId) {
+    console.log('단일 일정 삭제 함수 호출:', eventId)
+    const index = events.value.findIndex(e => e.id === eventId)
+    if (index !== -1) {
+      events.value.splice(index, 1)
+      console.log('일정 삭제 완료')
+      return true
+    }
+    console.error('삭제할 일정을 찾을 수 없음:', eventId)
+    return false
   }
 
   function updateEvent (updatedEvent) {
     const index = events.value.findIndex(e => e.id === updatedEvent.id)
     if (index !== -1) {
       events.value[index] = { ...updatedEvent }
-      return true
-    }
-    return false
-  }
-
-  function deleteEvent (eventId) {
-    const index = events.value.findIndex(e => e.id === eventId)
-    if (index !== -1) {
-      events.value.splice(index, 1)
       return true
     }
     return false
@@ -200,8 +307,8 @@ export const useCalendarStore = defineStore('calendar', () => {
     if (!selectedDate.value) return []
 
     return events.value.filter(event => {
-      const eventStart = event.start
-      return isSameDay(eventStart, selectedDate.value)
+      const eventStartDate = event.start.split('T')[0]  // YYYY-MM-DD 형식으로 변환
+      return eventStartDate === selectedDate.value
     })
   })
 
@@ -314,6 +421,25 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
+  // 스토어 초기화 함수
+  function $reset() {
+    // 로컬 스토리지에서 이벤트 데이터 복원
+    const savedEvents = localStorage.getItem('calendar_events')
+    events.value = savedEvents ? JSON.parse(savedEvents) : []
+    llmSummaries.value = []
+    babyDiaries.value = []
+    selectedDate.value = null
+    selectedEvent.value = null
+    selectedLLMSummary.value = null
+    selectedBabyDiary.value = null
+    error.value = null
+  }
+
+  // 이벤트 변경 시 로컬 스토리지에 저장
+  watch(() => events.value, (newEvents) => {
+    localStorage.setItem('calendar_events', JSON.stringify(newEvents))
+  }, { deep: true })
+
   return {
     // 상태
     events,
@@ -348,6 +474,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     updateCurrentYearMonth,
     setPregnancyInfo,
     getJosa,
+    deleteRecurringEvents,
+    deleteRecurringEventsUntil,
+    $reset,
 
     // 게터
     eventsForSelectedDate,

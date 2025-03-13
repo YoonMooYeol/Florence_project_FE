@@ -4,13 +4,15 @@ import KakaoCallback from '../views/auth/callback/KakaoCallback.vue'
 import NaverCallback from '../views/auth/callback/NaverCallback.vue'
 import GoogleCallback from '../views/auth/callback/GoogleCallback.vue'
 import SocialCallback from '../views/auth/callback/SocialCallback.vue'
-import FindPassword from '../views/FindPassword.vue'
+import ChatAgent from '../views/chat/Chat.vue'
+import PasswordChange from '../views/user/PasswordChange.vue'
 
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('../views/home/Home.vue')
+    component: () => import('../views/home/Home.vue'),
+    meta: { requiresAuth: false }
   },
   {
     path: '/register',
@@ -20,12 +22,19 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../views/auth/Login.vue')
+    component: () => import('../views/auth/Login.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/find-id',
+    name: 'FindId',
+    component: () => import('../views/FindId.vue')
   },
   {
     path: '/find-password',
     name: 'FindPassword',
-    component: () => import('../views/FindPassword.vue')
+    component: () => import('../views/FindPassword.vue'),
+    meta: { requiresAuth: false }
   },
   {
     path: '/calendar',
@@ -35,7 +44,8 @@ const routes = [
   {
     path: '/profile',
     name: 'Profile',
-    component: () => import('../views/user/Profile.vue')
+    component: () => import('../views/user/Profile.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/chat',
@@ -108,6 +118,26 @@ const routes = [
     path: '/auth/callback/:provider',
     name: 'SocialCallback',
     component: SocialCallback
+  },
+  {
+    path: '/agent',
+    name: 'Agent',
+    component: ChatAgent
+  },
+  {
+    path: '/mypage',
+    redirect: '/profile'
+  },
+  {
+    path: '/password-change',
+    name: 'PasswordChange',
+    component: PasswordChange
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../views/ResetPassword.vue'),
+    meta: { requiresAuth: false }
   }
 ]
 
@@ -119,7 +149,16 @@ const router = createRouter({
 // 네비게이션 가드 설정
 router.beforeEach((to, from, next) => {
   // 토큰 확인
-  const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+  let token = localStorage.getItem('accessToken')
+  if (!token) {
+    token = sessionStorage.getItem('accessToken')
+    if (token) {
+      localStorage.setItem('accessToken', token)
+    }
+  }
+  
+  console.log('라우터 가드 - 현재 경로:', to.path)
+  console.log('라우터 가드 - 토큰 존재:', !!token)
   
   // 인증이 필요하지 않은 경로 목록
   const publicPages = [
@@ -127,13 +166,15 @@ router.beforeEach((to, from, next) => {
     '/login',
     '/register',
     '/find-password',
+    '/find-id',
+    '/reset-password',
     '/pregnancy-info-register',
     '/kakao/callback',
     '/naver/callback',
     '/google/callback',
-    '/auth/callback/google',
+    '/auth/callback/kakao',
     '/auth/callback/naver',
-    '/auth/callback/kakao'
+    '/auth/callback/google'
   ]
   
   // 현재 경로가 인증이 필요한지 확인
@@ -143,9 +184,16 @@ router.beforeEach((to, from, next) => {
   if (authRequired && !token) {
     console.log('인증이 필요한 페이지입니다. 로그인 페이지로 이동합니다.')
     next('/login')
-  } else {
-    next()
+    return
   }
+
+  // 이미 로그인된 상태에서 로그인 페이지로 가려고 하면 홈으로 리다이렉트
+  if (token && to.path === '/login') {
+    next('/')
+    return
+  }
+
+  next()
 })
 
 export default router

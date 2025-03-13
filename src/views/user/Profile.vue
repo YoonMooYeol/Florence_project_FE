@@ -20,7 +20,8 @@ const userInfo = ref({
   pregnancyWeek: null,
   babyNickname: '',
   highRisk: false,
-  pregnancyId: null
+  pregnancyId: null,
+  isFromRegistration: false
 })
 
 // 로딩 상태 관리
@@ -94,6 +95,7 @@ const fetchPregnancyInfo = async () => {
       userInfo.value.pregnancyWeek = data.current_week
       userInfo.value.highRisk = data.high_risk
       userInfo.value.pregnancyId = data.pregnancy_id
+      userInfo.value.isFromRegistration = data.is_from_registration || false // 회원가입 시 등록 여부 설정
 
       // 임신 상태 저장
       localStorage.setItem('isPregnant', 'true')
@@ -147,7 +149,31 @@ const getJosa = (word, josa1, josa2) => {
   return josa1
 }
 
+// 임신 정보 수정 페이지로 이동
+const goToPregnancyEdit = () => {
+  if (userInfo.value.isPregnant) {
+    // 임신 정보가 있는 경우 수정 페이지로 이동
+    router.push('/pregnancy-info-edit')
+  } else {
+    // 임신 정보가 없는 경우 등록 페이지로 이동
+    router.push('/pregnancy-info-register')
+  }
+}
+
+// 수정 모드로 임신정보 수정 페이지로 이동
+const editPregnancyInfo = () => {
+  // 로컬 스토리지에 수정 모드 활성화 표시
+  sessionStorage.setItem('pregnancyEditMode', 'true')
+  router.push('/pregnancy-info-edit')
+}
+
 // 임신 정보 삭제 함수
+
+// 비밀번호 변경 페이지로 이동
+const goToPasswordChange = () => {
+  console.log('비밀번호 변경 페이지로 이동')
+  router.push('/password-change')
+}
 
 // 로그아웃 함수
 const handleLogout = async () => {
@@ -235,33 +261,12 @@ const handleLogout = async () => {
             <h2 class="text-lg font-bold text-dark-gray">
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
-            <div
-              v-if="userInfo.isPregnant"
-              class="flex space-x-2"
-            >
-              <!-- <button
-                class="px-3 py-1 text-sm bg-base-yellow rounded-md hover:bg-point-yellow text-dark-gray"
-                @click="router.push('/pregnancy-info-edit')"
-              >
-                수정
-              </button>
-              <button
-                class="px-3 py-1 text-sm bg-red-100 rounded-md hover:bg-red-200 text-red-600"
-                @click="deletePregnancyInfo"
-              >
-                삭제
-              </button> -->
-            </div>
           </div>
 
           <div
             v-if="userInfo.isPregnant"
             class="space-y-4"
           >
-            <!-- <div class="flex justify-between items-center">
-              <span class="text-gray-600">태명</span>
-              <span class="font-medium">{{ userInfo.babyNickname }}</span>
-            </div> -->
             <div class="flex justify-between items-center">
               <span class="text-gray-600">출산 예정일</span>
               <span class="font-medium">{{ userInfo.dueDate }}</span>
@@ -302,7 +307,7 @@ const handleLogout = async () => {
             </p>
             <button
               class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
-              @click="router.push('/pregnancy-info-edit')"
+              @click="router.push('/pregnancy-info-register')"
             >
               임신 정보 등록하기
             </button>
@@ -335,7 +340,7 @@ const handleLogout = async () => {
 
           <button
             class="w-full p-4 text-left flex items-center"
-            @click="router.push('/pregnancy-info-edit')"
+            @click="goToPregnancyEdit"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -345,10 +350,13 @@ const handleLogout = async () => {
             >
               <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
             </svg>
-            <span class="text-dark-gray">임신 정보 입력</span>
+            <span class="text-dark-gray">임신 정보 관리</span>
           </button>
 
-          <button class="w-full p-4 text-left flex items-center">
+          <button
+            class="w-full p-4 text-left flex items-center"
+            @click="goToPasswordChange"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5 mr-3 text-gray-500"
@@ -361,7 +369,7 @@ const handleLogout = async () => {
                 clip-rule="evenodd"
               />
             </svg>
-            <span class="text-dark-gray">비밀번호 변경</span>
+            <span class="text-dark-gray text-center">비밀번호 변경</span>
           </button>
 
           <button class="w-full p-4 text-left flex items-center">
@@ -373,7 +381,7 @@ const handleLogout = async () => {
             >
               <path
                 fill-rule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
                 clip-rule="evenodd"
               />
             </svg>

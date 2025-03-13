@@ -268,10 +268,15 @@ const goToRegister = () => {
   router.push('/register')
 }
 
+// 아이디 찾기 페이지로 이동
+const goToFindId = () => {
+  router.push('/find-id')
+}
+
+// 비밀번호 찾기 페이지로 이동
 const goToFindPassword = () => {
   router.push('/find-password')
 }
-
 
 </script>
 
@@ -430,43 +435,31 @@ const goToFindPassword = () => {
                 </svg>
                 <span>네이버 계정으로 로그인</span>
               </button>
-
-              <button
-                type="button"
-                class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white bg-black border border-black rounded-[20px] shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
-              >
-                <svg
-                  class="w-5 h-5 mr-3"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M17.05 20.28c-.98.95-2.05.88-3.08.45-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.47C2.7 15.25 3.78 7.46 9.02 7.18c1.59-.08 2.58.73 3.56.78 1.37-.21 2.44-1.05 3.82-.84 1.63.25 2.83 1.19 3.41 2.77-3.4 2.11-2.2 6.89.93 8.35-.7 1.43-1.47 2.87-3.69 2.04zm-5.35-14.6c-.12-2.13 1.99-4.04 3.98-4.2.29 2.47-2.38 4.32-3.98 4.2z"
-                    fill="white"
-                  />
-                </svg>
-                <span>애플 계정으로 로그인</span>
-              </button>
             </div>
           </div>
 
           <!-- 링크 모음 -->
           <div class="flex justify-center items-center space-x-4 mt-4 text-sm">
-            <a
-              href="#"
+            <button
               class="text-dark-gray hover:underline"
-              @click.prevent="goToFindPassword"
+              @click="goToFindId"
+            >
+              아이디 찾기
+            </button>
+            <span class="text-gray-400">|</span>
+            <button
+              class="text-dark-gray hover:underline"
+              @click="goToFindPassword"
             >
               비밀번호 찾기
-            </a>
-            <span class="text-gray-300">|</span>
-            <a
-              href="#"
-              class="text-point-yellow hover:underline font-medium"
-              @click.prevent="goToRegister"
+            </button>
+            <span class="text-gray-400">|</span>
+            <button
+              class="text-point-yellow hover:text-yellow-600"
+              @click="goToRegister"
             >
-              회원가입하기
-            </a>
+              회원가입
+            </button>
           </div>
         </div>
       </form>

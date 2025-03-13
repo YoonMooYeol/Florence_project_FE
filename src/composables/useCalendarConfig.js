@@ -33,8 +33,8 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
       html: `
         <div class="day-cell-content">
           <span class="fc-daygrid-day-number">${dayNumber}</span>
-          ${hasBabyDiary ? '<span class="baby-diary-indicator">👶</span>' : ''}
           ${hasLLM ? '<span class="llm-indicator">•</span>' : ''}
+          ${hasBabyDiary ? '<span class="baby-diary-indicator">♥︎</span>' : ''}
         </div>
       `
     }
@@ -68,8 +68,10 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
     dateClick: handleDateClick,
     eventClick: handleEventClick,
     eventContent: (arg) => {
+      // Remove recurring marker [매월] from the event title
+      const title = arg.event.title.replace(/\[매월\]/g, '').trim();
       return {
-        html: `<div class="custom-event-content">${arg.event.title}</div>`
+        html: `<div class="custom-event-content">${title}</div>`
       }
     },
     datesSet: (dateInfo) => {

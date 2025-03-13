@@ -17,6 +17,8 @@
     "@fullcalendar/interaction": "^6.1.15",
     "@fullcalendar/timegrid": "^6.1.11",
     "@fullcalendar/vue3": "^6.1.15",
+    "@jamescoyle/vue-icon": "^0.1.2",
+    "@mdi/js": "^7.4.47",
     "axios": "^1.6.7",
     "dompurify": "^3.2.4",
     "googleapis": "^146.0.0",
