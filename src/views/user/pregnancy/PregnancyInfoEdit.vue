@@ -155,6 +155,16 @@ const savePregnancyInfo = async () => {
       pregnancyInfo.value.dueDate = calculateDueDateFromWeek(pregnancyInfo.value.currentWeek)
     }
 
+    // 추가: 출산 예정일이 과거 날짜이면 경고 및 저장 중단
+    if (pregnancyInfo.value.dueDate) {
+      const dueDateObj = new Date(pregnancyInfo.value.dueDate)
+      const today = new Date()
+      if (dueDateObj <= today) {
+        alert('출산 예정일은 미래 날짜여야 합니다.')
+        return
+      }
+    }
+
     // 현재 임신 주차가 없으면 출산예정일로부터 계산
     if (!pregnancyInfo.value.currentWeek && pregnancyInfo.value.dueDate) {
       pregnancyInfo.value.currentWeek = calculateWeekFromDueDate(pregnancyInfo.value.dueDate)

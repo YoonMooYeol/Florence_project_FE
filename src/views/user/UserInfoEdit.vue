@@ -164,7 +164,11 @@ const saveUserInfo = async () => {
     sessionStorage.setItem('userEmail', userInfo.value.email)
 
     // 저장 성공 메시지
-    alert('정보가 성공적으로 저장되었습니다.')
+    let errorMessage = response.data.message || "사용자 정보 저장에 성공했습니다."
+    if (errorMessage === "이 필드는 null일 수 없습니다.") {
+      errorMessage = "전화번호를 입력해주세요"
+    }
+    alert(errorMessage)
 
     // 프로필 페이지로 이동
     router.push('/profile')
@@ -199,6 +203,15 @@ const saveUserInfo = async () => {
     } else {
       errors.form = error.message || '사용자 정보 저장 중 오류가 발생했습니다.'
     }
+
+    // 전화번호 에러 메시지 매핑: 오류 메시지에 'null'이라는 단어가 포함된 경우로 처리
+    if (errors.phone_number && errors.phone_number.includes("null")) {
+      errors.phone_number = "전화번호를 입력해주세요"
+    }
+
+    // 최종 에러 메시지: 필드별 에러 우선, 없으면 폼 에러
+    let errorMessage = errors.phone_number || errors.form || "사용자 정보 저장에 실패했습니다."
+    alert(errorMessage)
   } finally {
     isSubmitting.value = false
   }
