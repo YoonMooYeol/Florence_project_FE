@@ -17,8 +17,8 @@
       <div class="bg-white rounded-lg shadow-md p-6">
         <div class="space-y-4">
           <div>
-            <label class="block mb-2 text-sm font-medium text-dark-gray">기존 비밀번호</label>
-            <input type="password" v-model="passwordChange.currentPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="기존 비밀번호를 입력해주세요" />
+            <label class="block mb-2 text-sm font-medium text-dark-gray">{{ isSocialLogin ? '새 비밀번호 설정' : '기존 비밀번호' }}</label>
+            <input type="password" v-model="passwordChange.currentPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" :placeholder="isSocialLogin ? '새 비밀번호를 설정하세요' : '기존 비밀번호를 입력해주세요'" :disabled="isSocialLogin" />
           </div>
           <div>
             <label class="block mb-2 text-sm font-medium text-dark-gray">새 비밀번호</label>
@@ -38,9 +38,10 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
+import { useAuthStore } from '@/store/auth'
 
 const router = useRouter()
 
@@ -50,11 +51,23 @@ const passwordChange = reactive({
   confirmPassword: ''
 })
 
+const authStore = useAuthStore()
+
+// Determine if the user is logged in via social login
+const isSocialLogin = computed(() => authStore.user && authStore.user.provider !== 'local')
+
 const handlePasswordChange = async () => {
-  // 유효성 검사
-  if (!passwordChange.currentPassword || !passwordChange.newPassword || !passwordChange.confirmPassword) {
-    alert('모든 필드를 입력해주세요.')
-    return
+  // Validation: if social login, skip currentPassword requirement
+  if (isSocialLogin.value) {
+    if (!passwordChange.newPassword || !passwordChange.confirmPassword) {
+      alert('모든 필드를 입력해주세요.')
+      return
+    }
+  } else {
+    if (!passwordChange.currentPassword || !passwordChange.newPassword || !passwordChange.confirmPassword) {
+      alert('모든 필드를 입력해주세요.')
+      return
+    }
   }
 
   if (passwordChange.newPassword !== passwordChange.confirmPassword) {
@@ -62,12 +75,23 @@ const handlePasswordChange = async () => {
     return
   }
 
-  try {
-    const response = await api.put('/accounts/users/me/change-password/', {
+  // Construct payload based on login type
+  let payload;
+  if (isSocialLogin.value) {
+    payload = {
+      new_password: passwordChange.newPassword,
+      new_password_confirm: passwordChange.confirmPassword
+    }
+  } else {
+    payload = {
       current_password: passwordChange.currentPassword,
       new_password: passwordChange.newPassword,
       new_password_confirm: passwordChange.confirmPassword
-    })
+    }
+  }
+
+  try {
+    const response = await api.put('/accounts/users/me/change-password/', payload)
 
     if (response.status === 200) {
       alert('비밀번호가 성공적으로 변경되었습니다.')

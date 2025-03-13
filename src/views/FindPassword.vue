@@ -109,11 +109,15 @@ const findPasswordApi = async (email) => {
       throw new Error('요청한 기능을 찾을 수 없습니다. 관리자에게 문의해주세요.')
     }
     if (error.response?.status === 500) {
+      // Check if error indicates that the user does not exist
+      if (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('DoesNotExist')) {
+        throw new Error('등록되지 않은 이메일입니다.');
+      }
       if (error.response?.data?.detail?.includes('Invalid address')) {
-        throw new Error('등록되지 않은 이메일 주소입니다. 회원가입 시 사용한 이메일을 입력해주세요.')
+        throw new Error('등록되지 않은 이메일 주소입니다. 회원가입 시 사용한 이메일을 입력해주세요.');
       }
       const errorDetail = error.response?.data?.detail || error.response?.data?.message || '';
-      throw new Error(`서버 오류가 발생했습니다: ${errorDetail}`)
+      throw new Error(`서버 오류가 발생했습니다: ${errorDetail}`);
     }
     if (error.response?.data?.detail) {
       throw new Error(error.response.data.detail)
