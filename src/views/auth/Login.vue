@@ -286,7 +286,7 @@ const goToFindPassword = () => {
       <!-- 헤더 -->
       <div class="mb-8 text-center">
         <h1 class="text-3xl font-bold text-dark-gray">
-          하트비트
+          누리달
         </h1>
         <p class="mt-2 text-dark-gray">
           로그인

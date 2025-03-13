@@ -22,14 +22,15 @@ const goToLogin = async () => {
 
 <template>
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
-    <div class="w-full max-w-md p-20 space-y-8 bg-white rounded-[20px] shadow-md">
+    <div class="w-full max-w-md p-10 space-y-8 bg-white rounded-[20px] shadow-md">
       <div class="text-center">
-        <h1 class="text-3xl font-bold text-dark-gray">
-          하트비트
-        </h1>
         <p class="mt-2 text-dark-gray">
-          고요한 어둠 속에서 빛을 기다리는 작은 심장
+          온누리에 생명의 소리가 가득 차 넘치는 달
         </p>
+        <h1 class="text-3xl font-bold mt-4 text-dark-gray">
+          누리달
+        </h1>
+
       </div>
 
       <div class="mt-8 space-y-4">

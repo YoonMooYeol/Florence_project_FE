@@ -451,7 +451,7 @@ onUnmounted(() => {
 
       <div class="mb-3 text-center">
         <h1 class="text-3xl font-bold text-dark-gray">
-          하트비트
+          누리달
         </h1>
         <p class="mt-1 text-dark-gray">
           회원가입

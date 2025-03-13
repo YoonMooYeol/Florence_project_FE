@@ -709,7 +709,7 @@ const closeSummary = () => {
     <div class="bg-white p-4 shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-20">
       <div class="flex items-center">
         <h1 class="text-xl font-bold text-dark-gray">
-          하트비트 AI 채팅
+          플로렌스
         </h1>
       </div>
       <div class="flex items-center space-x-2">

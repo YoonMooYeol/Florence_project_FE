@@ -196,7 +196,7 @@ const skipForNow = () => {
             임신 정보를 입력해주세요
           </h2>
           <p class="text-sm text-gray-500 mt-1">
-            하트비트에서 맞춤 서비스를 제공해 드립니다
+            누리달에서 맞춤 서비스를 제공해 드립니다
           </p>
         </div>
 

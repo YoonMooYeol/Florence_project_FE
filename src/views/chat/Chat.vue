@@ -13,7 +13,6 @@ import { mdiBabyFaceOutline } from '@mdi/js'
 const CONTEXT = 'Chat'
 const path = mdiBabyFaceOutline
 
-
 // 백엔드 서버 URL 설정
 const API_BASE_URL = 'http://127.0.0.1:8000'
 
@@ -87,29 +86,29 @@ onMounted(async () => {
 
     // 사용자 정보 가져오기
     await getUserInfo()
-    
+
     // 사용자 ID가 없으면 로그인 페이지로 리다이렉트
     if (!userId.value) {
       logger.warn(CONTEXT, '사용자 정보를 가져오지 못했습니다. 로그인 페이지로 이동합니다.')
       router.push('/login')
       return
     }
-    
+
     // 임신 정보 가져오기
     await getPregnancyInfo()
-    
+
     // 임신 정보가 없으면 사용자 정보 페이지로 리다이렉트
     if (!hasPregnancyInfo.value) {
       logger.warn(CONTEXT, '임신 정보가 없습니다. 사용자 정보 페이지로 이동합니다.')
       router.push('/profile')
       return
     }
-    
+
     // 환영 메시지 추가
     messages.value.push({
       id: Date.now(),
       sender: 'bot',
-      content: `안녕하세요! 하트비트 AI입니다. ${babyName.value || '태아'}는 현재 ${pregnancyWeek.value}주차네요. 임신과 출산에 관한 궁금한 점을 물어보세요. 일상적인 질문도 답변해 드립니다.`,
+      content: `안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`,
       time: getCurrentTime()
     })
 
@@ -390,12 +389,12 @@ const parseMarkdown = (text) => {
     // marked 옵션 설정을 통해 취소선 기능 비활성화
     const options = {
       breaks: true, // 줄바꿈 허용
-      gfm: true,    // GitHub Flavored Markdown 활성화
+      gfm: true // GitHub Flavored Markdown 활성화
     }
-    
+
     // ~ 문자 이스케이프 처리
-    let processedText = text.replace(/~/g, '\\~')
-    
+    const processedText = text.replace(/~/g, '\\~')
+
     // 마크다운을 HTML로 변환한 후 XSS 공격 방지를 위해 정화
     const parsed = marked(processedText, options)
     return DOMPurify.sanitize(parsed)
@@ -411,7 +410,7 @@ const parseMarkdown = (text) => {
     <!-- 헤더 -->
     <div class="bg-white p-4 shadow-md flex items-center justify-center fixed top-0 left-0 right-0 z-20">
       <h1 class="text-xl font-bold text-center text-dark-gray">
-        AI 상담사 - 검색 기능
+        플로렌스
       </h1>
     </div>
 
@@ -441,8 +440,8 @@ const parseMarkdown = (text) => {
             class="flex flex-col max-w-[80%] mt-5"
           >
             <div class="w-10 h-10 flex items-center justify-start mb-1">
-              <svg-icon 
-                type="mdi" 
+              <svg-icon
+                type="mdi"
                 :path="path"
                 :size="40"
                 :fill="'#353535'"
@@ -457,7 +456,10 @@ const parseMarkdown = (text) => {
                 }"
               >
                 <!-- 마크다운 렌더링 -->
-                <div v-if="!message.isLoading" v-html="parseMarkdown(message.content)"></div>
+                <div
+                  v-if="!message.isLoading"
+                  v-html="parseMarkdown(message.content)"
+                />
                 <!-- 로딩 표시는 기존대로 유지 -->
                 <template v-else>
                   {{ message.content }}
@@ -507,10 +509,13 @@ const parseMarkdown = (text) => {
       <p class="text-white text-xl font-semibold">
         답변을 생성 중입니다...
       </p>
-      
+
       <!-- 검색 쿼리 표시 -->
       <div class="text-white text-center max-w-md px-4 mt-3">
-        <p v-if="currentSearchQuery" class="text mb-2">
+        <p
+          v-if="currentSearchQuery"
+          class="text mb-2"
+        >
           <span class="font-medium">검색 중:</span> "{{ currentSearchQuery }}"
         </p>
       </div>
