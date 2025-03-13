@@ -5,11 +5,6 @@ import axios from 'axios'
 import { useAuthStore } from '@/store/auth'
 import api from '@/utils/axios'
 
-// Daum 지도 API 초기화
-let geocoder
-let map
-let marker
-
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -99,10 +94,6 @@ onMounted(() => {
 
   // 이벤트 리스너 등록
   window.addEventListener('message', handleAddressSelect)
-
-  // Daum 지도 API 설정
-  geocoder = new daum.maps.services.Geocoder()
-  marker = new daum.maps.Marker()
 })
 
 // 폼 유효성 검사 함수
@@ -342,16 +333,14 @@ const showMap = (coords) => {
     center: coords,
     level: 5
   }
-  map = new daum.maps.Map(mapContainer, mapOption)
   mapContainer.style.display = 'block'
 }
 
 // 마커 표시
 const placeMarker = (coords) => {
-  marker = new daum.maps.Marker({
-    position: coords
-  })
-  marker.setMap(map)
+  // marker = new daum.maps.Marker({
+  //   position: coords
+  // })
 }
 
 // 주소 검색 결과 처리
@@ -359,17 +348,6 @@ const handleAddressSelect = (event) => {
   if (event.data && event.data.type === 'ADDRESS_SELECTED') {
     const address = event.data.address
     formData.address = address
-
-    // 주소로 좌표 검색
-    geocoder.addressSearch(address, (results, status) => {
-      if (status === daum.maps.services.Status.OK) {
-        const result = results[0]
-        const coords = new daum.maps.LatLng(result.y, result.x)
-
-        showMap(coords)
-        placeMarker(coords)
-      }
-    })
   }
 }
 
@@ -724,8 +702,8 @@ export default {
   },
 
   mounted () {
-    this.geocoder = new daum.maps.services.Geocoder() // 주소-좌표 변환 객체
-    this.marker = new daum.maps.Marker() // 마커 객체 생성
+    // this.geocoder = new daum.maps.services.Geocoder() // 주소-좌표 변환 객체
+    // this.marker = new daum.maps.Marker() // 마커 객체 생성
   },
   methods: {
     // Daum 주소 검색 및 지도 표시
@@ -738,33 +716,33 @@ export default {
           this.formData.address = addr
 
           // 주소로 상세 정보를 검색
-          this.geocoder.addressSearch(data.address, (results, status) => {
-            if (status === daum.maps.services.Status.OK) {
-              const result = results[0] // 첫번째 결과의 값 사용
+          // this.geocoder.addressSearch(data.address, (results, status) => {
+          //   if (status === daum.maps.services.Status.OK) {
+          //     const result = results[0] // 첫번째 결과의 값 사용
 
-              const coords = new daum.maps.LatLng(result.y, result.x) // 좌표
-              this.showMap(coords) // 지도 표시
-              this.placeMarker(coords) // 마커 표시
-            }
-          })
+          //     const coords = new daum.maps.LatLng(result.y, result.x) // 좌표
+          //     this.showMap(coords) // 지도 표시
+          //     this.placeMarker(coords) // 마커 표시
+          //   }
+          // })
         }
       }).open()
     },
 
     // 지도 표시
     showMap (coords) {
-      const mapContainer = document.getElementById('map') // 지도 표시 div
+      const mapContainer = document.getElementById('map')
       const mapOption = {
-        center: coords, // 지도의 중심 좌표
-        level: 5 // 확대 레벨
+        center: coords,
+        level: 5
       }
-      this.map = new daum.maps.Map(mapContainer, mapOption)
-      mapContainer.style.display = 'block' // 지도를 표시
+      // this.map = new daum.maps.Map(mapContainer, mapOption)
+      mapContainer.style.display = 'block'
     },
 
     // 마커 표시
     placeMarker (coords) {
-      this.marker.setPosition(coords)
+      // this.marker.setPosition(coords)
     },
 
     // 필드 에러 초기화 함수
