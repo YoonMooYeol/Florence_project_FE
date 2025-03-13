@@ -1,6 +1,6 @@
 <!-- eslint-disable import/no-duplicates -->
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import { useCalendarStore } from '@/store/calendar'
 import { useCalendarConfig } from '@/composables/useCalendarConfig'
@@ -18,8 +18,7 @@ import AddEventModal from '@/components/calendar/AddEventModal.vue'
 import AddDiaryTypeModal from '@/components/calendar/AddDiaryTypeModal.vue'
 import EventModal from '@/components/calendar/EventModal.vue'
 import BabyDiaryModal from '@/components/calendar/BabyDiaryModal.vue'
-import { ref } from 'vue'
-import TodoList from './TodoList.vue'
+// import TodoList from './TodoList.vue'
 
 // 로깅 컨텍스트 설정
 const CONTEXT = 'Calendar'
@@ -37,6 +36,16 @@ const showFABMenu = ref(false)
 const showEventModal = ref(false)
 const showBabyDiaryModal = ref(false)
 const selectedDate = ref(null)
+
+const popupActive = computed(() => {
+  return showEventModal.value ||
+         showBabyDiaryModal.value ||
+         modalManager.showDayEventsModal.value ||
+         modalManager.showEventDetailModal.value ||
+         modalManager.showLLMDetailModal.value ||
+         modalManager.showAddEventModal.value ||
+         modalManager.showDiaryTypeModal.value;
+});
 
 // 날짜 클릭 핸들러
 const handleDateClick = (info) => {
@@ -333,8 +342,8 @@ const handleBabyDiarySave = async (diaryData) => {
       />
     </div>
     
-    <!-- Todo List (추가됨) -->
-    <TodoList class="mt-0" />
+    <!-- Todo List (추후 작업을 위해 주석 처리) -->
+    <!-- <TodoList class="mt-0" /> -->
 
     <!-- 하단 네비게이션 바 -->
     <BottomNavBar active-tab="calendar" class="bottom-nav" />
@@ -344,6 +353,8 @@ const handleBabyDiarySave = async (diaryData) => {
       <button
         class="fab-button"
         @click="showFABMenu = !showFABMenu"
+        :disabled="popupActive"
+        :class="{'opacity-50 cursor-not-allowed': popupActive}"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -424,6 +435,9 @@ const handleBabyDiarySave = async (diaryData) => {
       @save="handleBabyDiarySave"
     />
 
+    <!-- Popup 배경 오버레이 -->
+    <div v-if="modalManager.showDayEventsModal.value" class="modal-overlay"></div>
+
     <!-- 일일 일정 모달 -->
     <DayEventsModal
       :show="modalManager.showDayEventsModal.value"
@@ -487,7 +501,7 @@ const handleBabyDiarySave = async (diaryData) => {
   padding-bottom: 0;
   position: relative;
   z-index: 0;
-  height: calc(100vh - 64px);
+  height: calc(100vh - 140px);
   margin-bottom: 0;
 }
 
@@ -939,6 +953,14 @@ const handleBabyDiarySave = async (diaryData) => {
   transform: scale(1.1);
 }
 
+.fab-button:disabled:hover {
+  transform: scale(1) !important;
+}
+
+.fab-button:disabled {
+  pointer-events: none;
+}
+
 .fab-menu {
   position: absolute;
   bottom: 70px;
@@ -975,5 +997,15 @@ const handleBabyDiarySave = async (diaryData) => {
 
 .fab-menu-item svg {
   color: var(--color-point);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 45;
 }
 </style>

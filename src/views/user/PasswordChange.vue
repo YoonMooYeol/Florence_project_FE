@@ -17,8 +17,8 @@
       <div class="bg-white rounded-lg shadow-md p-6">
         <div class="space-y-4">
           <div>
-            <label class="block mb-2 text-sm font-medium text-dark-gray">{{ isSocialLogin ? '새 비밀번호 설정' : '기존 비밀번호' }}</label>
-            <input type="password" v-model="passwordChange.currentPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" :placeholder="isSocialLogin ? '새 비밀번호를 설정하세요' : '기존 비밀번호를 입력해주세요'" :disabled="isSocialLogin" />
+            <label class="block mb-2 text-sm font-medium text-dark-gray">{{ isSocialLogin.value ? '새 비밀번호를 입력하세요' : '기존 비밀번호' }}</label>
+            <input type="password" v-model="passwordChange.currentPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" :placeholder="isSocialLogin.value ? '새 비밀번호를 입력하세요' : '기존 비밀번호를 입력해주세요'" :disabled="isSocialLogin.value" />
           </div>
           <div>
             <label class="block mb-2 text-sm font-medium text-dark-gray">새 비밀번호</label>
@@ -54,7 +54,13 @@ const passwordChange = reactive({
 const authStore = useAuthStore()
 
 // Determine if the user is logged in via social login
-const isSocialLogin = computed(() => authStore.user && authStore.user.provider !== 'local')
+const isSocialLogin = computed(() => {
+  if (!authStore.user) return false;
+  return authStore.user.provider !== 'local' ||
+         authStore.user.username.startsWith('google_') ||
+         authStore.user.username.startsWith('naver_') ||
+         authStore.user.username.startsWith('kakao_');
+});
 
 const handlePasswordChange = async () => {
   // Validation: if social login, skip currentPassword requirement
