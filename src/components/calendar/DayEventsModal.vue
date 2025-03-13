@@ -81,6 +81,22 @@ const viewEvent = (event) => {
   emit('view-event', event)
 }
 
+// 반복 주기 텍스트 변환 함수
+const getRecurringText = (recurring) => {
+  switch (recurring) {
+    case 'daily':
+      return '매일'
+    case 'weekly':
+      return '매주'
+    case 'monthly':
+      return '매월'
+    case 'yearly':
+      return '매년'
+    default:
+      return ''
+  }
+}
+
 const saveBabyDiary = async () => {
   if (diaryContent.value.trim()) {
     try {
@@ -171,6 +187,9 @@ const saveBabyDiary = async () => {
             >
               <h4 class="font-medium text-dark-gray">
                 {{ event.title }}
+                <span v-if="event.recurring && event.recurring !== 'none'" class="text-sm text-gray-500 ml-2">
+                  ({{ getRecurringText(event.recurring) }})
+                </span>
               </h4>
               <p v-if="!event.allDay" class="text-sm text-gray-500">
                 {{ formatTime(event.start) }} ~ {{ formatTime(event.end) }}

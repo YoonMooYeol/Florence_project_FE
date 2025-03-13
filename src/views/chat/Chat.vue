@@ -7,8 +7,12 @@ import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import SvgIcon from '@jamescoyle/vue-icon'
+import { mdiBabyFaceOutline } from '@mdi/js'
 
 const CONTEXT = 'Chat'
+const path = mdiBabyFaceOutline
+
 
 // 백엔드 서버 URL 설정
 const API_BASE_URL = 'http://127.0.0.1:8000'
@@ -383,8 +387,17 @@ const handleSendClick = () => {
 const parseMarkdown = (text) => {
   if (!text) return ''
   try {
+    // marked 옵션 설정을 통해 취소선 기능 비활성화
+    const options = {
+      breaks: true, // 줄바꿈 허용
+      gfm: true,    // GitHub Flavored Markdown 활성화
+    }
+    
+    // ~ 문자 이스케이프 처리
+    let processedText = text.replace(/~/g, '\\~')
+    
     // 마크다운을 HTML로 변환한 후 XSS 공격 방지를 위해 정화
-    const parsed = marked(text)
+    const parsed = marked(processedText, options)
     return DOMPurify.sanitize(parsed)
   } catch (error) {
     logger.error(CONTEXT, '마크다운 파싱 오류:', error)
@@ -413,7 +426,7 @@ const parseMarkdown = (text) => {
     <!-- 대화 메시지 영역 -->
     <div
       ref="chatContainer"
-      class="flex-1 p-4 overflow-y-auto chat-messages pb-24 mt-14"
+      class="flex-1 p-4 overflow-y-auto chat-messages pb-24 mt-16"
     >
       <div class="flex flex-col space-y-4">
         <div
@@ -425,17 +438,15 @@ const parseMarkdown = (text) => {
           <!-- 봇 메시지 -->
           <div
             v-if="message.sender === 'bot'"
-            class="flex max-w-[80%]"
+            class="flex flex-col max-w-[80%] mt-5"
           >
-            <div class="w-8 h-8 bg-point-yellow rounded-full flex items-center justify-center mr-2 flex-shrink-0">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-dark-gray"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8 5a1 1 0 100-2 1 1 0 000 2zm-2-7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5z" />
-              </svg>
+            <div class="w-10 h-10 flex items-center justify-start mb-1">
+              <svg-icon 
+                type="mdi" 
+                :path="path"
+                :size="40"
+                :fill="'#353535'"
+              />
             </div>
             <div>
               <div

@@ -7,10 +7,10 @@ import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import * as chatService from '@/services/chatService'
 import SvgIcon from '@jamescoyle/vue-icon'
-import { mdiBabyFaceOutline, mdiSend } from '@mdi/js'
+import { mdiSend } from '@mdi/js'
+import BabyIcon from '@/components/icons/BabyIcon.vue'
 
 const CONTEXT = 'ChatSocketView'
-const path = mdiBabyFaceOutline
 const sendIconPath = mdiSend // 전송 아이콘 경로 설정
 
 // 라우터 및 기본 상태 설정
@@ -356,7 +356,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
           class="p-1 rounded-full bg-point-yellow hover:bg-yellow-400 focus:outline-none"
           @click="showNewChatDialog = true"
         >
-          <svg-icon type="mdi" :path="path" size="20" :fill="true" color="#353535"></svg-icon>
+          <BabyIcon :size="20" color="#353535" />
         </button>
       </div>
     </div>
@@ -390,7 +390,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
               class="p-1 rounded-full bg-point-yellow hover:bg-yellow-400 focus:outline-none"
               @click="createNewConversation"
             >
-              <svg-icon type="mdi" :path="path" size="20" :fill="true" color="#353535"></svg-icon>
+              <BabyIcon :size="20" color="#353535" />
             </button>
           </div>
           
@@ -468,7 +468,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
             class="p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
             @click="createNewConversation"
           >
-            <svg-icon type="mdi" :path="path" size="20" :fill="true" color="#353535"></svg-icon>
+            <BabyIcon :size="20" color="#353535" />
           </button>
         </div>
 
@@ -480,7 +480,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
         >
           <div class="flex flex-col space-y-4">
             <div class="flex">
-              <svg-icon type="mdi" :path="path" size="32" :fill="true" color="#FFD600" class="mr-2 flex-shrink-0"></svg-icon>
+              <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
               
               <div>
                 <div class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap">
@@ -515,7 +515,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
                 v-if="message.sender === 'assistant' || message.role === 'assistant'"
                 class="flex max-w-[80%]"
               >
-                <svg-icon type="mdi" :path="path" size="32" :fill="true" color="#FFD600" class="mr-2 flex-shrink-0"></svg-icon>
+                <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
                 <div>
                   <div
                     class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
@@ -582,7 +582,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
             class="flex justify-start"
           >
             <div class="flex max-w-[80%]">
-              <svg-icon type="mdi" :path="path" size="32" :fill="true" color="#FFD600" class="mr-2 flex-shrink-0"></svg-icon>
+              <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
               <div>
                 <div class="bg-gray-100 p-3 rounded-lg shadow-sm whitespace-pre-wrap">
                   <span class="typing-indicator">
@@ -644,9 +644,7 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
               :disabled="isSubmitting || !userInput.trim()"
               @click="handleSendMessage"
             >
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="#000000">
-                <path d="M13,8A4,4 0 0,1 9,12A4,4 0 0,1 5,8A4,4 0 0,1 9,4A4,4 0 0,1 13,8M17,8A4,4 0 0,1 13,12A4,4 0 0,1 9,8A4,4 0 0,1 13,4A4,4 0 0,1 17,8M19.5,13.5L21.2,15.2L19.5,16.9L17.8,15.2L19.5,13.5M9.5,13.5L11.2,15.2L9.5,16.9L7.8,15.2L9.5,13.5M3.5,13.5L5.2,15.2L3.5,16.9L1.8,15.2L3.5,13.5M13,14A8,8 0 0,0 5,22H9A4,4 0 0,1 13,18A4,4 0 0,1 17,22H21A8,8 0 0,0 13,14Z" />
-              </svg>
+              <SvgIcon type="mdi" :path="sendIconPath" size="24" :fill="true" color="#353535"></SvgIcon>
             </button>
           </div>
         </div>

@@ -3,8 +3,12 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { calculateWeekFromDueDate, calculateDueDateFromWeek, calculateFromLastPeriod } from '@/utils/dateUtils'
+import SvgIcon from '@jamescoyle/vue-icon'
+import { mdiMotherNurse } from '@mdi/js'
 
 const router = useRouter()
+
+const path = mdiMotherNurse
 
 // 임신 정보 (실제 구현 시 API로 전송할 데이터)
 const pregnancyInfo = ref({
@@ -177,17 +181,17 @@ const skipForNow = () => {
     <!-- 임신 정보 폼 -->
     <div class="p-4 w-full max-w-md">
       <div class="bg-white rounded-[10px] shadow-md p-8 mb-4">
-        <div class="mb-6 text-center">
-          <div class="w-20 h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-10 w-10 text-dark-gray"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-            </svg>
+        <div class="flex justify-center mb-8">
+          <div class="w-20 h-20 rounded-full bg-base-yellow flex items-center justify-center">
+            <svg-icon
+              type="mdi"
+              :path="path"
+              :size="52"
+              class="text-dark-gray"
+            ></svg-icon>
           </div>
+        </div>
+        <div class="mb-6 text-center">
           <h2 class="text-lg font-bold text-dark-gray">
             임신 정보를 입력해주세요
           </h2>

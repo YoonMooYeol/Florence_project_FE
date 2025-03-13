@@ -3,8 +3,12 @@ import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { calculateWeekFromDueDate, calculateDueDateFromWeek } from '@/utils/dateUtils'
+import SvgIcon from '@jamescoyle/vue-icon'
+import { mdiMotherNurse } from '@mdi/js'
 
 const router = useRouter()
+
+const path = mdiMotherNurse
 
 // 임신 정보
 const pregnancyInfo = ref({
@@ -19,8 +23,12 @@ const pregnancyInfo = ref({
 
 // "모름" 상태 관리
 const unknownInfo = ref({
-  babyName: false
+  babyName: false,
+  pregnancyDate: false // 임신 주차/출산예정일 모름 상태 추가
 })
+
+// 마지막 생리일 상태 추가
+const lastPeriodDate = ref('')
 
 // 로딩 상태 관리
 const isLoading = ref(false)
@@ -217,6 +225,47 @@ const getDaysUntilDueDate = () => {
   const daysUntilDue = Math.ceil(timeDiff / (1000 * 3600 * 24))
   return daysUntilDue
 }
+
+// 마지막 생리일로부터 임신 주차와 출산예정일 계산
+const calculateFromLastPeriod = () => {
+  if (lastPeriodDate.value) {
+    const lastPeriod = new Date(lastPeriodDate.value)
+    const today = new Date()
+    
+    // 임신 주차 계산 (마지막 생리일로부터 경과된 주 수)
+    const weeksDiff = Math.floor((today - lastPeriod) / (7 * 24 * 60 * 60 * 1000))
+    const calculatedWeek = Math.min(weeksDiff + 1, 40) // 최대 40주로 제한
+    
+    // 출산예정일 계산 (마지막 생리일로부터 280일 후)
+    const dueDate = new Date(lastPeriod)
+    dueDate.setDate(dueDate.getDate() + 280)
+    const calculatedDueDate = dueDate.toISOString().split('T')[0]
+
+    // 계산된 값을 임신 정보에 설정
+    pregnancyInfo.value.currentWeek = calculatedWeek
+    pregnancyInfo.value.dueDate = calculatedDueDate
+  }
+}
+
+// 임신 주차/출산예정일 모름 상태 변경 시 처리
+watch(() => unknownInfo.value.pregnancyDate, (isUnknown) => {
+  if (isUnknown) {
+    // 체크박스 선택 시 기존 값 저장
+    lastPeriodDate.value = ''
+  } else {
+    // 체크박스 해제 시 초기화
+    lastPeriodDate.value = ''
+    pregnancyInfo.value.currentWeek = 1
+    pregnancyInfo.value.dueDate = ''
+  }
+})
+
+// 마지막 생리일 변경 시 자동 계산
+watch(() => lastPeriodDate.value, () => {
+  if (lastPeriodDate.value) {
+    calculateFromLastPeriod()
+  }
+})
 </script>
 
 <template>
@@ -276,14 +325,12 @@ const getDaysUntilDueDate = () => {
       <div v-if="pregnancyInfo.isPregnant && !isEditMode" class="bg-white rounded-lg shadow-md p-6 mb-4">
         <div class="mb-6 text-center">
           <div class="w-20 h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-10 w-10 text-dark-gray"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-            </svg>
+            <svg-icon
+              type="mdi"
+              :path="path"
+              :size="52"
+              class="text-dark-gray"
+            ></svg-icon>
           </div>
           <h2 class="text-lg font-bold text-dark-gray">
             임신 정보
@@ -308,18 +355,12 @@ const getDaysUntilDueDate = () => {
             <span class="font-medium">{{ getDaysUntilDueDate() }}일</span>
           </div>
           <div v-if="pregnancyInfo.highRisk" class="flex items-center text-red-500">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-1"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                clip-rule="evenodd"
-              />
-            </svg>
+            <svg-icon
+              type="mdi"
+              :path="path"
+              :size="20"
+              class="mr-1"
+            ></svg-icon>
             <span class="text-sm">고위험 임신</span>
           </div>
           
@@ -338,14 +379,12 @@ const getDaysUntilDueDate = () => {
       <div v-if="isEditMode || !pregnancyInfo.isPregnant" class="bg-white rounded-lg shadow-md p-6 mb-4">
         <div class="mb-6 text-center">
           <div class="w-20 h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-10 w-10 text-dark-gray"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-            </svg>
+            <svg-icon
+              type="mdi"
+              :path="path"
+              :size="52"
+              class="text-dark-gray"
+            ></svg-icon>
           </div>
           <h2 class="text-lg font-bold text-dark-gray">
             임신 정보를 입력해주세요
@@ -353,18 +392,6 @@ const getDaysUntilDueDate = () => {
           <p class="text-sm text-gray-500 mt-1">
             하트비트에서 맞춤 서비스를 제공해 드립니다
           </p>
-        </div>
-
-        <!-- 임신 여부 -->
-        <div class="mb-6">
-          <label class="flex items-center">
-            <input
-              v-model="pregnancyInfo.isPregnant"
-              type="checkbox"
-              class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
-            >
-            <span class="ml-2 text-sm text-dark-gray">임신 중입니다</span>
-          </label>
         </div>
 
         <!-- 임신 정보 입력 영역 -->
@@ -405,6 +432,7 @@ const getDaysUntilDueDate = () => {
               id="currentWeek"
               v-model="pregnancyInfo.currentWeek"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :disabled="unknownInfo.pregnancyDate"
             >
               <option
                 v-for="week in weekOptions"
@@ -427,9 +455,39 @@ const getDaysUntilDueDate = () => {
               v-model="pregnancyInfo.dueDate"
               type="date"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :disabled="unknownInfo.pregnancyDate"
             >
             <p class="text-xs text-gray-500 mt-1">
               임신 주차를 선택하면 자동으로 계산됩니다. 필요 시 수정 가능합니다.
+            </p>
+          </div>
+
+          <!-- 임신 주차/출산예정일 모름 체크박스 -->
+          <div class="mb-4">
+            <label class="flex items-center mt-2">
+              <input
+                v-model="unknownInfo.pregnancyDate"
+                type="checkbox"
+                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+              >
+              <span class="ml-2 text-sm text-gray-500">현재 임신 주차/출산예정일을 모릅니다</span>
+            </label>
+          </div>
+
+          <!-- 마지막 생리 시작일 (체크박스 선택 시에만 표시) -->
+          <div v-if="unknownInfo.pregnancyDate" class="mb-4">
+            <label
+              for="lastPeriodDate"
+              class="block mb-2 text-sm font-medium text-dark-gray"
+            >마지막 생리 시작일</label>
+            <input
+              id="lastPeriodDate"
+              v-model="lastPeriodDate"
+              type="date"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            >
+            <p class="text-xs text-gray-500 mt-1">
+              마지막 생리 시작일을 입력하시면 임신 주차와 출산예정일이 자동으로 계산됩니다.
             </p>
           </div>
 
