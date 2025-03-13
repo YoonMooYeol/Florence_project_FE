@@ -55,7 +55,8 @@ const findPasswordApi = async (email) => {
 
     // 요청 데이터 준비
     const requestData = {
-      email: email.trim()
+      email: email.trim(),
+      type: 'password'
     }
 
     console.log('이메일 전송 요청 데이터:', JSON.stringify(requestData, null, 2))

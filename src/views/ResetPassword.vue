@@ -70,7 +70,7 @@
         <div class="flex flex-col">
           <button
             type="submit"
-            class="w-full px-4 py-3 mb-4 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+            class="w-full px-4 py-3 mb-4 text-center text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             :disabled="isSubmitting"
           >
             <span v-if="isSubmitting">처리 중...</span>
@@ -162,7 +162,7 @@ const handleSubmit = async () => {
   try {
     const response = await api.post('/accounts/confirm_code/', {
       email: formData.email,
-      code: formData.code,
+      reset_code: formData.code,
       new_password: formData.newPassword,
       new_password_confirm: formData.confirmPassword
     })

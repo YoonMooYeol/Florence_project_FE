@@ -42,7 +42,7 @@ onMounted(() => {
     <div class="flex justify-between items-center">
       <button @click="prevMonth" class="text-dark-gray hover:text-gray-600">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 19l-7-7 7-7" />
         </svg>
       </button>
       <span class="text-lg font-bold text-dark-gray">{{ currentYear }}년 {{ currentMonth }}월</span>

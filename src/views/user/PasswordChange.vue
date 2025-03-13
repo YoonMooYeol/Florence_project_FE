@@ -1,53 +1,36 @@
 <!-- PasswordChange.vue -->
 <template>
-  <div class="min-h-screen bg-ivory p-4">
-    <h1 class="text-2xl font-bold mb-6">비밀번호 변경</h1>
-    
-    <div class="bg-white rounded-lg p-6 shadow-sm">
-      <div class="space-y-4">
-        <div>
-          <label class="block text-gray-700 text-sm font-bold mb-2">기존 비밀번호</label>
-          <input 
-            type="password" 
-            v-model="passwordChange.currentPassword"
-            class="w-full p-2 border rounded focus:outline-none focus:border-yellow-400"
-            placeholder="기존 비밀번호를 입력해주세요"
-          >
-        </div>
-        
-        <div>
-          <label class="block text-gray-700 text-sm font-bold mb-2">새 비밀번호</label>
-          <input 
-            type="password" 
-            v-model="passwordChange.newPassword"
-            class="w-full p-2 border rounded focus:outline-none focus:border-yellow-400"
-            placeholder="새 비밀번호를 입력해주세요"
-          >
-        </div>
-        
-        <div>
-          <label class="block text-gray-700 text-sm font-bold mb-2">새 비밀번호 확인</label>
-          <input 
-            type="password" 
-            v-model="passwordChange.confirmPassword"
-            class="w-full p-2 border rounded focus:outline-none focus:border-yellow-400"
-            placeholder="새 비밀번호를 다시 입력해주세요"
-          >
-        </div>
+  <div class="min-h-screen bg-ivory">
+    <!-- 헤더 -->
+    <div class="bg-white p-4 shadow-md flex items-center justify-between">
+      <button @click="goBack" class="text-dark-gray">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <h1 class="text-xl font-bold text-dark-gray flex-1 text-center">비밀번호 변경</h1>
+      <div class="w-6"></div>
+    </div>
 
-        <div class="flex justify-end space-x-2">
-          <button 
-            @click="goBack"
-            class="px-4 py-2 rounded border hover:bg-gray-50 font-bold"
-          >
-            취소
-          </button>
-          <button 
-            @click="handlePasswordChange"
-            class="bg-yellow-400 text-gray-800 px-4 py-2 rounded hover:bg-yellow-500 font-bold"
-          >
-            변경하기
-          </button>
+    <!-- 본문 -->
+    <div class="p-4">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="space-y-4">
+          <div>
+            <label class="block mb-2 text-sm font-medium text-dark-gray">기존 비밀번호</label>
+            <input type="password" v-model="passwordChange.currentPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="기존 비밀번호를 입력해주세요" />
+          </div>
+          <div>
+            <label class="block mb-2 text-sm font-medium text-dark-gray">새 비밀번호</label>
+            <input type="password" v-model="passwordChange.newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="새 비밀번호를 입력해주세요" />
+          </div>
+          <div>
+            <label class="block mb-2 text-sm font-medium text-dark-gray">새 비밀번호 확인</label>
+            <input type="password" v-model="passwordChange.confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="새 비밀번호를 다시 입력해주세요" />
+          </div>
+          <div class="flex space-x-2">
+            <button @click="handlePasswordChange" class="flex-1 px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold">변경하기</button>
+          </div>
         </div>
       </div>
     </div>
@@ -108,5 +91,14 @@ const goBack = () => {
 <style scoped>
 .bg-ivory {
   background-color: #FFFAE0;
+}
+.bg-base-yellow {
+  background-color: #FFED90;
+}
+.bg-point-yellow {
+  background-color: #FFD600;
+}
+.text-dark-gray {
+  color: #353535;
 }
 </style> 

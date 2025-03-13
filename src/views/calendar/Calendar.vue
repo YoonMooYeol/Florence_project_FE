@@ -5,7 +5,7 @@ import FullCalendar from '@fullcalendar/vue3'
 import { useCalendarStore } from '@/store/calendar'
 import { useCalendarConfig } from '@/composables/useCalendarConfig'
 import { useModalManager } from '@/composables/useModalManager'
-import { normalizeDate, formatDate } from '@/utils/dateUtils'
+import { normalizeDate, formatDate, weekdays } from '@/utils/dateUtils'
 import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import CalendarHeader from '@/components/calendar/CalendarHeader.vue'
@@ -19,6 +19,7 @@ import AddDiaryTypeModal from '@/components/calendar/AddDiaryTypeModal.vue'
 import EventModal from '@/components/calendar/EventModal.vue'
 import BabyDiaryModal from '@/components/calendar/BabyDiaryModal.vue'
 import { ref } from 'vue'
+import TodoList from './TodoList.vue'
 
 // 로깅 컨텍스트 설정
 const CONTEXT = 'Calendar'
@@ -314,6 +315,15 @@ const handleBabyDiarySave = async (diaryData) => {
       @today="handleGoToToday"
     />
 
+    <!-- 요일 표시 (추가됨) -->
+    <div class="bg-yellow-200 py-2">
+      <div class="max-w-4xl mx-auto flex justify-around">
+        <span v-for="(day, index) in weekdays" :key="index" class="text-base font-medium text-dark-gray">
+          {{ day }}
+        </span>
+      </div>
+    </div>
+
     <!-- 캘린더 -->
     <div class="calendar-container">
       <FullCalendar
@@ -322,6 +332,9 @@ const handleBabyDiarySave = async (diaryData) => {
         class="calendar"
       />
     </div>
+    
+    <!-- Todo List (추가됨) -->
+    <TodoList class="mt-0" />
 
     <!-- 하단 네비게이션 바 -->
     <BottomNavBar active-tab="calendar" class="bottom-nav" />
@@ -468,11 +481,12 @@ const handleBabyDiarySave = async (diaryData) => {
 
 /* 캘린더 컨테이너 스타일 */
 .calendar-container {
-  flex: 2;
+  flex: 1;
   background-color: var(--color-ivory);
-  padding: 2rem 0.5rem 0.5rem 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+  padding-bottom: 0;
   position: relative;
-  z-index: 2;
+  z-index: 0;
   height: calc(100vh - 64px);
   margin-bottom: 0;
 }
@@ -482,7 +496,7 @@ const handleBabyDiarySave = async (diaryData) => {
   font-family: "Noto Sans KR", "Roboto", sans-serif;
   border: none;
   background-color: transparent;
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 100px);
   width: 100%;
 }
 

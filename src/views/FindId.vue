@@ -146,9 +146,9 @@ const goToLogin = () => {
       <!-- 찾은 아이디 표시 -->
       <div
         v-if="foundUsername"
-        class="p-4 mb-6 text-center bg-green-100 rounded-[20px]"
+        class="p-4 mb-6 text-center bg-yellow-200 rounded-[20px]"
       >
-        <p class="text-gray-700">찾은 아이디</p>
+        <p class="text-gray-700 font-bold">아이디</p>
         <p class="mt-2 text-xl font-bold text-gray-900">{{ foundUsername }}</p>
       </div>
 

@@ -68,8 +68,10 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
     dateClick: handleDateClick,
     eventClick: handleEventClick,
     eventContent: (arg) => {
+      // Remove recurring marker [매월] from the event title
+      const title = arg.event.title.replace(/\[매월\]/g, '').trim();
       return {
-        html: `<div class="custom-event-content">${arg.event.title}</div>`
+        html: `<div class="custom-event-content">${title}</div>`
       }
     },
     datesSet: (dateInfo) => {

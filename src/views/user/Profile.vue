@@ -369,7 +369,7 @@ const handleLogout = async () => {
                 clip-rule="evenodd"
               />
             </svg>
-            <span class="text-dark-gray">비밀번호 변경</span>
+            <span class="text-dark-gray text-center">비밀번호 변경</span>
           </button>
 
           <button class="w-full p-4 text-left flex items-center">
