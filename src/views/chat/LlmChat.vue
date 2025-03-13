@@ -96,9 +96,28 @@ const getTokenFromStorage = () => {
 // 사용자 정보 가져오기
 const getUserInfo = async () => {
   try {
-    const response = await apiClient.get('/v1/accounts/users/me/')
-    userInfo.value = response.data
-    return response.data
+    // 사용자 기본 정보 조회
+    const userResponse = await apiClient.get('/v1/accounts/users/me/')
+    
+    // 임신 정보 조회
+    const pregnancyResponse = await apiClient.get('/v1/accounts/pregnancies/')
+    
+    // 임신 주차 정보와 태명 추출
+    let pregnancyWeek = 0
+    let babyName = '아기'
+    if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
+      pregnancyWeek = pregnancyResponse.data[0].current_week || 0
+      babyName = pregnancyResponse.data[0].baby_name || '아기'
+    }
+    
+    // 통합된 사용자 정보 저장
+    userInfo.value = {
+      ...userResponse.data,
+      pregnancy_week: pregnancyWeek,
+      baby_name: babyName
+    }
+    
+    return userInfo.value
   } catch (error) {
     logger.error(CONTEXT, '사용자 정보 조회 오류:', error)
     handleError(error, `${CONTEXT}.getUserInfo`)
@@ -139,7 +158,14 @@ const getChatRooms = async () => {
       return roomDate === today
     })
 
-    if (todayChatRoom) {
+    // 이미 선택된 채팅방이 있는지 확인
+    const hasChatSelected = selectedChatId.value && 
+      chatRooms.value.some(room => room.chat_id === selectedChatId.value)
+
+    if (hasChatSelected) {
+      // 이미 채팅방이 선택되어 있으면 유지
+      await loadChatRoom(selectedChatId.value, false) // 메시지 로드만 하고 UI 깜빡임 방지
+    } else if (todayChatRoom) {
       // 오늘 생성된 채팅방이 있으면 해당 채팅방 선택
       selectedChatId.value = todayChatRoom.chat_id
       await loadChatRoom(selectedChatId.value)
@@ -204,11 +230,17 @@ const createChatRoom = async () => {
     selectedChatId.value = response.data.chat_id
     await loadChatRoom(selectedChatId.value)
 
+    // 임신 주차 가져오기
+    const pregnancyWeek = userInfo.value?.pregnancy_week || 0
+    const babyName = userInfo.value?.baby_name || '아기'
+    const weekText = pregnancyWeek > 0 ? `현재 임신 ${pregnancyWeek}주차에 관한 정보를 제공해 드릴 수 있습니다.` : ''
+    const babyText = babyName !== '아기' ? `${babyName}(이)와 ` : ''
+
     // 환영 메시지 추가
     messages.value = [{
       id: Date.now(),
       role: 'assistant',
-      content: '안녕하세요! 플로렌스 AI 상담사입니다. 임신 및 출산에 관한 질문이 있으시면 언제든지 물어보세요.',
+      content: `안녕하세요! 플로렌스 임신정보 어시스턴트입니다. ${weekText} ${babyText}함께하는 임신 및 출산에 관한 질문이 있으시면 언제든지 물어보세요. RAG 기반 검색과 웹 검색을 활용하여 정확한 정보를 제공해 드립니다.`,
       created_at: getCurrentTime()
     }]
   } catch (error) {
@@ -220,18 +252,66 @@ const createChatRoom = async () => {
   }
 }
 
-// 채팅방 상세 조회
-const loadChatRoom = async (chatId) => {
-  isLoading.value = true
+// 채팅방 상세 조회 (forceReset 옵션 추가)
+const loadChatRoom = async (chatId, forceReset = true) => {
+  if (forceReset) {
+    isLoading.value = true
+  }
   errorMessage.value = ''
 
   try {
     const response = await apiClient.get(`/v1/llm/chat/rooms/${chatId}/?include_messages=true`)
     currentChat.value = response.data
 
-    // 메시지 가공
-    messages.value = []
+    // forceReset가 true인 경우에만 메시지 목록을 초기화
+    if (forceReset) {
+      messages.value = []
+    } else if (messages.value.length > 0) {
+      // 이미 메시지가 있는 경우 새 메시지만 추가하기 위해 기존 ID 목록 생성
+      const existingMsgIds = messages.value
+        .filter(m => m.id.includes('-'))
+        .map(m => m.id.split('-')[0])
+      
+      // 기존 메시지가 아닌 경우에만 새 메시지로 처리
+      if (response.data.all_messages && response.data.all_messages.length > 0) {
+        let hasNewMessages = false
+        
+        response.data.all_messages.forEach(msg => {
+          if (!existingMsgIds.includes(String(msg.id))) {
+            hasNewMessages = true
+            
+            // 사용자 질문 추가
+            messages.value.push({
+              id: msg.id + '-query',
+              role: 'user',
+              content: msg.query,
+              created_at: formatDate(msg.created_at)
+            })
+            
+            // AI 응답 추가
+            messages.value.push({
+              id: msg.id + '-response',
+              role: 'assistant',
+              content: msg.response,
+              created_at: formatDate(msg.created_at)
+            })
+          }
+        })
+        
+        // 새 메시지가 있으면 스크롤
+        if (hasNewMessages) {
+          // 채팅 목록 UI 업데이트 후 스크롤
+          setTimeout(() => {
+            scrollToBottom()
+          }, 100)
+        }
+        
+        // 여기서 함수 종료 (메시지가 있는 경우)
+        return
+      }
+    }
 
+    // 기존 메시지가 없거나 forceReset이 true인 경우 모든 메시지 로드
     if (response.data.all_messages && response.data.all_messages.length > 0) {
       response.data.all_messages.forEach(msg => {
         // 사용자 질문 추가
@@ -251,11 +331,17 @@ const loadChatRoom = async (chatId) => {
         })
       })
     } else {
+      // 임신 주차 가져오기
+      const pregnancyWeek = userInfo.value?.pregnancy_week || 0
+      const babyName = userInfo.value?.baby_name || '아기'
+      const weekText = pregnancyWeek > 0 ? `현재 임신 ${pregnancyWeek}주차에 관한 정보를 제공해 드릴 수 있습니다.` : ''
+      const babyText = babyName !== '아기' ? `${babyName}(이)와 ` : ''
+
       // 채팅방에 메시지가 없으면 환영 메시지 추가
       messages.value = [{
         id: Date.now(),
         role: 'assistant',
-        content: '안녕하세요! 플로렌스 AI 상담사입니다. 임신 및 출산에 관한 질문이 있으시면 언제든지 물어보세요.',
+        content: `안녕하세요! 플로렌스 임신정보 어시스턴트입니다. ${weekText} ${babyText}함께하는 임신 및 출산에 관한 질문이 있으시면 언제든지 물어보세요. RAG 기반 검색과 웹 검색을 활용하여 정확한 정보를 제공해 드립니다.`,
         created_at: getCurrentTime()
       }]
     }
@@ -269,7 +355,9 @@ const loadChatRoom = async (chatId) => {
     logger.error(CONTEXT, '채팅방 상세 조회 오류:', error)
     handleError(error, `${CONTEXT}.loadChatRoom`)
   } finally {
-    isLoading.value = false
+    if (forceReset) {
+      isLoading.value = false
+    }
   }
 }
 
@@ -301,9 +389,12 @@ const sendMessage = async () => {
       throw new Error('선택된 채팅방이 없습니다')
     }
 
+    // 고유 메시지 ID 생성
+    const messageId = Date.now()
+
     // 사용자 메시지 추가
     const userMessageObj = {
-      id: `temp-${Date.now()}`,
+      id: `user-${messageId}`,
       role: 'user',
       content: userMessage,
       created_at: getCurrentTime()
@@ -314,7 +405,7 @@ const sendMessage = async () => {
     forceScrollToBottom()
 
     // 응답 대기 메시지 추가
-    const waitingId = `waiting-${Date.now()}`
+    const waitingId = `waiting-${messageId}`
     messages.value.push({
       id: waitingId,
       role: 'assistant',
@@ -326,9 +417,18 @@ const sendMessage = async () => {
     // 스크롤 아래로 - 강제 스크롤 사용
     forceScrollToBottom()
 
-    // API 호출
-    const response = await apiClient.post(`/v1/llm/chat/rooms/${selectedChatId.value}/messages/`, {
-      query: userMessage
+    // 임신 정보 가져오기
+    const userId = userInfo.value?.user_id
+    const pregnancyInfo = userInfo.value?.pregnancy_week || 0
+    const babyName = userInfo.value?.baby_name || '아기'
+
+    // Florence 에이전트 API 호출 (서버에서 자동으로 메시지 저장됨)
+    const response = await apiClient.post('/v1/llm/florence/', {
+      user_id: userId,
+      query_text: userMessage,
+      pregnancy_week: pregnancyInfo,
+      baby_name: babyName,
+      thread_id: selectedChatId.value // 채팅방 ID를 thread_id로 전달
     })
 
     // 응답 대기 메시지 제거
@@ -336,14 +436,11 @@ const sendMessage = async () => {
 
     // AI 응답 추가
     messages.value.push({
-      id: response.data.id,
+      id: `florence-${messageId}`,
       role: 'assistant',
       content: response.data.response,
       created_at: getCurrentTime()
     })
-
-    // 채팅방 목록 새로고침
-    await getChatRooms()
 
     // 스크롤 아래로 - 강제 스크롤 사용
     forceScrollToBottom()
@@ -459,6 +556,9 @@ const getCurrentTime = () => {
   return `${hours}:${minutes}`
 }
 
+// 채팅방 자동 갱신 인터벌
+let chatRefreshInterval = null
+
 // 컴포넌트 마운트 시 실행
 onMounted(async () => {
   try {
@@ -498,6 +598,54 @@ onMounted(async () => {
     setTimeout(() => {
       scrollToBottom()
     }, 500)
+    
+    // 30초마다 현재 채팅방 내용 갱신 (optional)
+    chatRefreshInterval = setInterval(async () => {
+      if (selectedChatId.value) {
+        try {
+          const currentMessages = messages.value.length
+          const response = await apiClient.get(`/v1/llm/chat/rooms/${selectedChatId.value}/?include_messages=true`)
+          
+          // 새 메시지가 있는지 확인
+          if (response.data.all_messages && 
+              response.data.all_messages.length > currentMessages / 2) { // 사용자+응답 메시지 각각 카운트되므로 2로 나눔
+            
+            // 저장된 메시지 ID 목록 생성
+            const existingMsgIds = messages.value
+              .filter(m => m.id.includes('-'))
+              .map(m => m.id.split('-')[0])
+            
+            // 새 메시지만 추가
+            response.data.all_messages.forEach(msg => {
+              if (!existingMsgIds.includes(String(msg.id))) {
+                // 사용자 질문 추가
+                messages.value.push({
+                  id: msg.id + '-query',
+                  role: 'user',
+                  content: msg.query,
+                  created_at: formatDate(msg.created_at)
+                })
+                
+                // AI 응답 추가
+                messages.value.push({
+                  id: msg.id + '-response', 
+                  role: 'assistant',
+                  content: msg.response,
+                  created_at: formatDate(msg.created_at)
+                })
+              }
+            })
+            
+            // 새 메시지가 추가되었으면 스크롤
+            if (messages.value.length > currentMessages) {
+              forceScrollToBottom()
+            }
+          }
+        } catch (error) {
+          console.warn('채팅방 자동 갱신 중 오류 (무시됨):', error)
+        }
+      }
+    }, 30000) // 30초마다 갱신
   } catch (error) {
     errorMessage.value = '데이터를 불러오는 중 오류가 발생했습니다.'
     logger.error(CONTEXT, '초기화 오류:', error)
@@ -508,6 +656,12 @@ onMounted(async () => {
 // 컴포넌트 언마운트 시 이벤트 리스너 제거
 onUnmounted(() => {
   window.removeEventListener('resize', scrollToBottom)
+  
+  // 자동 갱신 인터벌 정리
+  if (chatRefreshInterval) {
+    clearInterval(chatRefreshInterval)
+    chatRefreshInterval = null
+  }
 })
 
 // 컴포넌트 업데이트 시 스크롤 처리
@@ -557,6 +711,14 @@ const closeSummary = () => {
         <h1 class="text-xl font-bold text-dark-gray">
           하트비트 AI 채팅
         </h1>
+      </div>
+      <div class="flex items-center space-x-2">
+        <div v-if="userInfo && userInfo.baby_name && userInfo.baby_name !== '아기'" class="text-sm text-gray-600 bg-base-yellow px-3 py-1 rounded-full">
+          태명: {{ userInfo.baby_name }}
+        </div>
+        <div v-if="userInfo && userInfo.pregnancy_week" class="text-sm text-gray-600 bg-base-yellow px-3 py-1 rounded-full">
+          임신 {{ userInfo.pregnancy_week }}주차
+        </div>
       </div>
     </div>
 
