@@ -387,8 +387,17 @@ const handleSendClick = () => {
 const parseMarkdown = (text) => {
   if (!text) return ''
   try {
+    // marked 옵션 설정을 통해 취소선 기능 비활성화
+    const options = {
+      breaks: true, // 줄바꿈 허용
+      gfm: true,    // GitHub Flavored Markdown 활성화
+    }
+    
+    // ~ 문자 이스케이프 처리
+    let processedText = text.replace(/~/g, '\\~')
+    
     // 마크다운을 HTML로 변환한 후 XSS 공격 방지를 위해 정화
-    const parsed = marked(text)
+    const parsed = marked(processedText, options)
     return DOMPurify.sanitize(parsed)
   } catch (error) {
     logger.error(CONTEXT, '마크다운 파싱 오류:', error)

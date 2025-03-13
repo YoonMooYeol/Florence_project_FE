@@ -55,8 +55,7 @@ const findPasswordApi = async (email) => {
 
     // 요청 데이터 준비
     const requestData = {
-      email: email.trim(),
-      type: 'password'
+      email: email.trim()
     }
 
     console.log('이메일 전송 요청 데이터:', JSON.stringify(requestData, null, 2))
@@ -66,42 +65,46 @@ const findPasswordApi = async (email) => {
     const config = {
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json'
       }
     }
 
     // API 요청 전송
     const response = await api.post('/accounts/reset_code/', requestData, config)
-    
+
     console.log('서버 응답 전체:', {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers,
       data: response.data
     })
-    
+
     if (!response.data) {
       throw new Error('서버 응답이 비어있습니다.')
     }
-    
+
     return response.data
   } catch (error) {
     // 상세 에러 로깅
     console.error('API 에러 상세:', {
       name: error.name,
       message: error.message,
-      response: error.response ? {
-        data: error.response.data,
-        status: error.response.status,
-        statusText: error.response.statusText,
-        headers: error.response.headers
-      } : 'No response',
-      request: error.config ? {
-        url: error.config.url,
-        method: error.config.method,
-        data: JSON.parse(error.config.data || '{}'),
-        headers: error.config.headers
-      } : 'No config'
+      response: error.response
+        ? {
+            data: error.response.data,
+            status: error.response.status,
+            statusText: error.response.statusText,
+            headers: error.response.headers
+          }
+        : 'No response',
+      request: error.config
+        ? {
+            url: error.config.url,
+            method: error.config.method,
+            data: JSON.parse(error.config.data || '{}'),
+            headers: error.config.headers
+          }
+        : 'No config'
     })
 
     // 에러 메시지 처리
@@ -146,14 +149,14 @@ const handleSubmit = async () => {
     }
 
     console.log('폼 제출 - 이메일:', {
-      email: email,
+      email,
       length: email.length,
       isValid: isValidEmail(email)
     })
-    
+
     const response = await findPasswordApi(email)
     console.log('API 호출 결과:', response)
-    
+
     if (response?.success === false) {
       errors.form = response.message || '인증코드 전송에 실패했습니다.'
       return
@@ -186,12 +189,12 @@ const verifyCode = async () => {
     const response = await api.post('/accounts/check_code/', {
       reset_code: formData.verificationCode.trim()
     })
-    
+
     // 성공적으로 확인되면 비밀번호 재설정 페이지로 이동
     if (response.status === 200) {
       router.push({
         path: '/reset-password',
-        query: { 
+        query: {
           email: formData.email.trim(),
           code: formData.verificationCode.trim()
         }
@@ -253,7 +256,7 @@ const goToLogin = () => {
             class="w-full px-4 py-3 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="가입한 이메일을 입력하세요"
           >
-          
+
           <p
             v-if="errors.email"
             class="mt-1 text-sm text-red-600"
@@ -263,7 +266,10 @@ const goToLogin = () => {
         </div>
 
         <!-- 인증번호 입력 (인증요청 후 표시) -->
-        <div v-if="isCodeSent" class="mb-2">
+        <div
+          v-if="isCodeSent"
+          class="mb-2"
+        >
           <label
             for="verificationCode"
             class="block mb-2 text-xl font-medium text-dark-gray"
@@ -302,7 +308,7 @@ const goToLogin = () => {
             type="button"
             class="w-full px-4 py-3 mb-4 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold"
             @click="verifyCodeAndProceed"
-            >
+          >
             확인
           </button>
 
@@ -319,4 +325,3 @@ const goToLogin = () => {
     </div>
   </div>
 </template>
-
