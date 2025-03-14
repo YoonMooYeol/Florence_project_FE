@@ -2,6 +2,7 @@
 import { watch, ref } from 'vue'
 import { formatDate, formatTime } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
+import api from '@/utils/axios'
 
 const props = defineProps({
   show: {
@@ -59,6 +60,12 @@ const emit = defineEmits(['close', 'add-event', 'view-event', 'view-llm-summary'
 
 const calendarStore = useCalendarStore()
 
+const baseUrl = 'calendars/baby-diaries/'
+
+const createBabyDiary = (diaryData) => {
+  return api.post(baseUrl, diaryData)
+}
+
 const closeModal = () => {
   console.log('일일 일정 모달 닫기 버튼 클릭')
   emit('close')
@@ -98,20 +105,66 @@ const getRecurringText = (recurring) => {
 }
 
 const saveBabyDiary = async () => {
-  if (diaryContent.value.trim()) {
-    try {
-      if (props.babyDiary) {
-        await calendarStore.updateBabyDiary(props.date, diaryContent.value.trim())
-      } else {
-        await calendarStore.addBabyDiary({
-          date: props.date,
-          content: diaryContent.value.trim()
-        })
+  try {
+    // 내용이 비어있는지 확인
+    if (!diaryContent.value.trim()) {
+      alert('일기 내용을 입력해주세요.');
+      return;
+    }
+
+    // 기존 Date 객체 생성 방식을 수정
+    // const diaryDate = formatDate(new Date(props.date), 'yyyy-MM-dd')
+    
+    // 날짜 형식 수정: props.date를 그대로 사용
+    // props.date가 이미 'YYYY-MM-DD' 형식이면 파싱 없이 바로 사용
+    const diaryDate = props.date;
+    
+    // Construct the payload
+    const payload = {
+      content: diaryContent.value,
+      diary_date: diaryDate
+    };
+    
+    // pregnancy 필드가 필요한 경우 추가
+    if (calendarStore.pregnancyId) {
+      payload.pregnancy = calendarStore.pregnancyId;
+    }
+    
+    console.log('서버로 전송되는 페이로드:', payload);
+
+    // 서버 호출
+    const response = await createBabyDiary(payload);
+    console.log('서버 응답:', response.data);
+    
+    // 성공 메시지
+    alert('일기가 저장되었습니다.');
+    
+    // 캘린더 데이터 새로고침
+    await calendarStore.fetchBabyDiaries();
+    
+    // 모달 닫기
+    emit('close');
+  } catch (error) {
+    console.error('일기 저장 중 오류 발생:', error);
+    
+    if (error.response && error.response.data) {
+      // 전체 오류 객체 로깅 (중요!)
+      console.log('서버 응답 오류 상세 정보:', JSON.stringify(error.response.data));
+      
+      // diary_date 관련 오류 확인
+      if (error.response.data.diary_date) {
+        alert(`날짜 오류: ${error.response.data.diary_date[0]}`);
+      } 
+      // 일반 오류 메시지 
+      else if (error.response.data.error) {
+        alert(`저장 실패: ${error.response.data.error}`);
+      } 
+      // 기타 오류 
+      else {
+        alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
       }
-      emit('close')
-    } catch (error) {
-      console.error('일기 저장 중 오류 발생:', error)
-      alert('일기 저장에 실패했습니다. 다시 시도해주세요.')
+    } else {
+      alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
     }
   }
 }
