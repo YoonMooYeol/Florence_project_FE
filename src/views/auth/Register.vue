@@ -5,6 +5,9 @@ import axios from 'axios'
 import { useAuthStore } from '@/store/auth'
 import api from '@/utils/axios'
 
+// Global emailRegex declaration moved here
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -38,6 +41,34 @@ const errors = reactive({
 const isSubmitting = ref(false)
 const showSuccessMessage = ref(false)
 const registeredUser = ref(null)
+
+// 이메일 인증 관련 로직 추가
+const verificationPopupVisible = ref(false)
+const verificationCode = ref('')
+const isSendingCode = ref(false)
+const isVerifyingCode = ref(false)
+const verificationStatus = ref('')
+
+const email = ref('');
+const isEmailVerified = ref(false);
+
+const handleEmailVerification = async () => {
+  if (!formData.email.trim()) {
+    errors.email = '이메일을 입력하세요';
+    return;
+  }
+  if (!emailRegex.test(formData.email)) {
+    errors.email = '유효한 이메일 주소를 입력해주세요';
+    return;
+  }
+  if (isEmailVerified.value) {
+    // 재입력 클릭: 이메일 수정 가능하도록 상태 초기화
+    isEmailVerified.value = false;
+  } else {
+    // 인증 요청 클릭: 실제 이메일 전송 API 호출
+    await sendVerificationCode();
+  }
+};
 
 // 이미 로그인된 사용자인지 확인
 const checkAlreadyLoggedIn = () => {
@@ -117,7 +148,6 @@ const validateForm = () => {
   }
 
   // 이메일 검증
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!formData.email.trim()) {
     errors.email = '이메일을 입력해주세요'
     isValid = false
@@ -355,6 +385,49 @@ const handleAddressSelect = (event) => {
 onUnmounted(() => {
   window.removeEventListener('message', handleAddressSelect)
 })
+
+/* 이메일 인증 관련 로직 추가 */
+const sendVerificationCode = async () => {
+  if (!formData.email.trim()) {
+    alert("이메일을 입력해주세요.");
+    return;
+  }
+  if (!emailRegex.test(formData.email)) {
+    alert("유효한 이메일 주소를 입력해주세요.");
+    return;
+  }
+  isSendingCode.value = true;
+  try {
+    await api.post('/accounts/send_register/', { email: formData.email });
+    verificationPopupVisible.value = true;
+    alert("인증번호가 전송되었습니다. 이메일을 확인해주세요.");
+  } catch (error) {
+    console.error("인증번호 전송 실패", error);
+    alert("인증번호 전송에 실패했습니다.");
+  } finally {
+    isSendingCode.value = false;
+  }
+};
+
+const verifyCode = async () => {
+  if (!verificationCode.value.trim()) {
+    alert("인증번호를 입력해주세요.");
+    return;
+  }
+  isVerifyingCode.value = true;
+  try {
+    await api.post('/accounts/check_register/', { email: formData.email, code: verificationCode.value });
+    verificationStatus.value = 'verified';
+    verificationPopupVisible.value = false;
+    isEmailVerified.value = true;
+    alert("이메일 인증이 완료되었습니다.");
+  } catch (error) {
+    console.error("인증번호 확인 실패", error);
+    alert("인증번호가 일치하지 않습니다. 다시 시도해주세요.");
+  } finally {
+    isVerifyingCode.value = false;
+  }
+};
 </script>
 
 <template>
@@ -486,22 +559,27 @@ onUnmounted(() => {
 
         <!-- 이메일 입력 -->
         <div class="mb-4">
-          <label
-            for="email"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >이메일</label>
-          <input
-            id="email"
-            v-model="formData.email"
-            type="email"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="이메일을 입력하세요"
-            @input="clearFieldError('email')"
-          >
-          <p
-            v-if="errors.email"
-            class="mt-1 text-sm text-red-600"
-          >
+          <label for="email" class="block mb-2 text-sm font-medium text-dark-gray">이메일</label>
+          <div class="relative">
+            <input
+              id="email"
+              v-model="formData.email"
+              type="email"
+              :disabled="isEmailVerified"
+              :class="{'bg-gray-200': isEmailVerified}"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="이메일을 입력하세요"
+            >
+            <button
+              type="button"
+              @click="handleEmailVerification"
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-yellow-300 text-dark-gray rounded font-bold text-sm"
+              :disabled="isSendingCode"
+            >
+              {{ isEmailVerified ? '재입력' : '인증요청' }}
+            </button>
+          </div>
+          <p v-if="errors.email" class="mt-1 text-sm text-red-600">
             {{ errors.email }}
           </p>
         </div>
@@ -689,6 +767,23 @@ onUnmounted(() => {
       </form>
     </div>
   </div>
+
+  <!-- 이메일 인증 UI 추가 시작 -->
+  <div v-if="verificationPopupVisible" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 998;">
+    <div class="email-verification-popup" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border: 1px solid #ccc; border-radius: 20px; width: 400px; max-width: 90%; z-index: 999;">
+      <p class="mb-4 text-lg font-bold text-center">이메일로 받은 인증번호를 입력하세요:</p>
+      <input v-model="verificationCode" type="text" placeholder="인증번호 입력" class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow mb-4" />
+      <div class="flex space-x-4">
+        <button @click="verifyCode" :disabled="isVerifyingCode" class="flex-1 py-2 bg-yellow-200 text-dark-gray font-bold border border-yellow-300 rounded-[10px] hover:bg-yellow-300 focus:outline-none">
+          확인
+        </button>
+        <button @click="verificationPopupVisible = false" class="flex-1 py-2 bg-yellow-200 text-dark-gray font-bold border border-yellow-300 rounded-[10px] hover:bg-yellow-300 focus:outline-none">
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- 이메일 인증 UI 추가 끝 -->
 </template>
 
 <script>
