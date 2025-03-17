@@ -224,6 +224,107 @@ const goBack = () => {
 
 // 컴포넌트 마운트 시 사용자 정보 불러오기
 onMounted(fetchUserInfo)
+
+const fileInput = ref(null);
+const triggerFileInput = () => {
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
+
+const handleProfilePicChange = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = () => {
+    const imageDataUrl = reader.result;
+    const img = new Image();
+    img.src = imageDataUrl;
+    img.onload = () => {
+      // 이미지의 가장 작은 크기를 기준으로 중앙 정사각형을 계산
+      const minSize = Math.min(img.width, img.height);
+      const sx = (img.width - minSize) / 2;
+      const sy = (img.height - minSize) / 2;
+      
+      // 캔버스를 생성하여 원형 클리핑 적용
+      const canvas = document.createElement('canvas');
+      canvas.width = minSize;
+      canvas.height = minSize;
+      const ctx = canvas.getContext('2d');
+      ctx.beginPath();
+      ctx.arc(minSize / 2, minSize / 2, minSize / 2, 0, Math.PI * 2, true);
+      ctx.closePath();
+      ctx.clip();
+      
+      // 중앙 정사각형 영역을 캔버스에 그리기
+      ctx.drawImage(img, sx, sy, minSize, minSize, 0, 0, minSize, minSize);
+      
+      // 캔버스의 내용을 Blob으로 변환하여 업로드
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          alert("이미지 처리 실패");
+          return;
+        }
+        const formData = new FormData();
+        formData.append("profile_image", blob, file.name);
+        try {
+          const response = await api.post('accounts/users/me/profile-image/', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          console.log("Profile image updated successfully:", response.data);
+          alert("프로필 사진이 업데이트되었습니다.");
+        } catch (error) {
+          console.error("프로필 사진 업데이트 오류:", error);
+          alert("프로필 사진 업데이트 실패");
+        }
+      }, 'image/png');
+    };
+    img.onerror = () => {
+      alert("이미지 로드 실패");
+    };
+  };
+  reader.onerror = () => {
+    alert("파일 읽기 실패");
+  };
+};
+
+const showProfilePhotoModal = ref(false)
+const openProfilePhotoModal = () => {
+  showProfilePhotoModal.value = true
+}
+const closeProfilePhotoModal = () => {
+  showProfilePhotoModal.value = false
+}
+const viewProfilePhoto = () => {
+  if (userInfo.value.profile_image) {
+    window.open(userInfo.value.profile_image, '_blank')
+  } else {
+    alert('등록된 프로필 사진이 없습니다.')
+  }
+}
+const registerOrUpdateProfilePhoto = () => {
+  if (fileInput.value) {
+    fileInput.value.click()
+  }
+  closeProfilePhotoModal()
+}
+const deleteProfilePhoto = () => {
+  if (confirm('프로필 사진을 삭제하시겠습니까?')) {
+    api.delete('/accounts/users/me/profile-image/')
+      .then(response => {
+        alert('프로필 사진이 삭제되었습니다.')
+        userInfo.value.profile_image = null
+      })
+      .catch(error => {
+        console.error('프로필 사진 삭제 오류:', error)
+        alert('프로필 사진 삭제에 실패했습니다.')
+      })
+  }
+  closeProfilePhotoModal()
+}
+
 </script>
 
 <template>
@@ -295,16 +396,12 @@ onMounted(fetchUserInfo)
                 clip-rule="evenodd"
               />
             </svg>
-            <button class="absolute bottom-0 right-0 bg-point-yellow rounded-full p-1 shadow-md">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4 text-dark-gray"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
+            <button @click="openProfilePhotoModal" class="absolute bottom-0 right-0 -translate-x-1/2 -translate-y-1/2 bg-point-yellow w-6 h-6 rounded-full flex items-center justify-center border border-white">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-dark-gray" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
               </svg>
             </button>
+            <input type="file" ref="fileInput" style="display:none" @change="handleProfilePicChange" accept="image/*" />
           </div>
           <p class="text-sm text-gray-500">
             프로필 사진 변경
@@ -406,15 +503,32 @@ onMounted(fetchUserInfo)
         </div>
       </div>
 
-      <!-- 저장 버튼 -->
-      <button
-        class="w-full p-4 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
-        :disabled="isSubmitting"
-        @click="saveUserInfo"
-      >
-        <span v-if="isSubmitting">처리 중...</span>
-        <span v-else>저장하기</span>
-      </button>
+      <!-- 수정 버튼 -->
+      <div class="relative flex justify-end -right-48">
+        <button
+          class="w-auto p-4 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
+          :disabled="isSubmitting"
+          @click="saveUserInfo"
+        >
+          <span v-if="isSubmitting">처리 중...</span>
+          <span v-else>수정</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 프로필 사진 모달 팝업 -->
+    <div v-if="showProfilePhotoModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h2 class="text-lg font-bold mb-4 text-center">프로필 편집</h2>
+        <div class="flex flex-col space-y-2">
+          <button @click="viewProfilePhoto" class="p-2 bg-blue-200 text-white rounded-[10px]">프로필 사진 보기</button>
+          <button @click="registerOrUpdateProfilePhoto" class="p-2 bg-yellow-300 text-white rounded-[10px]">
+            {{ userInfo.profile_image ? '프로필 사진 수정' : '프로필 사진 등록' }}
+          </button>
+          <button @click="deleteProfilePhoto" class="p-2 bg-red-200 text-white rounded-[10px]">프로필 사진 삭제</button>
+        </div>
+        <button @click="closeProfilePhotoModal" class="mt-4 text-gray-500 hover:text-gray-700 block mx-auto rounded-[10px] font-bold">닫기</button>
+      </div>
     </div>
 
     <!-- 하단 네비게이션 바 -->

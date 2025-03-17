@@ -10,6 +10,28 @@ const users = ref([])
 const selectedUser = ref(null)
 const isLoading = ref(false)
 const errorMessage = ref('')
+const activeTab = ref('search')
+const hasExplicitlyFollowed = ref(false)
+
+const changeTab = (tab) => {
+  activeTab.value = tab
+  searchQuery.value = ''
+  selectedUser.value = null
+  
+  // 탭에 따라 적절한 사용자 목록 불러오기
+  if (tab === 'search') {
+    fetchAllUsers()
+  } else if (tab === 'following') {
+    if (hasExplicitlyFollowed.value) {
+      fetchFollowingUsers()
+    } else {
+      users.value = []
+      isLoading.value = false
+    }
+  } else if (tab === 'followers') {
+    fetchFollowersUsers()
+  }
+}
 
 // 전체 사용자 목록 불러오기
 const fetchAllUsers = async () => {
@@ -28,10 +50,48 @@ const fetchAllUsers = async () => {
   }
 }
 
+// 추가된 함수: 팔로잉 사용자 목록 불러오기
+const fetchFollowingUsers = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+  try {
+    const response = await api.get('/accounts/follow/')
+    console.log('팔로잉 사용자 목록 데이터:', response.data)
+    users.value = response.data
+  } catch (error) {
+    console.error('팔로잉 사용자 목록 불러오기 오류:', error)
+    errorMessage.value = error.response?.data?.detail || '팔로잉 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 추가된 함수: 팔로워 사용자 목록 불러오기
+const fetchFollowersUsers = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+  try {
+    // 팔로워 기능은 임시로 비활성화
+    console.log('팔로워 목록 기능은 현재 비활성화되어 있습니다')
+    users.value = []
+  } catch (error) {
+    console.error('팔로워 사용자 목록 불러오기 오류:', error)
+    errorMessage.value = error.response?.data?.detail || '팔로워 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
 // 사용자 검색 함수
 const searchUsers = async () => {
   if (!searchQuery.value.trim()) {
-    await fetchAllUsers()
+    if (activeTab.value === 'search') {
+      await fetchAllUsers()
+    } else if (activeTab.value === 'following') {
+      await fetchFollowingUsers()
+    } else if (activeTab.value === 'followers') {
+      await fetchFollowersUsers()
+    }
     return
   }
 
@@ -39,16 +99,31 @@ const searchUsers = async () => {
   errorMessage.value = ''
 
   try {
-    // 실제 API에서는 검색 쿼리를 파라미터로 전달하는 방식으로 구현할 수 있습니다.
-    // 여기서는 클라이언트 측에서 필터링하는 방식으로 구현합니다.
-    const response = await api.get('/accounts/users/')
+    let response
+    if (activeTab.value === 'search') {
+      response = await api.get('/accounts/users/')
+    } else if (activeTab.value === 'following') {
+      // 명시적으로 팔로우한 경우에만 검색
+      if (hasExplicitlyFollowed.value) {
+        response = await api.get('/accounts/follow/')
+      } else {
+        // 그렇지 않으면 빈 목록 반환
+        return []
+      }
+    } else if (activeTab.value === 'followers') {
+      // 팔로워 검색 기능은 임시로 비활성화
+      return []
+    }
     console.log('검색 결과 데이터:', response.data)
     const allUsers = response.data
 
     // 아이디(username)에 검색어가 포함된 사용자 필터링
-    users.value = allUsers.filter(user =>
-      user.username?.toLowerCase().includes(searchQuery.value.toLowerCase())
-    )
+    users.value = allUsers.filter(user => {
+      if (searchQuery.value.includes('@')) {
+        return user.email?.toLowerCase() === searchQuery.value.toLowerCase()
+      }
+      return user.username?.toLowerCase().includes(searchQuery.value.toLowerCase())
+    })
   } catch (error) {
     console.error('사용자 검색 오류:', error)
     errorMessage.value = error.response?.data?.detail || '사용자 검색 중 오류가 발생했습니다.'
@@ -108,6 +183,54 @@ const goBack = () => {
   }
 }
 
+// 팔로우 상태 체크 함수 추가
+const isFollowing = (user) => {
+  // 팔로잉 여부를 확인하는 로직
+  // 서버에서 제공하는 데이터에 팔로잉 상태 정보가 있다면 그것을 사용
+  // 없다면 별도로 관리해야 함
+  return user.is_following || false
+}
+
+// 팔로우/언팔로우 함수 추가
+const toggleFollow = async (user, event) => {
+  // 이벤트 버블링 방지 (사용자 상세 정보로 넘어가지 않도록)
+  event.stopPropagation()
+  
+  if (!user.email) {
+    errorMessage.value = '사용자 이메일이 없어 팔로우할 수 없습니다.'
+    return
+  }
+  
+  try {
+    if (isFollowing(user)) {
+      // 언팔로우
+      await api.delete(`/accounts/follow/${user.email}/`)
+      user.is_following = false
+      
+      // 언팔로우 후 현재 탭에 맞는 사용자 목록 업데이트
+      if (activeTab.value === 'following') {
+        await fetchFollowingUsers()
+      }
+    } else {
+      // 팔로우
+      await api.post(`/accounts/follow/${user.email}/`)
+      user.is_following = true
+      
+      // 팔로우 버튼을 명시적으로 클릭했음을 표시
+      hasExplicitlyFollowed.value = true
+      
+      // 팔로우 성공 시 팔로잉 탭으로 이동 및 목록 업데이트
+      if (activeTab.value !== 'following') {
+        changeTab('following')
+      }
+      await fetchFollowingUsers()
+    }
+  } catch (error) {
+    console.error('팔로우 상태 변경 중 오류:', error)
+    errorMessage.value = error.response?.data?.detail || '팔로우 상태를 변경하는 중 오류가 발생했습니다.'
+  }
+}
+
 // 컴포넌트 마운트 시 사용자 목록 불러오기
 onMounted(fetchAllUsers)
 </script>
@@ -141,6 +264,19 @@ onMounted(fetchAllUsers)
       <div class="w-6" /> <!-- 균형을 위한 빈 공간 -->
     </div>
 
+    <!-- 탭 네비게이션 -->
+    <div class="tabs flex justify-around border-b mb-1">
+      <button type="button" @click.prevent="changeTab('search')" class="py-2 px-4 font-bold" :class="{ 'border-b-2 border-yellow-500 font-extrabold text-yellow-700': activeTab === 'search' }">
+        검색
+      </button>
+      <button type="button" @click.prevent="changeTab('following')" class="py-2 px-4 font-bold" :class="{ 'border-b-2 border-yellow-500 font-extrabold text-yellow-700': activeTab === 'following' }">
+        팔로잉
+      </button>
+      <button type="button" @click.prevent="changeTab('followers')" class="py-2 px-4 font-bold" :class="{ 'border-b-2 border-yellow-500 font-extrabold text-yellow-700': activeTab === 'followers' }">
+        팔로워
+      </button>
+    </div>
+
     <!-- 검색 영역 -->
     <div class="p-4">
       <div class="flex mb-4">
@@ -148,7 +284,7 @@ onMounted(fetchAllUsers)
           v-model="searchQuery"
           type="text"
           class="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-          placeholder="아이디로 검색"
+          placeholder="이메일로 검색"
           @keyup.enter="searchUsers"
         >
         <button
@@ -172,6 +308,7 @@ onMounted(fetchAllUsers)
 
       <!-- 내 정보 보기 버튼 -->
       <button
+        v-if="activeTab === 'search'"
         class="w-full mb-4 px-4 py-3 bg-base-yellow rounded-md text-dark-gray font-medium hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-point-yellow"
         @click="fetchMyInfo"
       >
@@ -179,129 +316,135 @@ onMounted(fetchAllUsers)
       </button>
     </div>
 
-    <!-- 로딩 표시 -->
-    <div
-      v-if="isLoading"
-      class="p-4 text-center"
-    >
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
-      <p class="mt-2 text-dark-gray">
-        정보를 불러오는 중...
-      </p>
-    </div>
-
-    <!-- 에러 메시지 표시 -->
-    <div
-      v-if="errorMessage"
-      class="p-4 mb-4 text-center text-red-700 bg-red-100"
-    >
-      {{ errorMessage }}
-    </div>
-
-    <!-- 사용자 상세 정보 -->
-    <div
-      v-if="selectedUser && !isLoading"
-      class="p-4"
-    >
-      <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-        <div class="flex items-center mb-6">
-          <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-10 w-10 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-          <div>
-            <h2 class="text-lg font-bold text-dark-gray">
-              {{ selectedUser.username || '아이디 없음' }}
-            </h2>
-            <!-- <p class="text-sm text-gray-500">
-              {{ selectedUser.email || '이메일 없음' }}
-            </p> -->
-          </div>
-        </div>
-
-        <div class="space-y-4">
-          <div class="flex justify-between items-center">
-            <span class="text-gray-600">닉네임</span>
-            <span class="font-medium">{{ selectedUser.name || '정보 없음' }}</span>
-          </div>
-          <!-- <div class="flex justify-between items-center">
-            <span class="text-gray-600">이메일</span>
-            <span class="font-medium">{{ selectedUser.email || '정보 없음' }}</span>
-          </div> -->
-          <div class="flex justify-between items-center">
-            <span class="text-gray-600">성별</span>
-            <span class="font-medium">{{ selectedUser.gender !== undefined ? (selectedUser.gender === 'M' ? '남성' : '여성') : '정보 없음' }}</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-gray-600">임신 여부</span>
-            <span class="font-medium">{{ selectedUser.is_pregnant !== undefined ? (selectedUser.is_pregnant ? '임신중' : '임신 예정') : '정보 없음' }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 사용자 목록 -->
-    <div
-      v-if="!selectedUser && !isLoading"
-      class="p-4"
-    >
+    <template v-if="activeTab === 'search' || activeTab === 'following' || activeTab === 'followers'">
+      <!-- 로딩 표시 -->
       <div
-        v-if="users.length === 0"
-        class="bg-white rounded-lg shadow-md p-6 text-center text-gray-500"
+        v-if="isLoading"
+        class="p-4 text-center"
       >
-        검색 결과가 없습니다.
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
+        <p class="mt-2 text-dark-gray">
+          정보를 불러오는 중...
+        </p>
       </div>
+
+      <!-- 에러 메시지 표시 -->
       <div
-        v-else
-        class="bg-white rounded-lg shadow-md overflow-hidden"
+        v-if="errorMessage"
+        class="p-4 mb-4 text-center text-red-700 bg-red-100"
       >
-        <ul class="divide-y divide-gray-100">
-          <li
-            v-for="user in users"
-            :key="user.user_id || user.id"
-            class="p-4 hover:bg-gray-50 cursor-pointer"
-            @click="user.user_id ? fetchUserDetail(user.user_id) : errorMessage = '유효하지 않은 사용자 ID입니다.'"
-          >
-            <div class="flex items-center">
-              <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-6 w-6 text-gray-500"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 class="font-medium text-dark-gray">
-                  {{ user.name || '이름 없음' }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ user.username || '아이디 없음' }}
-                </p>
-              </div>
+        {{ errorMessage }}
+      </div>
+
+      <!-- 사용자 상세 정보 -->
+      <div
+        v-if="selectedUser && !isLoading"
+        class="p-4"
+      >
+        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
+          <div class="flex items-center mb-6">
+            <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-10 w-10 text-gray-500"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                  clip-rule="evenodd"
+                />
+              </svg>
             </div>
-          </li>
-        </ul>
-      </div>
-    </div>
+            <div>
+              <h2 class="text-lg font-bold text-dark-gray">
+                {{ selectedUser.username || '아이디 없음' }}
+              </h2>
+            </div>
+          </div>
 
-    <!-- 하단 네비게이션 바 -->
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">닉네임</span>
+              <span class="font-medium">{{ selectedUser.name || '정보 없음' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">성별</span>
+              <span class="font-medium">{{ selectedUser.gender !== undefined ? (selectedUser.gender === 'M' ? '남성' : '여성') : '정보 없음' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">임신 여부</span>
+              <span class="font-medium">{{ selectedUser.is_pregnant !== undefined ? (selectedUser.is_pregnant ? '임신중' : '임신 예정') : '정보 없음' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사용자 목록 -->
+      <div
+        v-if="!selectedUser && !isLoading"
+        class="p-4"
+      >
+        <div
+          v-if="users.length === 0"
+          class="bg-white rounded-lg shadow-md p-6 text-center text-gray-500"
+        >
+          검색 결과가 없습니다.
+        </div>
+        <div
+          v-else
+          class="bg-white rounded-lg shadow-md overflow-hidden"
+        >
+          <ul class="divide-y divide-gray-100">
+            <li
+              v-for="user in users"
+              :key="user.user_id || user.id"
+              class="p-4 hover:bg-gray-50 cursor-pointer"
+              @click="user.user_id ? fetchUserDetail(user.user_id) : errorMessage = '유효하지 않은 사용자 ID입니다.'"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                  <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-6 w-6 text-gray-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="font-medium text-dark-gray">
+                      {{ user.name || '이름 없음' }}
+                    </h3>
+                    <p class="text-sm text-gray-500">
+                      {{ user.username || '아이디 없음' }}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  @click.stop="toggleFollow(user, $event)"
+                  class="px-4 py-1 rounded-full text-sm font-medium focus:outline-none"
+                  :class="isFollowing(user) 
+                    ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' 
+                    : 'bg-point-yellow text-dark-gray hover:bg-yellow-400'"
+                >
+                  {{ isFollowing(user) ? '팔로잉' : '팔로우' }}
+                </button>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </template>
+
+    <!-- 하단 풋바 -->
     <BottomNavBar active-tab="search" />
   </div>
 </template>
