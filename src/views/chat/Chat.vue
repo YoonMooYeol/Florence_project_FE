@@ -169,156 +169,306 @@ const isDebounced = () => {
   return false
 }
 
-// 답변 제출
-const submitAnswer = async () => {
-  // 빈 답변이거나 이미 제출 중이거나 디바운스 시간 내에 있으면 무시
-  if (!userAnswer.value.trim() || isSubmitting.value || isDebounced()) {
+// // 답변 제출
+// const submitAnswer = async () => {
+//   // 빈 답변이거나 이미 제출 중이거나 디바운스 시간 내에 있으면 무시
+//   if (!userAnswer.value.trim() || isSubmitting.value || isDebounced()) {
+//     return
+//   }
+
+//   isSubmitting.value = true
+//   errorMessage.value = ''
+//   currentSearchQuery.value = '' // 검색 쿼리 초기화
+//   const currentAnswer = userAnswer.value.trim()
+//   retryCount.value = 0
+
+//   // 입력 필드 초기화 (API 호출 전에 초기화하여 중복 제출 방지)
+//   userAnswer.value = ''
+
+//   // 입력 필드에 포커스 유지
+//   setTimeout(() => {
+//     const textarea = document.querySelector('textarea')
+//     if (textarea) {
+//       textarea.focus()
+//     }
+//   }, 50)
+
+//   try {
+//     // 사용자 ID 확인
+//     if (!userId.value) {
+//       throw new Error('사용자 ID가 없습니다.')
+//     }
+
+//     // 사용자 메시지 추가
+//     const userMessage = {
+//       id: Date.now(),
+//       sender: 'user',
+//       content: currentAnswer,
+//       time: getCurrentTime()
+//     }
+//     messages.value.push(userMessage)
+
+//     // 메시지가 추가되면 즉시 스크롤을 맨 아래로 이동
+//     scrollToBottom()
+
+//     // 로딩 메시지 추가
+//     const loadingMessageId = Date.now() + 1
+//     messages.value.push({
+//       id: loadingMessageId,
+//       sender: 'bot',
+//       isLoading: true,
+//       isTyping: true,
+//       time: getCurrentTime()
+//     })
+//     scrollToBottom()
+
+//     // 새 LLM 에이전트 API 호출 - 태명과 임신 주차 정보 추가
+//     logger.info(CONTEXT, 'LLM 에이전트 API 호출')
+//     const response = await apiClient.post('/v1/llm/agent/', {
+//       user_id: userId.value,
+//       query_text: currentAnswer,
+//       baby_name: babyName.value || '태아',
+//       pregnancy_week: pregnancyWeek.value || 0
+//     })
+//     logger.info(CONTEXT, 'LLM 에이전트 응답:', response.data)
+
+//     // 검색 쿼리 정보 저장 (응답에 포함되어 있다면)
+//     if (response.data.search_queries && response.data.search_queries.length > 0) {
+//       currentSearchQuery.value = response.data.search_queries[0]
+//     }
+
+//     // 로딩 메시지 제거
+//     messages.value = messages.value.filter(msg => msg.id !== loadingMessageId)
+
+//     // 봇 응답 메시지 추가
+//     messages.value.push({
+//       id: Date.now() + 2,
+//       sender: 'bot',
+//       content: response.data.response,
+//       time: getCurrentTime()
+//     })
+
+//     // 스크롤 처리
+//     scrollToBottom()
+//   } catch (error) {
+//     // 로딩 메시지 제거
+//     messages.value = messages.value.filter(msg => msg.isLoading)
+
+//     errorMessage.value = '답변을 생성하는 중 오류가 발생했습니다.'
+//     logger.error(CONTEXT, 'LLM 에이전트 API 오류:', error)
+//     handleError(error, `${CONTEXT}.submitAnswer`)
+
+//     // 서버 오류(500)인 경우 재시도 로직 실행
+//     if (error.response && error.response.status === 500 && retryCount.value < maxRetries) {
+//       retryCount.value++
+//       errorMessage.value = `서버 오류가 발생했습니다. 자동으로 재시도합니다. (${retryCount.value}/${maxRetries})`
+//       logger.warn(CONTEXT, `LLM 에이전트 호출 재시도 중 (${retryCount.value}/${maxRetries})`)
+//       // 1초 후 재시도
+//       setTimeout(() => {
+//         submitAnswerRetry(currentAnswer)
+//       }, 1000)
+//       return
+//     }
+
+//     // 인증 오류인 경우 로그인 페이지로 리다이렉트
+//     if (error.response && error.response.status === 401) {
+//       logger.warn(CONTEXT, '인증이 필요합니다. 로그인 페이지로 이동합니다.')
+//       router.push('/login')
+//     }
+//   } finally {
+//     isSubmitting.value = false
+//     // 최종적으로 한번 더 스크롤 처리
+//     setTimeout(() => {
+//       scrollToBottom()
+//     }, 100)
+//   }
+// }
+
+// // 답변 제출 재시도 (메시지 추가 없이)
+// const submitAnswerRetry = async (answer) => {
+//   try {
+//     logger.info(CONTEXT, 'LLM 에이전트 API 재시도')
+//     const response = await apiClient.post('/v1/llm/agent/', {
+//       user_id: userId.value,
+//       query_text: answer,
+//       baby_name: babyName.value || '태아',
+//       pregnancy_week: pregnancyWeek.value || 0
+//     })
+//     logger.info(CONTEXT, 'LLM 에이전트 API 재시도 응답:', response.data)
+
+//     errorMessage.value = ''
+
+//     // 검색 쿼리 정보 저장 (응답에 포함되어 있다면)
+//     if (response.data.search_queries && response.data.search_queries.length > 0) {
+//       currentSearchQuery.value = response.data.search_queries[0]
+//     }
+
+//     // 봇 응답 메시지 추가
+//     messages.value.push({
+//       id: Date.now(),
+//       sender: 'bot',
+//       content: response.data.response,
+//       time: getCurrentTime()
+//     })
+
+//     // 스크롤 처리
+//     scrollToBottom()
+//   } catch (error) {
+//     errorMessage.value = '답변을 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.'
+//     logger.error(CONTEXT, 'LLM 에이전트 API 재시도 오류:', error)
+//     handleError(error, `${CONTEXT}.submitAnswerRetry`)
+//   } finally {
+//     isSubmitting.value = false
+//   }
+// }
+
+// 상태 선언
+const isStreaming = ref(false)        // 스트리밍 진행 중인지 표시
+const streamedBotContent = ref('')    // 스트리밍 중간 누적(봇 응답)
+
+// SSE 요청 함수
+async function submitStreamAnswer() {
+  // 1) 요청 전 체크
+  if (!userAnswer.value.trim() || isSubmitting.value) {
     return
   }
+  // 디바운스 etc. 필요하다면 isDebounced() 호출
 
   isSubmitting.value = true
+  isStreaming.value = true
   errorMessage.value = ''
-  currentSearchQuery.value = '' // 검색 쿼리 초기화
+  currentSearchQuery.value = ''
+  streamedBotContent.value = ''
+
+  // 사용자의 입력값
   const currentAnswer = userAnswer.value.trim()
-  retryCount.value = 0
-
-  // 입력 필드 초기화 (API 호출 전에 초기화하여 중복 제출 방지)
-  userAnswer.value = ''
-
-  // 입력 필드에 포커스 유지
+  userAnswer.value = '' // 입력창 비우기
   setTimeout(() => {
     const textarea = document.querySelector('textarea')
-    if (textarea) {
-      textarea.focus()
-    }
+    if (textarea) textarea.focus()
   }, 50)
 
+  // 2) 사용자 메시지를 먼저 messages에 추가
+  const userMessage = {
+    id: Date.now(),
+    sender: 'user',
+    content: currentAnswer,
+    time: getCurrentTime()
+  }
+  messages.value.push(userMessage)
+  scrollToBottom()
+
+  // 로딩(typing) 표시용 메시지 추가
+  const loadingMessageId = Date.now() + 1
+  messages.value.push({
+    id: loadingMessageId,
+    sender: 'bot',
+    content: '',
+    isLoading: true,
+    isTyping: true,
+    time: getCurrentTime()
+  })
+  scrollToBottom()
+
   try {
-    // 사용자 ID 확인
-    if (!userId.value) {
-      throw new Error('사용자 ID가 없습니다.')
-    }
-
-    // 사용자 메시지 추가
-    const userMessage = {
-      id: Date.now(),
-      sender: 'user',
-      content: currentAnswer,
-      time: getCurrentTime()
-    }
-    messages.value.push(userMessage)
-
-    // 메시지가 추가되면 즉시 스크롤을 맨 아래로 이동
-    scrollToBottom()
-
-    // 로딩 메시지 추가
-    const loadingMessageId = Date.now() + 1
-    messages.value.push({
-      id: loadingMessageId,
-      sender: 'bot',
-      isLoading: true,
-      isTyping: true,
-      time: getCurrentTime()
-    })
-    scrollToBottom()
-
-    // 새 LLM 에이전트 API 호출 - 태명과 임신 주차 정보 추가
-    logger.info(CONTEXT, 'LLM 에이전트 API 호출')
-    const response = await apiClient.post('/v1/llm/agent/', {
-      user_id: userId.value,
-      query_text: currentAnswer,
-      baby_name: babyName.value || '태아',
-      pregnancy_week: pregnancyWeek.value || 0
-    })
-    logger.info(CONTEXT, 'LLM 에이전트 응답:', response.data)
-
-    // 검색 쿼리 정보 저장 (응답에 포함되어 있다면)
-    if (response.data.search_queries && response.data.search_queries.length > 0) {
-      currentSearchQuery.value = response.data.search_queries[0]
-    }
-
-    // 로딩 메시지 제거
-    messages.value = messages.value.filter(msg => msg.id !== loadingMessageId)
-
-    // 봇 응답 메시지 추가
-    messages.value.push({
-      id: Date.now() + 2,
-      sender: 'bot',
-      content: response.data.response,
-      time: getCurrentTime()
+    // 3) SSE로 백엔드 호출 (fetch + ReadableStream)
+    const response = await fetch(`${API_BASE_URL}/v1/llm/agent/stream/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // 필요하다면 인증 토큰:
+        // 'Authorization': `Bearer ${토큰}`
+      },
+      body: JSON.stringify({
+        user_id: userId.value,
+        query_text: currentAnswer,
+        baby_name: babyName.value || '태아',
+        pregnancy_week: pregnancyWeek.value || 0
+      })
     })
 
-    // 스크롤 처리
-    scrollToBottom()
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    // 4) 스트리밍 응답(body) 처리
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+    let done = false
+    let accumulatedText = '' // 최종 답변 누적
+
+    while (!done) {
+      const { value, done: doneReading } = await reader.read()
+      if (doneReading) {
+        break
+      }
+
+      // chunk -> 문자열 변환
+      const chunk = decoder.decode(value, { stream: true })
+      // SSE 라인은 일반적으로 "data: {...}\n\n" 형태
+      const lines = chunk.split('\n')
+
+      for (let line of lines) {
+        line = line.trim()
+        if (!line.startsWith('data: ')) continue
+
+        const jsonStr = line.substring('data: '.length)
+        if (!jsonStr) continue
+        // json 파싱
+        let payload
+        try {
+          payload = JSON.parse(jsonStr)
+        } catch (err) {
+          console.warn('JSON parse error:', err, jsonStr)
+          continue
+        }
+
+        // 에러 필드가 있다면 표시
+        if (payload.error) {
+          console.error('SSE Error:', payload.error)
+          errorMessage.value = payload.error
+          continue
+        }
+
+        // delta(토큰)가 있으면 누적
+        if (payload.delta && payload.complete === false) {
+          accumulatedText += payload.delta
+          updateBotMessage(loadingMessageId, accumulatedText)
+        }
+
+        // 완결된 응답
+        if (payload.complete) {
+          if (payload.response) {
+            accumulatedText = payload.response
+            updateBotMessage(loadingMessageId, accumulatedText)
+          }
+        }
+      }
+    }
   } catch (error) {
-    // 로딩 메시지 제거
-    messages.value = messages.value.filter(msg => msg.isLoading)
-
-    errorMessage.value = '답변을 생성하는 중 오류가 발생했습니다.'
-    logger.error(CONTEXT, 'LLM 에이전트 API 오류:', error)
-    handleError(error, `${CONTEXT}.submitAnswer`)
-
-    // 서버 오류(500)인 경우 재시도 로직 실행
-    if (error.response && error.response.status === 500 && retryCount.value < maxRetries) {
-      retryCount.value++
-      errorMessage.value = `서버 오류가 발생했습니다. 자동으로 재시도합니다. (${retryCount.value}/${maxRetries})`
-      logger.warn(CONTEXT, `LLM 에이전트 호출 재시도 중 (${retryCount.value}/${maxRetries})`)
-      // 1초 후 재시도
-      setTimeout(() => {
-        submitAnswerRetry(currentAnswer)
-      }, 1000)
-      return
-    }
-
-    // 인증 오류인 경우 로그인 페이지로 리다이렉트
-    if (error.response && error.response.status === 401) {
-      logger.warn(CONTEXT, '인증이 필요합니다. 로그인 페이지로 이동합니다.')
-      router.push('/login')
-    }
+    console.error('submitStreamAnswer error:', error)
+    errorMessage.value = '스트리밍 도중 오류가 발생했습니다.'
   } finally {
+    // 로딩/타이핑 해제
     isSubmitting.value = false
-    // 최종적으로 한번 더 스크롤 처리
-    setTimeout(() => {
-      scrollToBottom()
-    }, 100)
+    isStreaming.value = false
+
+    // 해당 로딩메시지를 찾아서 isLoading/isTyping 해제
+    const botMsg = messages.value.find(m => m.id === loadingMessageId)
+    if (botMsg) {
+      botMsg.isLoading = false
+      botMsg.isTyping = false
+    }
+
+    scrollToBottom()
   }
 }
 
-// 답변 제출 재시도 (메시지 추가 없이)
-const submitAnswerRetry = async (answer) => {
-  try {
-    logger.info(CONTEXT, 'LLM 에이전트 API 재시도')
-    const response = await apiClient.post('/v1/llm/agent/', {
-      user_id: userId.value,
-      query_text: answer,
-      baby_name: babyName.value || '태아',
-      pregnancy_week: pregnancyWeek.value || 0
-    })
-    logger.info(CONTEXT, 'LLM 에이전트 API 재시도 응답:', response.data)
-
-    errorMessage.value = ''
-
-    // 검색 쿼리 정보 저장 (응답에 포함되어 있다면)
-    if (response.data.search_queries && response.data.search_queries.length > 0) {
-      currentSearchQuery.value = response.data.search_queries[0]
-    }
-
-    // 봇 응답 메시지 추가
-    messages.value.push({
-      id: Date.now(),
-      sender: 'bot',
-      content: response.data.response,
-      time: getCurrentTime()
-    })
-
-    // 스크롤 처리
-    scrollToBottom()
-  } catch (error) {
-    errorMessage.value = '답변을 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.'
-    logger.error(CONTEXT, 'LLM 에이전트 API 재시도 오류:', error)
-    handleError(error, `${CONTEXT}.submitAnswerRetry`)
-  } finally {
-    isSubmitting.value = false
+// 스트리밍 중간에 봇 메시지(content)를 업데이트
+function updateBotMessage(msgId, newContent) {
+  const botMsg = messages.value.find(m => m.id === msgId)
+  if (botMsg) {
+    botMsg.content = newContent
   }
 }
 
@@ -354,7 +504,7 @@ const handleKeyDown = (event) => {
     if (inputText) {
       // 입력 필드 초기화를 지연시켜 한글 입력 문제 해결
       setTimeout(() => {
-        submitAnswer()
+        submitStreamAnswer()
       }, 10)
     }
   }
@@ -377,7 +527,7 @@ const handleSendClick = () => {
   if (inputText && !isSubmitting.value) {
     // 입력 필드 초기화를 지연시켜 한글 입력 문제 해결
     setTimeout(() => {
-      submitAnswer()
+      submitStreamAnswer()
     }, 10)
   }
 }
