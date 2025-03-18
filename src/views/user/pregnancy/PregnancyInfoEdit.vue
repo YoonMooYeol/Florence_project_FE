@@ -78,16 +78,10 @@ const fetchPregnancyInfo = async () => {
 
       // 수정 모드 초기값 설정: 항상 false(보기 모드)로 시작
       isEditMode.value = false
-
-      // 임신 상태 저장
-      localStorage.setItem('isPregnant', 'true')
-      sessionStorage.setItem('isPregnant', 'true')
     } else {
       // 임신 정보가 없는 경우
       pregnancyInfo.value.isPregnant = false
       isEditMode.value = true // 정보가 없으면 바로 입력 가능하도록 수정 모드 활성화
-      localStorage.setItem('isPregnant', 'false')
-      sessionStorage.setItem('isPregnant', 'false')
     }
   } catch (error) {
     console.error('임신 정보 불러오기 오류:', error)
@@ -105,13 +99,6 @@ const enableEditMode = () => {
 // 컴포넌트 마운트 시 임신 정보 불러오기
 onMounted(async () => {
   await fetchPregnancyInfo()
-  
-  // 세션 스토리지에서 수정 모드 확인
-  if (sessionStorage.getItem('pregnancyEditMode') === 'true') {
-    isEditMode.value = true
-    // 사용 후 세션 스토리지에서 삭제
-    sessionStorage.removeItem('pregnancyEditMode')
-  }
 })
 
 // 임신 여부 변경 시 처리
@@ -194,19 +181,11 @@ const savePregnancyInfo = async () => {
         response = await api.post('/accounts/pregnancies/', requestData)
         pregnancyInfo.value.pregnancyId = response.data.pregnancy_id
       }
-
-      // 임신 상태 저장
-      localStorage.setItem('isPregnant', 'true')
-      sessionStorage.setItem('isPregnant', 'true')
     } else {
       // 임신 정보 삭제
       if (pregnancyInfo.value.pregnancyId) {
         await api.delete(`/accounts/pregnancies/${pregnancyInfo.value.pregnancyId}/`)
       }
-      
-      // 임신 상태 업데이트
-      localStorage.setItem('isPregnant', 'false')
-      sessionStorage.setItem('isPregnant', 'false')
     }
 
     // 저장 성공 메시지
