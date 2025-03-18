@@ -160,20 +160,7 @@ const goToPregnancyEdit = () => {
   }
 }
 
-// 수정 모드로 임신정보 수정 페이지로 이동
-const editPregnancyInfo = () => {
-  // 로컬 스토리지에 수정 모드 활성화 표시
-  sessionStorage.setItem('pregnancyEditMode', 'true')
-  router.push('/pregnancy-info-edit')
-}
 
-// 임신 정보 삭제 함수
-
-// 비밀번호 변경 페이지로 이동
-const goToPasswordChange = () => {
-  console.log('비밀번호 변경 페이지로 이동')
-  router.push('/password-change')
-}
 
 // 로그아웃 함수
 const handleLogout = async () => {

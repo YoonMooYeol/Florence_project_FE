@@ -47,11 +47,9 @@ watch(() => pregnancyInfo.value.dueDate, (newDueDate) => {
 })
 
 // 임신 주차가 변경되면 출산예정일 자동 계산
-watch(() => pregnancyInfo.value.currentWeek, (newWeek, oldWeek) => {
-  // oldWeek이 있는 경우에만 계산
-  if (oldWeek) {
-    pregnancyInfo.value.dueDate = calculateDueDateFromWeek(newWeek)
-  }
+watch(() => pregnancyInfo.value.currentWeek, (newWeek) => {
+  // oldWeek 체크 제거 - 초기값 변경 시에도 계산 적용
+  pregnancyInfo.value.dueDate = calculateDueDateFromWeek(newWeek)
 })
 
 // 임신 정보 불러오기
@@ -74,6 +72,15 @@ const fetchPregnancyInfo = async () => {
         isPregnant: true,
         pregnancyId: data.pregnancy_id,
         isFromRegistration: data.is_from_registration || false // 회원가입 시 등록 여부
+      }
+
+      // 임신 주차만 있고 출산예정일이 없는 경우
+      if (data.current_week && !data.due_date) {
+        pregnancyInfo.value.dueDate = calculateDueDateFromWeek(data.current_week)
+      }
+      // 출산예정일만 있고 임신 주차가 없는 경우
+      else if (data.due_date && !data.current_week) {
+        pregnancyInfo.value.currentWeek = calculateWeekFromDueDate(data.due_date)
       }
 
       // 수정 모드 초기값 설정: 항상 false(보기 모드)로 시작
@@ -220,11 +227,9 @@ const calculateFromLastPeriod = () => {
   if (lastPeriodDate.value) {
     const lastPeriod = new Date(lastPeriodDate.value)
     const today = new Date()
-    
     // 임신 주차 계산 (마지막 생리일로부터 경과된 주 수)
     const weeksDiff = Math.floor((today - lastPeriod) / (7 * 24 * 60 * 60 * 1000))
     const calculatedWeek = Math.min(weeksDiff + 1, 40) // 최대 40주로 제한
-    
     // 출산예정일 계산 (마지막 생리일로부터 280일 후)
     const dueDate = new Date(lastPeriod)
     dueDate.setDate(dueDate.getDate() + 280)
@@ -352,7 +357,6 @@ watch(() => lastPeriodDate.value, () => {
             ></svg-icon>
             <span class="text-sm">고위험 임신</span>
           </div>
-          
           <div class="mt-4">
             <button
               class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold"
