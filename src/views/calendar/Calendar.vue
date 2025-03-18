@@ -1,3 +1,4 @@
+<!-- eslint-disable no-unused-vars -->
 <!-- eslint-disable import/no-duplicates -->
 <script setup>
 import { onMounted, onUnmounted, ref, computed } from 'vue'
@@ -10,7 +11,6 @@ import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import CalendarHeader from '@/components/calendar/CalendarHeader.vue'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
-import FloatingActionButton from '@/components/common/FloatingActionButton.vue'
 import DayEventsModal from '@/components/calendar/DayEventsModal.vue'
 import EventDetailModal from '@/components/calendar/EventDetailModal.vue'
 import LLMSummaryModal from '@/components/calendar/LLMSummaryModal.vue'
@@ -44,8 +44,8 @@ const popupActive = computed(() => {
          modalManager.showEventDetailModal.value ||
          modalManager.showLLMDetailModal.value ||
          modalManager.showAddEventModal.value ||
-         modalManager.showDiaryTypeModal.value;
-});
+         modalManager.showDiaryTypeModal.value
+})
 
 // 날짜 클릭 핸들러
 const handleDateClick = (info) => {
@@ -54,34 +54,34 @@ const handleDateClick = (info) => {
       logger.error(CONTEXT, '날짜 클릭 이벤트에 날짜 정보가 없습니다', info)
       return
     }
-    
+
     // 날짜 형식 검증
     const dateStr = normalizeDate(info.dateStr) // YYYY-MM-DD 형식으로 정규화
     logger.debug(CONTEXT, '날짜 클릭됨 (정규화 후):', dateStr)
-    
+
     // 이미 같은 날짜의 모달이 열려있는지 확인
-    const isSameDateModalOpen = 
-      modalManager.showDayEventsModal.value && 
-      calendarStore.selectedDate.value === dateStr;
-    
+    const isSameDateModalOpen =
+      modalManager.showDayEventsModal.value &&
+      calendarStore.selectedDate.value === dateStr
+
     if (isSameDateModalOpen) {
-      logger.debug(CONTEXT, '이미 열린 날짜 모달 재클릭. 모달 닫기');
+      logger.debug(CONTEXT, '이미 열린 날짜 모달 재클릭. 모달 닫기')
       // 이미 열려 있다면 그냥 닫기만 함
-      modalManager.closeDayEventsModal();
-      return;
+      modalManager.closeDayEventsModal()
+      return
     }
-    
+
     // 이전에 선택된 이벤트 초기화
-    calendarStore.setSelectedEvent(null);
-    
+    calendarStore.setSelectedEvent(null)
+
     // 날짜 설정 및 모달 열기
-    logger.debug(CONTEXT, `날짜(${dateStr}) 설정 시도`);
-    const result = calendarStore.setSelectedDate(dateStr);
-    logger.debug(CONTEXT, '날짜 설정 결과:', result);
-    
+    logger.debug(CONTEXT, `날짜(${dateStr}) 설정 시도`)
+    const result = calendarStore.setSelectedDate(dateStr)
+    logger.debug(CONTEXT, '날짜 설정 결과:', result)
+
     // 실제 모달 열기
-    logger.debug(CONTEXT, '일일 일정 모달 열기 시도');
-    modalManager.openDayEventsModal(dateStr);
+    logger.debug(CONTEXT, '일일 일정 모달 열기 시도')
+    modalManager.openDayEventsModal(dateStr)
   } catch (error) {
     logger.error(CONTEXT, '날짜 클릭 처리 중 오류 발생:', error)
     handleError(error, CONTEXT)
@@ -98,7 +98,7 @@ const handleEventClick = (info) => {
     const eventObj = calendarStore.events.find((e) => e.id === eventId)
     if (eventObj) {
       console.log('찾은 이벤트:', eventObj)
-      
+
       // 이벤트의 날짜 정보 추출
       let eventDate = null
       if (eventObj.start) {
@@ -106,18 +106,18 @@ const handleEventClick = (info) => {
           ? eventObj.start.split('T')[0]
           : normalizeDate(eventObj.start)
       }
-      
+
       // 현재 일일 일정 모달이 열려 있는지, 그리고 같은 날짜의 모달인지 확인
       const isDayEventsModalOpen = modalManager.showDayEventsModal.value
       const isSameDateSelected = eventDate && calendarStore.selectedDate.value === eventDate
-      
+
       if (!isDayEventsModalOpen || !isSameDateSelected) {
         // 일일 일정 모달이 닫혀있거나 다른 날짜의 모달이 열려있으면
         // 먼저 해당 날짜의 일일 일정 모달만 열기
         logger.debug(CONTEXT, '일정 클릭: 먼저 일일 일정 모달을 엽니다:', eventDate)
         calendarStore.setSelectedDate(eventDate)
         modalManager.openDayEventsModal(eventDate)
-        
+
         // 모달이 열린 직후 사용자의 명시적인 선택을 기다리도록 변경
         // 일정 목록에서 사용자가 직접 선택할 수 있게 함
         logger.debug(CONTEXT, '일정 선택은 사용자가 목록에서 직접 선택하도록 대기')
@@ -141,14 +141,63 @@ const handleEventClick = (info) => {
 const {
   calendarRef,
   calendarOptions,
-  updateCurrentDate,
   prevMonth,
   nextMonth,
   goToToday
 } = useCalendarConfig(handleDateClick, handleEventClick)
 
+// 월별 view 및 이벤트 렌더링 커스터마이징
+calendarOptions.initialView = 'dayGridMonth'
+calendarOptions.dayMaxEvents = 3
+calendarOptions.eventContent = function (arg) {
+  console.log('이벤트 렌더링:', arg.event.title, arg.event)
+  // 오직 타이틀만 표시합니다
+  return { html: `<span class="fc-event-title">${arg.event.title}</span>` }
+}
+
+// 이벤트 소스 설정 - FullCalendar가 직접 데이터를 가져오게 함
+calendarOptions.eventSources = [
+  {
+    // events 함수는 startStr, endStr, successCallback 파라미터를 받음
+    events: async (info, successCallback, failureCallback) => {
+      try {
+        const startDate = info.startStr.split('T')[0] // YYYY-MM-DD 형식으로 변환
+        const endDate = info.endStr.split('T')[0] // YYYY-MM-DD 형식으로 변환
+        
+        logger.info(CONTEXT, `이벤트 요청 범위: ${startDate} ~ ${endDate}`)
+        
+        // 현재 년월 정보 업데이트
+        const startDateObj = new Date(startDate)
+        currentYear.value = startDateObj.getFullYear()
+        currentMonth.value = startDateObj.getMonth() + 1
+        calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
+        
+        // API에서 직접 데이터 가져오기
+        await calendarStore.fetchEvents()
+        
+        // calendarStore.events에서 FullCalendar 형식으로 변환
+        const mappedEvents = calendarStore.events.map(event => ({
+          id: event.id,
+          title: event.title,
+          start: event.start,
+          backgroundColor: event.backgroundColor || '#FFD600',
+          borderColor: event.borderColor || '#FFD600',
+          textColor: event.textColor || '#353535',
+          allDay: event.allDay || false
+        }))
+        
+        logger.info(CONTEXT, `${mappedEvents.length}개 이벤트 로드됨`)
+        successCallback(mappedEvents)
+      } catch (error) {
+        logger.error(CONTEXT, '이벤트 로드 중 오류 발생:', error)
+        failureCallback(error)
+      }
+    }
+  }
+]
+
 // 월 이동 핸들러
-const handlePrevMonth = () => {
+const handlePrevMonth = async () => {
   if (currentMonth.value === 1) {
     currentMonth.value = 12
     currentYear.value--
@@ -157,9 +206,12 @@ const handlePrevMonth = () => {
   }
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   prevMonth()
+  
+  // 월 변경 후 해당 월의 이벤트 로드
+  await loadMonthEvents()
 }
 
-const handleNextMonth = () => {
+const handleNextMonth = async () => {
   if (currentMonth.value === 12) {
     currentMonth.value = 1
     currentYear.value++
@@ -168,18 +220,47 @@ const handleNextMonth = () => {
   }
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   nextMonth()
+  
+  // 월 변경 후 해당 월의 이벤트 로드
+  await loadMonthEvents()
 }
 
-const handleGoToToday = () => {
+const handleGoToToday = async () => {
   const today = new Date()
   currentYear.value = today.getFullYear()
   currentMonth.value = today.getMonth() + 1
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   goToToday()
+  
+  // 월 변경 후 해당 월의 이벤트 로드
+  await loadMonthEvents()
+}
+
+// 현재 월의 이벤트 로딩 함수
+const loadMonthEvents = async () => {
+  try {
+    logger.info(CONTEXT, `${currentYear.value}년 ${currentMonth.value}월 이벤트 로딩 시작`)
+    const events = await calendarStore.fetchEvents()
+    logger.info(CONTEXT, `이벤트 ${events.length}개 로드됨`)
+    
+    if (calendarRef.value) {
+      const calendarApi = calendarRef.value.getApi()
+      calendarApi.refetchEvents()
+      
+      // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
+      requestAnimationFrame(() => {
+        calendarApi.render()
+        logger.info(CONTEXT, '캘린더 렌더링 완료')
+      })
+    }
+  } catch (error) {
+    logger.error(CONTEXT, '이벤트 로드 중 오류 발생:', error)
+    handleError(error, `${CONTEXT}.loadMonthEvents`)
+  }
 }
 
 // 컴포넌트 마운트 시 현재 날짜 정보 초기화
-onMounted(() => {
+onMounted(async () => {
   logger.info(CONTEXT, '캘린더 컴포넌트 마운트됨')
 
   try {
@@ -187,20 +268,24 @@ onMounted(() => {
     const today = new Date()
     currentYear.value = today.getFullYear()
     currentMonth.value = today.getMonth() + 1
-    
+
     // 캘린더 API를 통해 날짜 설정
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()
       calendarApi.gotoDate(today)
       calendarApi.render()
     }
-    
+
     logger.debug(CONTEXT, '현재 날짜 정보 업데이트됨')
-    
+
     // 임신 상태 설정
     calendarStore.setPregnancyInfo(true, '애기')
     logger.debug(CONTEXT, '임신 상태 설정됨')
-    
+
+    // 이벤트 로드
+    await loadMonthEvents()
+    logger.info(CONTEXT, '월별 이벤트 로드됨')
+
     // 아기 일기 데이터 불러오기
     calendarStore.fetchBabyDiaries()
     logger.debug(CONTEXT, '아기 일기 데이터 로드됨')
@@ -261,7 +346,7 @@ onUnmounted(() => {
 const handleFABMenuClick = (action) => {
   showFABMenu.value = false
   selectedDate.value = formatDate(new Date())
-  
+
   if (action === 'event') {
     showEventModal.value = true
   } else if (action === 'baby') {
@@ -272,6 +357,9 @@ const handleFABMenuClick = (action) => {
 const handleEventSave = async (eventData) => {
   try {
     console.log('일정 저장 시작:', eventData)
+    // 입력받은 날짜를 YYYY-MM-DD 형식으로 정규화
+    eventData.start = normalizeDate(eventData.start)
+    
     // 반복 일정 여부 확인
     if (eventData.recurring && eventData.recurring !== 'none') {
       console.log('반복 일정 감지:', eventData.recurring)
@@ -283,7 +371,7 @@ const handleEventSave = async (eventData) => {
     if (savedEvent) {
       console.log('일정 저장 성공')
       showEventModal.value = false
-      
+
       // 캘린더 새로고침
       if (calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
@@ -314,7 +402,7 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
     })
 
     let success = false
-    
+
     if (isRecurring) {
       if (deleteOptions?.option === 'until') {
         if (!deleteOptions.untilDate) {
@@ -338,7 +426,7 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
     if (success) {
       console.log('일정 삭제 성공')
       modalManager.closeEventDetailModal()
-      
+
       // 캘린더 새로고침
       if (calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
@@ -355,21 +443,6 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
   }
 }
 
-const handleBabyDiarySave = async (diaryData) => {
-  try {
-    // 로딩 상태 표시 등을 추가할 수 있습니다
-    await calendarStore.addBabyDiary(diaryData)
-    showBabyDiaryModal.value = false
-    // 성공 메시지 표시
-    alert('아기와의 하루가 저장되었습니다.')
-    
-    // 캘린더 데이터 새로고침
-    await calendarStore.fetchBabyDiaries()
-  } catch (error) {
-    console.error('일기 저장 중 오류 발생:', error)
-    alert(error.response?.data?.message || '일기 저장에 실패했습니다. 다시 시도해주세요.')
-  }
-}
 </script>
 
 <template>
@@ -386,7 +459,11 @@ const handleBabyDiarySave = async (diaryData) => {
     <!-- 요일 표시 (추가됨) -->
     <div class="bg-yellow-200 py-2">
       <div class="max-w-4xl mx-auto flex justify-around">
-        <span v-for="(day, index) in weekdays" :key="index" class="text-base font-medium text-dark-gray">
+        <span
+          v-for="(day, index) in weekdays"
+          :key="index"
+          class="text-base font-medium text-dark-gray"
+        >
           {{ day }}
         </span>
       </div>
@@ -400,20 +477,23 @@ const handleBabyDiarySave = async (diaryData) => {
         class="calendar"
       />
     </div>
-    
+
     <!-- Todo List (추후 작업을 위해 주석 처리) -->
     <!-- <TodoList class="mt-0" /> -->
 
     <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="calendar" class="bottom-nav" />
+    <BottomNavBar
+      active-tab="calendar"
+      class="bottom-nav"
+    />
 
     <!-- FAB 메뉴 -->
     <div class="fab-container">
       <button
         class="fab-button"
-        @click="showFABMenu = !showFABMenu"
         :disabled="popupActive"
         :class="{'opacity-50 cursor-not-allowed': popupActive}"
+        @click="showFABMenu = !showFABMenu"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -430,8 +510,11 @@ const handleBabyDiarySave = async (diaryData) => {
           />
         </svg>
       </button>
-      
-      <div v-if="showFABMenu" class="fab-menu">
+
+      <div
+        v-if="showFABMenu"
+        class="fab-menu"
+      >
         <button
           class="fab-menu-item"
           @click="handleFABMenuClick('event')"
@@ -500,7 +583,10 @@ const handleBabyDiarySave = async (diaryData) => {
     />
 
     <!-- Popup 배경 오버레이 -->
-    <div v-if="modalManager.showDayEventsModal.value" class="modal-overlay"></div>
+    <div
+      v-if="modalManager.showDayEventsModal.value"
+      class="modal-overlay"
+    />
 
     <!-- 일일 일정 모달 -->
     <DayEventsModal
