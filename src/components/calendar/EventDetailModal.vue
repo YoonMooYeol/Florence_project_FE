@@ -86,10 +86,37 @@ const getRecurringText = (recurring) => {
 
 // 이벤트 날짜 포맷팅
 const formatEventDate = (event) => {
-  if (event.allDay) {
-    return formatDate(event.start)
+  if (!event || !event.start) {
+    return '';
   }
-  return `${formatDate(event.start)} ${event.start.split('T')[1].substring(0, 5)} - ${event.end.split('T')[1].substring(0, 5)}`
+  
+  try {
+    if (event.allDay) {
+      return formatDate(event.start);
+    }
+    
+    // 날짜 형식이 ISO 문자열인지 확인 (T를 포함하는지)
+    const hasTimeStart = typeof event.start === 'string' && event.start.includes('T');
+    const hasTimeEnd = typeof event.end === 'string' && event.end && event.end.includes('T');
+    
+    if (hasTimeStart && hasTimeEnd) {
+      // 시간이 있는 경우 시작 날짜와 시간, 종료 시간을 표시
+      const startTimePart = event.start.split('T')[1];
+      const endTimePart = event.end.split('T')[1];
+      
+      if (startTimePart && endTimePart) {
+        const startTime = startTimePart.substring(0, 5);
+        const endTime = endTimePart.substring(0, 5);
+        return `${formatDate(event.start)} ${startTime} - ${endTime}`;
+      }
+    }
+    
+    // 기본적으로 시작 날짜만 표시
+    return formatDate(event.start);
+  } catch (error) {
+    console.error('날짜 포맷팅 중 오류 발생:', error);
+    return formatDate(event.start) || '';
+  }
 }
 </script>
 
@@ -165,7 +192,7 @@ const formatEventDate = (event) => {
               type="date"
               v-model="untilDate"
               class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-              :min="event.start.split('T')[0]"
+              :min="event && event.start && typeof event.start === 'string' && event.start.includes('T') ? event.start.split('T')[0] : event.start"
             />
           </div>
         </div>

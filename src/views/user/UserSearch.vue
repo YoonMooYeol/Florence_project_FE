@@ -51,14 +51,30 @@ const fetchFollowingUsers = async () => {
     }
 
     users.value = response.data
+    successfulPaths.value.following = '/accounts/follow/following/' // 성공한 경로 저장
   } catch (error) {
     console.error('팔로잉 사용자 목록 불러오기 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '팔로잉 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+    users.value = [] // 오류 발생 시 빈 배열 설정
+    
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMessage.value = '팔로잉 목록을 가져올 수 없습니다. API 엔드포인트를 찾을 수 없습니다.'
+      } else if (error.response.status === 401) {
+        errorMessage.value = '인증이 필요합니다. 다시 로그인해주세요.'
+      } else if (error.response.status >= 500) {
+        errorMessage.value = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      } else {
+        errorMessage.value = `팔로잉 목록 불러오기 오류 (${error.response.status}): ${error.response.data?.detail || '알 수 없는 오류'}`
+      }
+    } else {
+      errorMessage.value = '팔로잉 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+    }
   } finally {
     isLoading.value = false
   }
 }
 
+// 팔로워 사용자 목록 불러오기
 // 팔로워 사용자 목록 불러오기
 const fetchFollowersUsers = async () => {
   isLoading.value = true
@@ -72,7 +88,21 @@ const fetchFollowersUsers = async () => {
     users.value = response.data
   } catch (error) {
     console.error('팔로워 사용자 목록 불러오기 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '팔로워 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+    users.value = [] // 오류 발생 시 빈 배열 설정
+    
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMessage.value = '팔로워 목록을 가져올 수 없습니다. API 엔드포인트를 찾을 수 없습니다.'
+      } else if (error.response.status === 401) {
+        errorMessage.value = '인증이 필요합니다. 다시 로그인해주세요.'
+      } else if (error.response.status >= 500) {
+        errorMessage.value = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      } else {
+        errorMessage.value = `팔로워 목록 불러오기 오류 (${error.response.status}): ${error.response.data?.detail || '알 수 없는 오류'}`
+      }
+    } else {
+      errorMessage.value = '팔로워 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+    }
   } finally {
     isLoading.value = false
   }
@@ -107,7 +137,23 @@ const searchUserByEmail = async () => {
     console.log('최종 검색 결과:', searchResult.value)
   } catch (error) {
     console.error('사용자 검색 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '사용자 검색 중 오류가 발생했습니다.'
+    users.value = [] // 검색 오류 시 빈 결과 표시
+    
+    if (error.response) {
+      if (error.response.status === 401) {
+        errorMessage.value = '검색 기능을 사용하려면 로그인이 필요합니다.'
+      } else if (error.response.status === 403) {
+        errorMessage.value = '검색 기능을 사용할 권한이 없습니다.'
+      } else if (error.response.status >= 500) {
+        errorMessage.value = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      } else if (error.response.data?.detail) {
+        errorMessage.value = `검색 오류: ${error.response.data.detail}`
+      } else {
+        errorMessage.value = '사용자 검색 중 오류가 발생했습니다.'
+      }
+    } else {
+      errorMessage.value = '사용자 검색 중 오류가 발생했습니다.'
+    }
   } finally {
     isLoading.value = false
   }

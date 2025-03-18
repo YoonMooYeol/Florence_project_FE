@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useCalendarStore } from '@/store/calendar'
 import * as logger from '@/utils/logger'
 import { asyncErrorHandler } from '@/utils/errorHandler'
+import { normalizeDate } from '@/utils/dateUtils'
 
 /**
  * 캘린더 관련 모달 상태 관리를 위한 컴포저블
@@ -43,22 +44,74 @@ export function useModalManager () {
   }
 
   // 일일 일정 모달
-  const openDayEventsModal = (date) => {
+  const openDayEventsModal = async (date) => {
     logger.info(CONTEXT, `일일 일정 모달 열기 요청 (날짜: ${date})`)
-    calendarStore.setSelectedDate(date)
-
-    // 다른 모달은 모두 닫기
-    logger.debug(CONTEXT, '다른 모달들을 모두 닫습니다.')
-    closeOtherModals('dayEvents')
-
-    // 일일 일정 모달만 표시
-    logger.debug(CONTEXT, '일일 일정 모달만 열립니다.')
-    showDayEventsModal.value = true
+    
+    if (!date) {
+      logger.warn(CONTEXT, '날짜 정보가 없어 모달을 열 수 없습니다');
+      return;
+    }
+    
+    try {
+      // 날짜 정규화
+      const normalizedDate = normalizeDate(date);
+      logger.debug(CONTEXT, `정규화된 날짜: ${normalizedDate}`);
+    
+      // 선택된 이벤트 초기화 (중요!)
+      calendarStore.setSelectedEvent(null);
+      
+      // 다른 모달은 모두 닫기 (먼저 실행하여 UI 정리)
+      logger.debug(CONTEXT, '다른 모달들을 모두 닫습니다.')
+      closeOtherModals('dayEvents')
+      
+      // 선택된 날짜 설정
+      logger.debug(CONTEXT, `선택된 날짜 설정: ${normalizedDate}`);
+      const selectedDate = calendarStore.setSelectedDate(normalizedDate);
+      logger.debug(CONTEXT, `날짜 설정 완료: ${selectedDate}`);
+      
+      // 이벤트 객체 다시 한번 초기화 (확실히 처리)
+      calendarStore.setSelectedEvent(null);
+      
+      // 일일 일정 모달 표시 (데이터 로드 전에 UI 먼저 표시)
+      logger.debug(CONTEXT, '일일 일정 모달을 엽니다.')
+      showDayEventsModal.value = true
+      
+      // 약간의 지연 후 데이터 로드 (UI 렌더링 완료 후)
+      setTimeout(async () => {
+        try {
+          // 해당 날짜의 이벤트 로딩 시도
+          logger.debug(CONTEXT, '해당 날짜의 이벤트를 로드합니다');
+          const events = await calendarStore.fetchDayEvents(normalizedDate);
+          logger.debug(CONTEXT, `해당 날짜의 이벤트 로드 완료: ${events?.length || 0}개 이벤트`);
+          
+          // 아기 일기 정보도 함께 로드
+          try {
+            await calendarStore.fetchBabyDiaryByDate(normalizedDate);
+            logger.debug(CONTEXT, '아기 일기 정보 로드 완료');
+          } catch (diaryError) {
+            logger.error(CONTEXT, '아기 일기 로드 중 오류:', diaryError);
+          }
+        } catch (loadError) {
+          logger.error(CONTEXT, '데이터 로드 중 오류:', loadError);
+        }
+      }, 50);
+      
+    } catch (error) {
+      logger.error(CONTEXT, '모달 열기 중 오류:', error);
+      // 오류가 발생해도 모달은 유지
+      if (!showDayEventsModal.value) {
+        showDayEventsModal.value = true;
+      }
+    }
   }
 
   const closeDayEventsModal = () => {
     logger.info(CONTEXT, '일일 일정 모달 닫기')
     showDayEventsModal.value = false
+    
+    // 선택된 이벤트 정보 초기화
+    calendarStore.setSelectedEvent(null)
+    
     // 모든 모달 닫기
     closeOtherModals(null)
   }
@@ -66,6 +119,28 @@ export function useModalManager () {
   // 일정 상세 모달
   const openEventDetailModal = (event) => {
     logger.info(CONTEXT, '일정 상세 모달 열기 요청:', event)
+    
+    // 이벤트 객체가 없거나 필수 속성이 없으면 모달을 열지 않음
+    if (!event || !event.id || typeof event !== 'object') {
+      logger.warn(CONTEXT, '이벤트 객체가 없어 모달을 열 수 없습니다');
+      return;
+    }
+
+    // 일일 일정 모달이 열려있는지 확인
+    if (!showDayEventsModal.value) {
+      logger.warn(CONTEXT, '일일 일정 모달이 열려있지 않습니다. 먼저 일일 일정 모달을 열어야 합니다.');
+      
+      // 날짜 정보가 있으면 일일 일정 모달만 열고, 이벤트 상세 모달은 열지 않음
+      if (event.start) {
+        const eventDate = typeof event.start === 'string' && event.start.includes('T') 
+          ? event.start.split('T')[0] 
+          : normalizeDate(event.start);
+        
+        logger.debug(CONTEXT, '일정이 선택되었지만 일일 일정 모달이 닫혀 있어 일일 일정 모달만 엽니다. 날짜:', eventDate);
+        openDayEventsModal(eventDate);
+      }
+      return;
+    }
 
     // 일일 일정 모달은 유지하고 다른 모달은 닫기
     closeOtherModals('eventDetail')

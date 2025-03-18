@@ -1,5 +1,5 @@
 <script setup>
-import { watch, ref } from 'vue'
+import { watch, ref, onMounted } from 'vue'
 import { formatDate, formatTime } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
 import api from '@/utils/axios'
@@ -27,21 +27,33 @@ const props = defineProps({
   }
 })
 
-// 모달이 열린 직후 클릭 방지를 위한 플래그
+// 필요한 상태 변수들
 const isClickable = ref(false)
 const diaryContent = ref('')
-const activeTab = ref('schedule') // 'schedule', 'daily', 'baby'
+const activeTab = ref('schedule') // 초기 활성 탭은 '일정' 탭
 
-// show prop이 변경될 때마다 콘솔에 로그 출력하고 클릭 가능 상태 관리
-watch(() => props.show, (newValue) => {
+// 모달이 열렸을 때 props 변화 감지 및 처리
+watch(() => props.show, async (newValue) => {
   if (newValue) {
-    console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events.length)
-    // 모달이 열리면 클릭 방지 설정 (300ms 동안)
+    console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
+    // 모달이 열리면 클릭 방지 설정 (800ms 동안)
     isClickable.value = false
+    
+    // 항상 일정 탭부터 시작
+    activeTab.value = 'schedule'
+    
+    // 이벤트 데이터가 없으면 로딩 표시
+    if (!props.events || props.events.length === 0) {
+      console.log('DayEventsModal - 이벤트 데이터가 로드되지 않았거나 없습니다. 로딩 표시');
+    } else {
+      console.log('DayEventsModal - 이벤트 데이터 로드됨:', props.events.length, '개 이벤트');
+      // 이벤트는 사용자가 직접 선택하도록 함 (자동 선택 안함)
+    }
+    
     setTimeout(() => {
       isClickable.value = true
       console.log('DayEventsModal - 이제 이벤트 클릭 가능')
-    }, 300)
+    }, 800)
   } else {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 닫혔습니다')
   }
@@ -82,9 +94,15 @@ const viewEvent = (event) => {
     console.log('모달 열린 직후 클릭 무시됨')
     return
   }
+  
+  // 이벤트 객체 검증 - 더 엄격하게 검사
+  if (!event || !event.id || !event.title) {
+    console.warn('이벤트 객체가 유효하지 않음:', event)
+    return
+  }
 
-  console.log('일정 상세 보기 클릭:', event)
-  console.log('사용자가 직접 클릭: 이벤트 상세 모달 표시 요청')
+  // 사용자의 명시적인 클릭만 처리하도록 메시지 추가
+  console.log('사용자가 일정 항목을 클릭: 이벤트 상세 보기 요청됨', event.title)
   emit('view-event', event)
 }
 
@@ -104,31 +122,99 @@ const getRecurringText = (recurring) => {
   }
 }
 
+// 이벤트 시간 형식 변환 함수
+const formatEventTime = (event) => {
+  if (!event) return '시간 정보 없음';
+  
+  try {
+    if (event.allDay) return '종일';
+    
+    if (event.start && event.end) {
+      return `${formatTime(event.start)} ~ ${formatTime(event.end)}${event.recurring && event.recurring !== 'none' ? ' (' + getRecurringText(event.recurring) + ')' : ''}`;
+    } else if (event.start) {
+      return `${formatTime(event.start)}${event.recurring && event.recurring !== 'none' ? ' (' + getRecurringText(event.recurring) + ')' : ''}`;
+    } else {
+      return '시간 정보 없음';
+    }
+  } catch (error) {
+    console.error('이벤트 시간 형식 변환 중 오류:', error);
+    return '시간 정보 오류';
+  }
+}
+
+// 태교일기 저장 함수
 const saveBabyDiary = async () => {
+  console.log('태교일기 저장 시작...')
+  
   try {
     // 내용이 비어있는지 확인
-    if (!diaryContent.value.trim()) {
+    if (!diaryContent.value || !diaryContent.value.trim()) {
       alert('일기 내용을 입력해주세요.');
       return;
     }
 
-    // 기존 Date 객체 생성 방식을 수정
-    // const diaryDate = formatDate(new Date(props.date), 'yyyy-MM-dd')
-    
-    // 날짜 형식 수정: props.date를 그대로 사용
-    // props.date가 이미 'YYYY-MM-DD' 형식이면 파싱 없이 바로 사용
+    // 날짜 형식 - props.date를 그대로 사용
     const diaryDate = props.date;
+    if (!diaryDate) {
+      console.error('날짜 정보가 없습니다');
+      alert('날짜 정보가 없어 저장할 수 없습니다.');
+      return;
+    }
     
-    // Construct the payload
+    console.log('태교일기 저장 날짜:', diaryDate);
+    
+    // 임신 정보 확인 및 임신 ID 가져오기
+    let pregnancyId = calendarStore.pregnancyId;
+    
+    // 임신 ID가 없으면 API 호출로 가져오기 시도
+    if (!pregnancyId) {
+      try {
+        console.log('임신 정보 조회 API 호출');
+        const pregnancyResponse = await api.get('/accounts/pregnancies/');
+        console.log('임신 정보 API 응답:', pregnancyResponse.data);
+        
+        if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
+          const pregnancyData = pregnancyResponse.data[0];
+          console.log('현재 임신 정보:', pregnancyData);
+          
+          // 임신 ID 가져오기 - pregnancy_id 필드 사용
+          if (pregnancyData.pregnancy_id) {
+            pregnancyId = pregnancyData.pregnancy_id;
+            console.log('임신 ID 가져옴:', pregnancyId);
+            
+            // 스토어 업데이트
+            calendarStore.setPregnancyId(pregnancyId);
+            calendarStore.setPregnancyInfo(true, pregnancyData.baby_name || '아기', pregnancyId);
+          }
+        } else {
+          console.log('임신 정보가 없습니다.');
+          alert('임신 정보가 필요합니다. 임신 정보를 먼저 등록해주세요.');
+          
+          // 임신 정보 등록 페이지로 이동 여부 확인
+          if (confirm('임신 정보 등록 페이지로 이동하시겠습니까?')) {
+            window.location.href = '/pregnancy/register';
+          }
+          return;
+        }
+      } catch (error) {
+        console.error('임신 정보 조회 중 오류:', error);
+        alert('임신 정보를 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+    }
+    
+    // 임신 ID 확인
+    if (!pregnancyId) {
+      alert('임신 정보를 찾을 수 없습니다. 임신 정보를 먼저 등록해주세요.');
+      return;
+    }
+    
+    // 페이로드 구성
     const payload = {
       content: diaryContent.value,
-      diary_date: diaryDate
+      diary_date: diaryDate,
+      pregnancy: pregnancyId
     };
-    
-    // pregnancy 필드가 필요한 경우 추가
-    if (calendarStore.pregnancyId) {
-      payload.pregnancy = calendarStore.pregnancyId;
-    }
     
     console.log('서버로 전송되는 페이로드:', payload);
 
@@ -146,28 +232,80 @@ const saveBabyDiary = async () => {
     emit('close');
   } catch (error) {
     console.error('일기 저장 중 오류 발생:', error);
+    handleSaveError(error);
+  }
+};
+
+// 태교일기 저장 중 발생한 오류 처리 함수
+const handleSaveError = (error) => {
+  console.error('태교일기 저장 오류:', error);
+  
+  if (error.response) {
+    console.error('오류 상태 코드:', error.response.status);
     
-    if (error.response && error.response.data) {
-      // 전체 오류 객체 로깅 (중요!)
+    if (error.response.data) {
+      // 전체 오류 객체 로깅
       console.log('서버 응답 오류 상세 정보:', JSON.stringify(error.response.data));
       
-      // diary_date 관련 오류 확인
+      // 오류 유형별 처리
       if (error.response.data.diary_date) {
         alert(`날짜 오류: ${error.response.data.diary_date[0]}`);
       } 
-      // 일반 오류 메시지 
+      else if (error.response.data.pregnancy) {
+        const errorMsg = error.response.data.pregnancy[0];
+        console.error('임신 정보 오류:', errorMsg);
+        
+        if (errorMsg.includes('존재하지 않습니다')) {
+          alert('임신 정보가 존재하지 않습니다. 임신 정보를 등록해주세요.');
+          
+          // 임신 정보 등록 페이지로 이동 여부 확인
+          if (confirm('임신 정보 등록 페이지로 이동하시겠습니까?')) {
+            window.location.href = '/pregnancy/register';
+          }
+        } else {
+          alert(`임신 정보 오류: ${errorMsg}`);
+        }
+      }
       else if (error.response.data.error) {
         alert(`저장 실패: ${error.response.data.error}`);
       } 
-      // 기타 오류 
       else {
         alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
       }
     } else {
-      alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
+      alert(`서버 오류 (${error.response.status}): 일기 저장에 실패했습니다.`);
     }
+  } else {
+    alert('일기 저장에 실패했습니다. 네트워크 연결을 확인해주세요.');
   }
-}
+};
+
+onMounted(async () => {
+  console.log('DayEventsModal 마운트됨, 임신 정보 초기화 시도');
+  
+  // 임신 정보 새로 조회
+  try {
+    console.log('임신 정보 API 요청 시작');
+    const pregnancyResponse = await api.get('/accounts/pregnancies/');
+    console.log('임신 정보 API 응답:', pregnancyResponse.data);
+    
+    if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
+      const pregnancyData = pregnancyResponse.data[0];
+      console.log('현재 임신 정보:', pregnancyData);
+      
+      // 캘린더 스토어 업데이트
+      if (pregnancyData.id) {
+        calendarStore.setPregnancyId(pregnancyData.id);
+        calendarStore.setPregnancyInfo(true, pregnancyData.nickname || '아기', pregnancyData.id);
+        console.log('API로부터 임신 정보 업데이트 완료:', pregnancyData.id);
+      }
+    } else {
+      console.log('임신 정보가 없습니다.');
+    }
+  } catch (error) {
+    console.error('임신 정보 초기화 중 오류:', error);
+  }
+});
 </script>
 
 <template>
@@ -231,7 +369,7 @@ const saveBabyDiary = async () => {
       <div class="h-96 p-6 bg-ivory h-128">
         <!-- 일정 탭 -->
         <div v-if="activeTab === 'schedule'" class="space-y-4">
-          <div v-if="events.length > 0" class="space-y-2 h-128">
+          <div v-if="events && events.length > 0" class="space-y-2 h-128">
             <div
               v-for="event in events"
               :key="event.id"
@@ -244,11 +382,8 @@ const saveBabyDiary = async () => {
                   ({{ getRecurringText(event.recurring) }})
                 </span>
               </h4>
-              <p v-if="!event.allDay" class="text-sm text-gray-500">
-                {{ formatTime(event.start) }} ~ {{ formatTime(event.end) }}
-              </p>
-              <p v-else class="text-sm text-gray-500">
-                종일
+              <p class="text-sm text-gray-500">
+                {{ formatEventTime(event) }}
               </p>
             </div>
           </div>
