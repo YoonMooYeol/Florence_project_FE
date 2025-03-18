@@ -13,6 +13,14 @@ const errorMessage = ref('')
 const activeTab = ref('search')
 const hasExplicitlyFollowed = ref(false)
 
+// 성공한 API 경로 캐싱
+const successfulPaths = ref({
+  following: '',
+  followers: '',
+  follow: '',
+  unfollow: ''
+})
+
 const changeTab = (tab) => {
   activeTab.value = tab
   searchQuery.value = ''
@@ -50,33 +58,65 @@ const fetchAllUsers = async () => {
   }
 }
 
-// 추가된 함수: 팔로잉 사용자 목록 불러오기
+// 팔로잉 사용자 목록 불러오기
 const fetchFollowingUsers = async () => {
   isLoading.value = true
   errorMessage.value = ''
   try {
-    const response = await api.get('/accounts/follow/')
+    console.log('팔로잉 목록 API 호출 시작')
+    const response = await api.get('/accounts/follow/following/')
     console.log('팔로잉 사용자 목록 데이터:', response.data)
     users.value = response.data
+    successfulPaths.value.following = '/accounts/follow/following/' // 성공한 경로 저장
   } catch (error) {
     console.error('팔로잉 사용자 목록 불러오기 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '팔로잉 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+    users.value = [] // 오류 발생 시 빈 배열 설정
+    
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMessage.value = '팔로잉 목록을 가져올 수 없습니다. API 엔드포인트를 찾을 수 없습니다.'
+      } else if (error.response.status === 401) {
+        errorMessage.value = '인증이 필요합니다. 다시 로그인해주세요.'
+      } else if (error.response.status >= 500) {
+        errorMessage.value = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      } else {
+        errorMessage.value = `팔로잉 목록 불러오기 오류 (${error.response.status}): ${error.response.data?.detail || '알 수 없는 오류'}`
+      }
+    } else {
+      errorMessage.value = '팔로잉 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+    }
   } finally {
     isLoading.value = false
   }
 }
 
-// 추가된 함수: 팔로워 사용자 목록 불러오기
+// 팔로워 사용자 목록 불러오기
 const fetchFollowersUsers = async () => {
   isLoading.value = true
   errorMessage.value = ''
   try {
-    // 팔로워 기능은 임시로 비활성화
-    console.log('팔로워 목록 기능은 현재 비활성화되어 있습니다')
-    users.value = []
+    console.log('팔로워 목록 API 호출 시작')
+    const response = await api.get('/accounts/follow/followers/')
+    console.log('팔로워 사용자 목록 데이터:', response.data)
+    users.value = response.data
+    successfulPaths.value.followers = '/accounts/follow/followers/' // 성공한 경로 저장
   } catch (error) {
     console.error('팔로워 사용자 목록 불러오기 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '팔로워 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+    users.value = [] // 오류 발생 시 빈 배열 설정
+    
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMessage.value = '팔로워 목록을 가져올 수 없습니다. API 엔드포인트를 찾을 수 없습니다.'
+      } else if (error.response.status === 401) {
+        errorMessage.value = '인증이 필요합니다. 다시 로그인해주세요.'
+      } else if (error.response.status >= 500) {
+        errorMessage.value = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      } else {
+        errorMessage.value = `팔로워 목록 불러오기 오류 (${error.response.status}): ${error.response.data?.detail || '알 수 없는 오류'}`
+      }
+    } else {
+      errorMessage.value = '팔로워 사용자 목록을 불러오는 중 오류가 발생했습니다.'
+    }
   } finally {
     isLoading.value = false
   }
@@ -103,17 +143,13 @@ const searchUsers = async () => {
     if (activeTab.value === 'search') {
       response = await api.get('/accounts/users/')
     } else if (activeTab.value === 'following') {
-      // 명시적으로 팔로우한 경우에만 검색
-      if (hasExplicitlyFollowed.value) {
-        response = await api.get('/accounts/follow/')
-      } else {
-        // 그렇지 않으면 빈 목록 반환
-        return []
-      }
+      // 팔로잉 목록 가져오기
+      response = await api.get('/accounts/follow/following/')
     } else if (activeTab.value === 'followers') {
-      // 팔로워 검색 기능은 임시로 비활성화
-      return []
+      // 팔로워 목록 가져오기
+      response = await api.get('/accounts/follow/followers/')
     }
+    
     console.log('검색 결과 데이터:', response.data)
     const allUsers = response.data
 
@@ -126,7 +162,23 @@ const searchUsers = async () => {
     })
   } catch (error) {
     console.error('사용자 검색 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '사용자 검색 중 오류가 발생했습니다.'
+    users.value = [] // 검색 오류 시 빈 결과 표시
+    
+    if (error.response) {
+      if (error.response.status === 401) {
+        errorMessage.value = '검색 기능을 사용하려면 로그인이 필요합니다.'
+      } else if (error.response.status === 403) {
+        errorMessage.value = '검색 기능을 사용할 권한이 없습니다.'
+      } else if (error.response.status >= 500) {
+        errorMessage.value = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      } else if (error.response.data?.detail) {
+        errorMessage.value = `검색 오류: ${error.response.data.detail}`
+      } else {
+        errorMessage.value = '사용자 검색 중 오류가 발생했습니다.'
+      }
+    } else {
+      errorMessage.value = '사용자 검색 중 오류가 발생했습니다.'
+    }
   } finally {
     isLoading.value = false
   }
@@ -194,40 +246,90 @@ const isFollowing = (user) => {
 // 팔로우/언팔로우 함수 추가
 const toggleFollow = async (user, event) => {
   // 이벤트 버블링 방지 (사용자 상세 정보로 넘어가지 않도록)
-  event.stopPropagation()
+  if (event) event.stopPropagation()
   
   if (!user.email) {
     errorMessage.value = '사용자 이메일이 없어 팔로우할 수 없습니다.'
     return
   }
   
+  // 로딩 상태 활성화
+  isLoading.value = true
+  errorMessage.value = ''
+  
   try {
-    if (isFollowing(user)) {
-      // 언팔로우
-      await api.delete(`/accounts/follow/${user.email}/`)
-      user.is_following = false
-      
-      // 언팔로우 후 현재 탭에 맞는 사용자 목록 업데이트
-      if (activeTab.value === 'following') {
-        await fetchFollowingUsers()
-      }
-    } else {
-      // 팔로우
-      await api.post(`/accounts/follow/${user.email}/`)
-      user.is_following = true
-      
-      // 팔로우 버튼을 명시적으로 클릭했음을 표시
-      hasExplicitlyFollowed.value = true
-      
-      // 팔로우 성공 시 팔로잉 탭으로 이동 및 목록 업데이트
-      if (activeTab.value !== 'following') {
-        changeTab('following')
-      }
+    // 현재 팔로우 상태 확인
+    const isCurrentlyFollowing = isFollowing(user)
+    
+    // 정확한 API 엔드포인트 사용
+    const apiEndpoint = `/accounts/follow/${user.email}/`
+    
+    console.log(`팔로우 API 요청: POST ${apiEndpoint} (현재 상태: ${isCurrentlyFollowing ? '팔로잉중' : '팔로우안함'})`)
+    
+    // 팔로우/언팔로우 모두 POST 요청 사용
+    await api.post(apiEndpoint)
+    
+    console.log(`사용자 ${user.email} ${isCurrentlyFollowing ? '언팔로우' : '팔로우'} 성공`)
+    
+    // 팔로우 상태 업데이트
+    user.is_following = !isCurrentlyFollowing
+    
+    // 팔로우 탭에 있을 때 팔로잉 사용자 목록 갱신
+    if (activeTab.value === 'following') {
       await fetchFollowingUsers()
+    } else if (activeTab.value === 'followers') {
+      await fetchFollowersUsers()
     }
+    
+    hasExplicitlyFollowed.value = true // 명시적으로 팔로우 액션을 수행했음을 기록
   } catch (error) {
-    console.error('팔로우 상태 변경 중 오류:', error)
-    errorMessage.value = error.response?.data?.detail || '팔로우 상태를 변경하는 중 오류가 발생했습니다.'
+    console.error(`사용자 ${user.email} ${isFollowing(user) ? '언팔로우' : '팔로우'} 오류:`, error)
+    
+    // 오류 응답 세부 정보 로깅
+    if (error.response) {
+      console.error('오류 상태 코드:', error.response.status)
+      console.error('오류 응답 데이터:', error.response.data)
+      
+      // 데이터베이스 오류 감지 (HTML 응답에서 오류 메시지 추출)
+      const responseText = error.response.data.toString()
+      const isDatabaseError = responseText.includes('relation') && responseText.includes('does not exist')
+      const isProgrammingError = responseText.includes('ProgrammingError')
+      
+      if (isDatabaseError || isProgrammingError) {
+        console.error('데이터베이스 오류 감지됨')
+        errorMessage.value = '서버 데이터베이스 설정에 문제가 있습니다. 관리자에게 문의하세요.'
+        
+        // 개발 모드에서는 UI 반응을 시뮬레이션 (사용자 경험 유지)
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('개발 모드: 팔로우 상태 변경 시뮬레이션')
+          const isCurrentlyFollowing = isFollowing(user)
+          user.is_following = !isCurrentlyFollowing
+        }
+        
+        isLoading.value = false
+        return
+      }
+    }
+    
+    let errorMsg = `${isFollowing(user) ? '언팔로우' : '팔로우'} 중 오류가 발생했습니다.`
+    
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMsg = '팔로우 기능을 위한 API 엔드포인트를 찾을 수 없습니다.'
+      } else if (error.response.status === 500) {
+        errorMsg = '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      } else if (error.response.status === 400) {
+        errorMsg = '잘못된 요청 형식입니다.'
+      } else if (error.response.status === 401) {
+        errorMsg = '인증이 필요합니다. 다시 로그인해주세요.'
+      } else if (error.response.data?.detail) {
+        errorMsg = error.response.data.detail
+      }
+    }
+    
+    errorMessage.value = errorMsg
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -429,7 +531,7 @@ onMounted(fetchAllUsers)
                   </div>
                 </div>
                 <button
-                  @click.stop="toggleFollow(user, $event)"
+                  @click.stop="toggleFollow(user)"
                   class="px-4 py-1 rounded-full text-sm font-medium focus:outline-none"
                   :class="isFollowing(user) 
                     ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' 

@@ -85,6 +85,36 @@ export function formatDateTime (date) {
 }
 
 /**
+ * 이벤트 날짜를 안전하게 포맷팅하는 함수
+ * @param {Object} event - 이벤트 객체
+ * @param {string} type - 시작일(start) 또는 종료일(end)
+ * @returns {string} 포맷팅된 날짜 문자열 또는 빈 문자열
+ */
+export function formatEventDate(event, type = 'start') {
+  if (!event) return '';
+  
+  const dateString = event[type];
+  if (!dateString) return '';
+  
+  try {
+    // T로 분리된 날짜와 시간을 처리
+    if (dateString.includes('T')) {
+      const [datePart, timePart] = dateString.split('T');
+      if (!datePart) return '';
+      
+      // 날짜 부분만 필요한 경우
+      return datePart;
+    }
+    
+    // 이미 날짜 형식인 경우 그대로 반환
+    return dateString;
+  } catch (error) {
+    console.error('날짜 포맷팅 중 오류 발생:', error);
+    return '';
+  }
+}
+
+/**
  * 한국어 로케일 설정 (FullCalendar용)
  */
 export const koLocale = {
