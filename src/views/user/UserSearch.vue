@@ -51,7 +51,6 @@ const fetchFollowingUsers = async () => {
     }
 
     users.value = response.data
-    successfulPaths.value.following = '/accounts/follow/following/' // 성공한 경로 저장
   } catch (error) {
     console.error('팔로잉 사용자 목록 불러오기 오류:', error)
     users.value = [] // 오류 발생 시 빈 배열 설정
