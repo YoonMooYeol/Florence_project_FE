@@ -148,17 +148,37 @@ const router = createRouter({
 
 // 네비게이션 가드 설정
 router.beforeEach((to, from, next) => {
-  // 토큰 확인
+  // 소셜 로그인 콜백 관련 경로는 무조건 통과시킴
+  if (to.path.includes('/callback') || to.path.includes('/kakao/') || 
+      to.path.includes('/naver/') || to.path.includes('/google/')) {
+    console.log('소셜 로그인 콜백 페이지 접근 - 인증 체크 건너뜀')
+    next()
+    return
+  }
+
+  // 토큰 확인 (다양한 저장소에서 확인)
   let token = localStorage.getItem('accessToken')
   if (!token) {
     token = sessionStorage.getItem('accessToken')
     if (token) {
+      console.log('세션 스토리지에서 토큰 발견, 로컬 스토리지에 복사')
       localStorage.setItem('accessToken', token)
     }
   }
   
   console.log('라우터 가드 - 현재 경로:', to.path)
   console.log('라우터 가드 - 토큰 존재:', !!token)
+  
+  // 로그인 후 리다이렉션 확인
+  const redirectPath = sessionStorage.getItem('redirectAfterLogin')
+  if (redirectPath && token) {
+    console.log(`로그인 후 리다이렉션 경로 발견: ${redirectPath}`)
+    sessionStorage.removeItem('redirectAfterLogin')
+    if (to.path !== redirectPath) {
+      next(redirectPath)
+      return
+    }
+  }
   
   // 인증이 필요하지 않은 경로 목록
   const publicPages = [
@@ -168,13 +188,7 @@ router.beforeEach((to, from, next) => {
     '/find-password',
     '/find-id',
     '/reset-password',
-    '/pregnancy-info-register',
-    '/kakao/callback',
-    '/naver/callback',
-    '/google/callback',
-    '/auth/callback/kakao',
-    '/auth/callback/naver',
-    '/auth/callback/google'
+    '/pregnancy-info-register'
   ]
   
   // 현재 경로가 인증이 필요한지 확인
@@ -183,6 +197,8 @@ router.beforeEach((to, from, next) => {
   // 인증이 필요하고 토큰이 없는 경우 로그인 페이지로 리디렉션
   if (authRequired && !token) {
     console.log('인증이 필요한 페이지입니다. 로그인 페이지로 이동합니다.')
+    // 로그인 후 원래 가려던 경로로 돌아갈 수 있도록 저장
+    sessionStorage.setItem('redirectAfterLogin', to.fullPath)
     next('/login')
     return
   }

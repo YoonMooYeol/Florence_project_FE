@@ -289,14 +289,19 @@ onMounted(async () => {
     // 아기 일기 데이터 불러오기
     calendarStore.fetchBabyDiaries()
     logger.debug(CONTEXT, '아기 일기 데이터 로드됨')
+
+    // LLM 요약 삭제 이벤트 리스너 추가
+    document.addEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
+    logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 등록됨')
+
+    // 임신 정보 초기화 (App.vue에서 이동됨)
+    logger.info(CONTEXT, '임신 정보 초기화 시작')
+    const result = await calendarStore.initPregnancyInfo()
+    logger.info(CONTEXT, '임신 정보 초기화 결과:', result)
   } catch (error) {
     console.error('캘린더 초기화 중 오류:', error)
     handleError(error, `${CONTEXT}.onMounted`)
   }
-
-  // LLM 요약 삭제 이벤트 리스너
-  document.addEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
-  logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 등록됨')
 })
 
 // LLM 요약 삭제 이벤트 핸들러
