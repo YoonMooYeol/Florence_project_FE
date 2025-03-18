@@ -31,6 +31,7 @@ const props = defineProps({
 const isClickable = ref(false)
 const diaryContent = ref('')
 const activeTab = ref('schedule') // 초기 활성 탭은 '일정' 탭
+const showDiaryModal = ref(false)
 
 // 모달이 열렸을 때 props 변화 감지 및 처리
 watch(() => props.show, async (newValue) => {
@@ -280,6 +281,16 @@ const handleSaveError = (error) => {
   }
 };
 
+const openDiaryModal = () => {
+  showDiaryModal.value = true
+  diaryContent.value = ''
+}
+
+const closeDiaryModal = () => {
+  showDiaryModal.value = false
+  diaryContent.value = ''
+}
+
 onMounted(async () => {
   console.log('DayEventsModal 마운트됨, 임신 정보 초기화 시도');
   
@@ -418,21 +429,52 @@ onMounted(async () => {
 
         <!-- 아기와의 하루 탭 -->
         <div v-if="activeTab === 'baby'" class="space-y-4">
-          <div class="bg-white p-4 rounded-lg shadow">
-            <textarea
-              v-model="diaryContent"
-              class="w-full h-56 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-point resize-none"
-              placeholder="아기와의 소중한 하루를 기록해보세요...♥︎"
-            />
-            <div class="flex justify-end space-x-2 mt-4">
-              <button
-                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-                @click="saveBabyDiary"
-              >
-                저장하기
-              </button>
-            </div>
+          <div v-if="babyDiary" class="bg-white p-4 rounded-lg shadow">
+            <p class="text-dark-gray whitespace-pre-line h-128">
+              {{ babyDiary.content }}
+            </p>
           </div>
+          <div v-else class="text-center py-4">
+            <p class="text-gray-500">
+              기록된 일기가 없습니다.
+            </p>
+          </div>
+          <div class="flex justify-center">
+            <button
+              class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+              @click="openDiaryModal"
+            >
+              기록하기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 태교일기 작성 모달 -->
+  <div v-if="showDiaryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg w-full max-w-md mx-auto">
+      <div class="p-6">
+        <h3 class="text-lg font-bold mb-4">오늘 하루 기록하기 ♥︎</h3>
+        <textarea
+          v-model="diaryContent"
+          class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point resize-none h-64"
+          placeholder="아기와의 소중한 하루를 기록해보세요...♥︎"
+        />
+        <div class="flex justify-end space-x-2 mt-4">
+          <button
+            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            @click="closeDiaryModal"
+          >
+            취소
+          </button>
+          <button
+            class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+            @click="saveBabyDiary"
+          >
+            저장하기
+          </button>
         </div>
       </div>
     </div>
