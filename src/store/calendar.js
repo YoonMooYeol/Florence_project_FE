@@ -1,3 +1,6 @@
+/* eslint-disable space-before-function-paren */
+/* eslint-disable no-trailing-spaces */
+/* eslint-disable semi */
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { normalizeDate, isSameDay } from '@/utils/dateUtils'
@@ -34,8 +37,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log('일정 목록 조회 시작');
-    
     try {
       // 현재 년월 기반으로 필터링 파라미터 구성
       const year = currentYear.value;
@@ -49,11 +50,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       
-      console.log(`${startDateStr}부터 ${endDateStr}까지의 일정 조회`);
-      
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.get(`calendars/events/?start_date=${startDateStr}&end_date=${endDateStr}`);
-      console.log('일정 조회 성공:', response.data);
       
       // API 응답 형식에 맞게 데이터 매핑
       events.value = response.data.map(event => {
@@ -89,12 +87,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       return events.value;
     } catch (err) {
-      console.error('일정 조회 중 오류 발생:', err);
-      
       // 오류 응답 상세 분석
       if (err.response) {
-        console.error('응답 상태 코드:', err.response.status);
-        
         if (err.response.status === 500) {
           error.value = '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
         } else if (err.response.status === 401) {
@@ -120,12 +114,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log(`${date} 일정 조회 시작`);
-    
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.get(`calendars/events/?event_day=${date}`);
-      console.log(`${date} 일정 조회 성공:`, response.data);
       
       // API 응답 형식에 맞게 데이터 매핑
       const mappedEvents = response.data.map(event => {
@@ -162,7 +153,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       // 해당 일의 이벤트 반환
       return mappedEvents;
     } catch (err) {
-      console.error(`${date} 일정 조회 중 오류 발생:`, err);
       error.value = '일정을 불러오는데 실패했습니다.';
       
       // 오류 시 빈 배열 반환
@@ -177,12 +167,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log(`이벤트 상세 조회 시작: ${eventId}`);
-    
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.get(`calendars/events/${eventId}/`);
-      console.log(`이벤트 상세 조회 성공:`, response.data);
       
       // API 응답 형식에 맞게 데이터 매핑
       const mappedEvent = {
@@ -216,7 +203,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       return mappedEvent;
     } catch (err) {
-      console.error(`이벤트 상세 조회 중 오류 발생:`, err);
       error.value = '이벤트 정보를 불러오는데 실패했습니다.';
       
       // 선택된 이벤트 초기화
@@ -233,42 +219,25 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log('캘린더 스토어: 일정 추가 시도', newEvent);
-    
     try {
       // 임신 ID가 없는 경우 현재 저장된 ID 사용
       if (!newEvent.pregnancy && pregnancyId.value) {
         newEvent.pregnancy = pregnancyId.value;
-        console.log('임신 ID 자동 추가:', pregnancyId.value);
       }
       
       // 임신 ID가 여전히 없는 경우 API로 조회
       if (!newEvent.pregnancy) {
         try {
-          console.log('임신 정보 조회 API 호출');
           const pregnancyResponse = await api.get('/accounts/pregnancies/');
-          console.log('임신 정보 API 응답:', pregnancyResponse.data);
           
+          // 임신 정보가 있는 경우 첫 번째 항목의 ID 사용
           if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
-            const pregnancyData = pregnancyResponse.data[0];
-            // API 응답의 pregnancy_id 필드 확인
-            if (pregnancyData.pregnancy_id) {
-              newEvent.pregnancy = pregnancyData.pregnancy_id;
-              pregnancyId.value = pregnancyData.pregnancy_id;
-              console.log('API로부터 임신 ID 설정:', newEvent.pregnancy);
-            } else if (pregnancyData.id) {
-              newEvent.pregnancy = pregnancyData.id;
-              pregnancyId.value = pregnancyData.id;
-              console.log('API로부터 임신 ID 설정:', newEvent.pregnancy);
-            } else {
-              throw new Error('임신 정보에 ID가 없습니다');
-            }
-          } else {
-            throw new Error('임신 정보가 없습니다');
+            // 임신 ID와 상태 업데이트
+            newEvent.pregnancy = pregnancyResponse.data[0].id;
+            setPregnancyInfo(true, pregnancyResponse.data[0].baby_nickname, pregnancyResponse.data[0].id);
           }
         } catch (pregnancyError) {
-          console.error('임신 정보 조회 중 오류:', pregnancyError);
-          throw new Error('임신 정보를 찾을 수 없습니다. 임신 정보를 먼저 등록해주세요.');
+          // 임신 정보 조회 실패시에도 일정 등록은 계속 진행
         }
       }
       
@@ -302,11 +271,8 @@ export const useCalendarStore = defineStore('calendar', () => {
         apiPayload.event_type = 'other'; // 기본값
       }
       
-      console.log('API 요청 페이로드:', apiPayload);
-      
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.post('calendars/events/', apiPayload);
-      console.log('일정 추가 성공:', response.data);
       
       // API 응답 형식에 맞게 데이터 매핑
       const mappedEvent = {
@@ -340,7 +306,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       return mappedEvent;
     } catch (err) {
-      console.error('일정 추가 중 오류 발생:', err);
       error.value = err.message || '일정 추가에 실패했습니다.';
       
       throw err;
@@ -354,13 +319,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log('캘린더 스토어: 일정 수정 시도', updatedEvent);
-    
     try {
       // 임신 ID가 없는 경우 현재 저장된 ID 사용
       if (!updatedEvent.pregnancy && pregnancyId.value) {
         updatedEvent.pregnancy = pregnancyId.value;
-        console.log('임신 ID 자동 추가:', pregnancyId.value);
       }
       
       // API 요청 형식에 맞게 데이터 변환
@@ -391,12 +353,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         apiPayload.event_type = updatedEvent.event_type;
       }
       
-      console.log('API 요청 페이로드:', apiPayload);
-      
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const eventId = updatedEvent.id;
       const response = await api.put(`calendars/events/${eventId}/`, apiPayload);
-      console.log('일정 수정 성공:', response.data);
       
       // API 응답 형식에 맞게 데이터 매핑
       const mappedEvent = {
@@ -433,7 +392,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       return true;
     } catch (err) {
-      console.error('일정 수정 중 오류 발생:', err);
       error.value = '일정 수정에 실패했습니다.';
       
       throw err;
@@ -447,12 +405,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log('캘린더 스토어: 일정 삭제 시도', eventId);
-    
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       await api.delete(`calendars/events/${eventId}/`);
-      console.log('일정 삭제 성공');
       
       // 로컬 상태에서도 해당 이벤트 제거 (UI 업데이트를 위함)
       const index = events.value.findIndex(e => e.id === eventId);
@@ -462,7 +417,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       return true;
     } catch (err) {
-      console.error('일정 삭제 중 오류 발생:', err);
       error.value = '일정 삭제에 실패했습니다.';
       
       throw err;
@@ -476,13 +430,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log('캘린더 스토어: 반복 일정 삭제 시도', eventId);
-    
     try {
       const baseEvent = events.value.find(e => e.id === eventId);
       
       if (!baseEvent) {
-        console.error('기준 이벤트를 찾을 수 없음:', eventId);
         throw new Error('삭제할 일정을 찾을 수 없습니다.');
       }
       
@@ -492,14 +443,12 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 백엔드에 반복 일정 삭제 요청
       await api.delete(`calendars/events/${eventId}/?delete_all=true`);
-      console.log('반복 일정 삭제 성공');
       
       // 성공 후 fetchEvents 호출하여 최신 데이터로 갱신
       await fetchEvents();
       
       return true;
     } catch (err) {
-      console.error('반복 일정 삭제 중 오류 발생:', err);
       error.value = '반복 일정 삭제에 실패했습니다.';
       
       throw err;
@@ -513,31 +462,25 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log('특정 날짜까지 반복 일정 유지 함수 호출:', { eventId, untilDate });
-    
     try {
       const baseEvent = events.value.find(e => e.id === eventId);
       
       if (!baseEvent) {
-        console.error('기준 이벤트를 찾을 수 없음:', eventId);
         throw new Error('수정할 일정을 찾을 수 없습니다.');
       }
       
       if (!baseEvent.recurring || baseEvent.recurring === 'none') {
-        console.log('반복 일정이 아님, 단일 일정 삭제');
         return await deleteEvent(eventId);
       }
       
       // 백엔드에 특정 날짜까지의 반복 일정 삭제 요청
       await api.delete(`calendars/events/${eventId}/?until_date=${untilDate}`);
-      console.log('특정 날짜까지 반복 일정 유지 성공');
       
       // 성공 후 fetchEvents 호출하여 최신 데이터로 갱신
       await fetchEvents();
       
       return true;
     } catch (err) {
-      console.error('반복 일정 특정 날짜까지 유지 중 오류 발생:', err);
       error.value = '반복 일정 수정에 실패했습니다.';
       
       throw err;
@@ -550,8 +493,6 @@ export const useCalendarStore = defineStore('calendar', () => {
   async function fetchBabyDiaries() {
     isLoading.value = true;
     error.value = null;
-    
-    console.log('태교일기 목록 조회 시작');
     
     try {
       // 현재 년월 기반으로 필터링
@@ -566,20 +507,13 @@ export const useCalendarStore = defineStore('calendar', () => {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       
-      console.log(`${startDateStr}부터 ${endDateStr}까지의 태교일기 조회`);
-      
       // API 호출 시도 (baseURL에 v1이 포함되어 있음)
       const response = await api.get(`calendars/baby-diaries/?start_date=${startDateStr}&end_date=${endDateStr}`);
       
-      console.log('태교일기 조회 성공:', response.data);
       babyDiaries.value = response.data;
       return response.data;
     } catch (err) {
-      console.error('태교일기 조회 중 오류 발생:', err);
-      
-      // 오류 처리
       error.value = '태교일기를 불러오는데 실패했습니다.';
-      console.error('태교일기 조회 오류:', err);
       
       // 빈 배열 반환
       babyDiaries.value = [];
@@ -594,26 +528,19 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log(`${date} 태교일기 조회 시작`);
-    
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.get(`calendars/baby-diaries/${date}/`);
-      console.log(`${date} 태교일기 조회 성공:`, response.data);
       
       // 선택된 태교일기 업데이트
       selectedBabyDiary.value = response.data;
       
       return response.data;
     } catch (err) {
-      console.error(`${date} 태교일기 조회 중 오류 발생:`, err);
-      error.value = '태교일기를 불러오는데 실패했습니다.';
-      
       if (err.response && err.response.status === 404) {
-        console.log('해당 날짜의 태교일기가 없습니다');
         return null;
       } else {
-        console.error('태교일기 조회 오류:', err);
+        error.value = '태교일기를 불러오는데 실패했습니다.';
         return null;
       }
     } finally {
@@ -626,20 +553,15 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log('태교일기 추가 시도:', newDiary);
-    
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.post('calendars/baby-diaries/', newDiary);
-      console.log('태교일기 추가 성공:', response.data);
       
       // 로컬 상태 업데이트 (UI 갱신용)
       babyDiaries.value.push(response.data);
       
       return response.data;
     } catch (err) {
-      console.error('태교일기 추가 중 오류 발생:', err);
-      
       if (err.response) {
         if (err.response.status === 400) {
           error.value = '입력한 정보가 올바르지 않습니다.';
@@ -666,12 +588,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log(`${date} 태교일기 수정 시도:`, content);
-    
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.put(`calendars/baby-diaries/${date}/`, { content });
-      console.log('태교일기 수정 성공:', response.data);
       
       // 로컬 상태 업데이트 (UI 갱신용)
       const index = babyDiaries.value.findIndex(d => d.date === date);
@@ -681,8 +600,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       return response.data;
     } catch (err) {
-      console.error('태교일기 수정 중 오류 발생:', err);
-      
       if (err.response) {
         if (err.response.status === 400) {
           error.value = '입력한 정보가 올바르지 않습니다.';
@@ -709,12 +626,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     isLoading.value = true;
     error.value = null;
     
-    console.log(`${date} 태교일기 삭제 시도`);
-    
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       await api.delete(`calendars/baby-diaries/${date}/`);
-      console.log('태교일기 삭제 성공');
       
       // 로컬 상태 업데이트 (UI 갱신용)
       const index = babyDiaries.value.findIndex(d => d.date === date);
@@ -724,8 +638,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       return true;
     } catch (err) {
-      console.error('태교일기 삭제 중 오류 발생:', err);
-      
       if (err.response) {
         if (err.response.status === 404) {
           error.value = '삭제할 태교일기를 찾을 수 없습니다.';
@@ -751,14 +663,12 @@ export const useCalendarStore = defineStore('calendar', () => {
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.post('calendars/llm-summaries/', newSummary);
-      console.log('LLM 요약 추가 성공:', response.data);
       
       // 로컬 상태 업데이트 (UI 갱신용)
       llmSummaries.value.push(response.data);
       
       return response.data;
     } catch (err) {
-      console.error('LLM 요약 추가 중 오류 발생:', err);
       error.value = 'LLM 요약 저장에 실패했습니다.';
       
       throw err;
@@ -774,7 +684,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     try {
       // API 호출 (baseURL에 v1이 포함되어 있음)
       await api.delete(`calendars/llm-summaries/${date}/`);
-      console.log('LLM 요약 삭제 성공');
       
       // 로컬 상태 업데이트 (UI 갱신용)
       const index = llmSummaries.value.findIndex(s => s.date === date);
@@ -784,7 +693,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       return true;
     } catch (err) {
-      console.error('LLM 요약 삭제 중 오류 발생:', err);
       error.value = 'LLM 요약 삭제에 실패했습니다.';
       
       throw err;
@@ -794,12 +702,9 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   function setSelectedDate (date) {
-    console.log('calendarStore: 선택된 날짜 설정 시도:', date)
-    
     try {
       // null 또는 undefined 검사
       if (date === null || date === undefined) {
-        console.log('선택된 날짜가 null/undefined로 설정됨')
         selectedDate.value = null;
         return null;
       }
@@ -816,43 +721,20 @@ export const useCalendarStore = defineStore('calendar', () => {
         selectedDate.value = normalizeDate(String(date));
       }
       
-      console.log('선택된 날짜가 성공적으로 설정됨:', selectedDate.value)
-      
-      // 해당 날짜의 이벤트 개수 미리 계산 (디버깅용)
-      try {
-        const eventsCount = events.value.filter(e => {
-          if (!e || !e.start) return false;
-          
-          const eventStart = typeof e.start === 'string' && e.start.includes('T') 
-            ? e.start.split('T')[0] 
-            : normalizeDate(e.start);
-            
-          return eventStart === selectedDate.value;
-        }).length;
-        
-        console.log(`선택된 날짜(${selectedDate.value})에 ${eventsCount}개의 이벤트가 있습니다.`)
-      } catch (countError) {
-        console.warn('이벤트 개수 계산 중 오류:', countError)
-      }
-      
       return selectedDate.value;
     } catch (error) {
-      console.error('선택된 날짜 설정 중 오류 발생:', error)
       // 오류 발생 시 오늘 날짜로 설정
       const today = new Date();
       selectedDate.value = normalizeDate(today)
-      console.log('오류로 인해 오늘 날짜로 설정됨:', selectedDate.value)
       return selectedDate.value;
     }
   }
 
   function setSelectedEvent (event) {
-    console.log('calendarStore: 선택된 일정 설정:', event)
     selectedEvent.value = event
   }
 
   function setSelectedLLMSummary (summary) {
-    console.log('calendarStore: 선택된 LLM 요약 설정:', summary)
     selectedLLMSummary.value = summary
   }
 
@@ -861,13 +743,11 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   function updateCurrentYearMonth (year, month) {
-    console.log('calendarStore: 현재 년월 업데이트:', year, month)
     currentYear.value = year
     currentMonth.value = month
   }
 
   function setPregnancyInfo (isPregnantStatus, nickname, id = null) {
-    console.log('임신 정보 설정:', isPregnantStatus, nickname, id)
     isPregnant.value = isPregnantStatus
     babyNickname.value = nickname
     if (id !== null) {
@@ -876,14 +756,12 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   function setPregnancyId (id) {
-    console.log('임신 ID 설정:', id)
     pregnancyId.value = id
   }
 
   async function initPregnancyInfo () {
     try {
       const response = await api.get('/accounts/pregnancies/')
-      console.log('임신 정보 조회 응답:', response.data)
       
       if (response.data && response.data.length > 0) {
         const pregnancyData = response.data[0]
@@ -893,15 +771,12 @@ export const useCalendarStore = defineStore('calendar', () => {
         }
         if (pregnancyData.id) {
           pregnancyId.value = pregnancyData.id
-          console.log('임신 ID 설정됨:', pregnancyId.value)
         }
         return true
       } else {
-        console.log('임신 정보가 없습니다.')
         return false
       }
     } catch (err) {
-      console.error('임신 정보 초기화 오류:', err)
       return false
     }
   }
@@ -920,12 +795,9 @@ export const useCalendarStore = defineStore('calendar', () => {
   // 게터 (getters)
   const eventsForSelectedDate = computed(() => {
     if (!selectedDate.value) {
-      console.log('선택된 날짜가 없습니다.')
       return []
     }
 
-    console.log(`${selectedDate.value} 날짜의 이벤트 필터링 시작`, events.value.length)
-    
     try {
       const filteredEvents = events.value.filter(event => {
         // event나 event.start가 없는 경우 필터링에서 제외
@@ -952,15 +824,12 @@ export const useCalendarStore = defineStore('calendar', () => {
           // 그 외의 경우, 이벤트 날짜를 정규화하여 비교
           return normalizeDate(event.start) === normalizedSelectedDate
         } catch (error) {
-          console.error('이벤트 필터링 중 오류 발생:', error, event)
           return false
         }
       })
       
-      console.log(`${selectedDate.value} 날짜의 이벤트 필터링 결과:`, filteredEvents.length)
       return filteredEvents
     } catch (error) {
-      console.error('이벤트 필터링 과정에서 오류 발생:', error)
       return []
     }
   })

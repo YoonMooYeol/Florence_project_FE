@@ -87,7 +87,6 @@ const fetchUserInfo = async () => {
   try {
     // API를 통해 본인 정보 조회
     const response = await api.get('/accounts/users/me/')
-    console.log('사용자 정보 응답 데이터:', response.data)
 
     // 사용자 기본 정보 설정
     userInfo.value.username = response.data.username || ''
@@ -96,7 +95,6 @@ const fetchUserInfo = async () => {
     userInfo.value.phone_number = response.data.phone_number || ''
     userInfo.value.gender = response.data.gender || ''
   } catch (error) {
-    console.error('사용자 정보 불러오기 오류:', error)
     errors.form = error.response?.data?.detail || '사용자 정보를 불러오는 중 오류가 발생했습니다.'
 
     // API 호출 실패 시 로컬 스토리지에서 정보 가져오기
@@ -150,12 +148,8 @@ const saveUserInfo = async () => {
       phone_number: userInfo.value.phone_number || null
     }
 
-    // 요청 데이터 로깅
-    console.log('요청 데이터:', requestData)
-
     // 사용자 정보 업데이트 API 호출
     const response = await api.put('/accounts/users/me/', requestData)
-    console.log('응답 데이터:', response.data)
 
     // 로컬 스토리지 및 세션 스토리지 업데이트
     localStorage.setItem('userName', userInfo.value.name)
@@ -173,8 +167,6 @@ const saveUserInfo = async () => {
     // 프로필 페이지로 이동
     router.push('/profile')
   } catch (error) {
-    console.error('사용자 정보 저장 오류:', error)
-
     // 서버에서 오는 에러 메시지 처리
     if (error.response && error.response.data) {
       if (typeof error.response.data === 'string') {
@@ -273,10 +265,8 @@ const handleProfilePicChange = async (event) => {
           const response = await api.post('accounts/users/me/profile-image/', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
-          console.log("Profile image updated successfully:", response.data);
           alert("프로필 사진이 업데이트되었습니다.");
         } catch (error) {
-          console.error("프로필 사진 업데이트 오류:", error);
           alert("프로필 사진 업데이트 실패");
         }
       }, 'image/png');
@@ -318,7 +308,6 @@ const deleteProfilePhoto = () => {
         userInfo.value.profile_image = null
       })
       .catch(error => {
-        console.error('프로필 사진 삭제 오류:', error)
         alert('프로필 사진 삭제에 실패했습니다.')
       })
   }
