@@ -3,6 +3,7 @@ import { watch, ref, onMounted } from 'vue'
 import { formatDate, formatTime } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
 import api from '@/utils/axios'
+import DailySummaryComponent from './DailySummaryComponent.vue'
 
 const props = defineProps({
   show: {
@@ -291,6 +292,10 @@ const closeDiaryModal = () => {
   diaryContent.value = ''
 }
 
+const viewLLMSummary = (summary) => {
+  emit('view-llm-summary', summary)
+}
+
 onMounted(async () => {
   console.log('DayEventsModal 마운트됨, 임신 정보 초기화 시도');
   
@@ -415,16 +420,10 @@ onMounted(async () => {
 
         <!-- 오늘의 하루 탭 -->
         <div v-if="activeTab === 'daily'" class="space-y-4">
-          <div v-if="llmSummary" class="bg-white p-4 rounded-lg shadow">
-            <p class="text-dark-gray whitespace-pre-line h-128">
-              {{ llmSummary.summary }}
-            </p>
-          </div>
-          <div v-else class="text-center py-4">
-            <p class="text-gray-500">
-              데이터가 없습니다.
-            </p>
-          </div>
+          <DailySummaryComponent 
+            :selected-date="date" 
+            @open-full-summary="viewLLMSummary"
+          />
         </div>
 
         <!-- 아기와의 하루 탭 -->

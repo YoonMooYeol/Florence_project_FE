@@ -677,27 +677,48 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-  async function deleteLLMSummary(date) {
-    isLoading.value = true;
-    error.value = null;
-    
+  async function deleteLLMSummary(summaryId) {
     try {
-      // API 호출 (baseURL에 v1이 포함되어 있음)
-      await api.delete(`calendars/llm-summaries/${date}/`);
+      // API 호출하여 요약 삭제
+      await api.delete(`/v1/calendars/conversation-summaries/${summaryId}/`)
       
-      // 로컬 상태 업데이트 (UI 갱신용)
-      const index = llmSummaries.value.findIndex(s => s.date === date);
+      // 로컬 상태에서도 삭제
+      const index = llmSummaries.value.findIndex(s => s.summary_id === summaryId)
       if (index !== -1) {
-        llmSummaries.value.splice(index, 1);
+        llmSummaries.value.splice(index, 1)
       }
       
-      return true;
-    } catch (err) {
-      error.value = 'LLM 요약 삭제에 실패했습니다.';
+      // 선택된 요약 초기화
+      setSelectedLLMSummary(null)
       
-      throw err;
-    } finally {
-      isLoading.value = false;
+      return true
+    } catch (error) {
+      console.error('LLM 요약 삭제 실패:', error)
+      return false
+    }
+  }
+
+  // 월별 LLM 요약 데이터 가져오기
+  async function fetchLLMSummaries(year, month) {
+    try {
+      // 월의 시작일과 종료일 계산
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+      const lastDay = new Date(year, month, 0).getDate()
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      
+      const response = await api.get('/v1/calendars/conversation-summaries/', {
+        params: {
+          start_date: startDate,
+          end_date: endDate
+        }
+      })
+      
+      // 응답 데이터를 저장
+      llmSummaries.value = response.data
+      return response.data
+    } catch (error) {
+      console.error('LLM 요약 데이터 가져오기 실패:', error)
+      return []
     }
   }
 
@@ -839,7 +860,7 @@ export const useCalendarStore = defineStore('calendar', () => {
 
     // 날짜 형식 정규화 (YYYY-MM-DD)
     const formattedDate = normalizeDate(selectedDate.value)
-    return llmSummaries.value.find(summary => summary.date === formattedDate)
+    return llmSummaries.value.find(summary => summary.summary_date === formattedDate)
   })
 
   const babyDiaryForSelectedDate = computed(() => {
@@ -851,7 +872,7 @@ export const useCalendarStore = defineStore('calendar', () => {
   const hasLLMSummary = (dateStr) => {
     // 날짜 문자열 정규화 (YYYY-MM-DD 형식으로)
     const formattedDate = normalizeDate(dateStr)
-    return llmSummaries.value.some(summary => summary.date === formattedDate)
+    return llmSummaries.value.some(summary => summary.summary_date === formattedDate)
   }
 
   const hasBabyDiary = (dateStr) => {
@@ -915,6 +936,8 @@ export const useCalendarStore = defineStore('calendar', () => {
     deleteRecurringEvents,
     deleteRecurringEventsUntil,
     $reset,
+    fetchLLMSummaries,
+    deleteLLMSummary,
 
     // 게터
     eventsForSelectedDate,
