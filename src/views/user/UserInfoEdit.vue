@@ -501,18 +501,18 @@ const deleteProfilePhoto = () => {
             휴대폰 번호는 '-'없이 숫자만 입력하셔도 됩니다
           </p>
         </div>
-      </div>
-
-      <!-- 수정 버튼 -->
-      <div class="relative flex justify-end -right-48">
-        <button
-          class="w-auto p-4 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
-          :disabled="isSubmitting"
-          @click="saveUserInfo"
-        >
-          <span v-if="isSubmitting">처리 중...</span>
-          <span v-else>수정</span>
-        </button>
+        
+        <!-- 수정 버튼 -->
+        <div class="flex justify-center mt-6">
+          <button
+            class="w-full p-2 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
+            :disabled="isSubmitting"
+            @click="saveUserInfo"
+          >
+            <span v-if="isSubmitting">처리 중...</span>
+            <span v-else>수정</span>
+          </button>
+        </div>
       </div>
     </div>
 
