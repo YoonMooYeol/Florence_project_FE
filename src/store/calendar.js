@@ -69,9 +69,9 @@ export const useCalendarStore = defineStore('calendar', () => {
           title: event.title,
           description: event.description,
           start: event.event_day, // event_day를 start로 매핑
-          backgroundColor: '#FFD600',
-          borderColor: '#FFD600',
-          textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
@@ -134,9 +134,9 @@ export const useCalendarStore = defineStore('calendar', () => {
           title: event.title,
           description: event.description,
           start: event.event_day,
-          backgroundColor: '#FFD600',
-          borderColor: '#FFD600',
-          textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
@@ -185,9 +185,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         title: response.data.title,
         description: response.data.description,
         start: response.data.event_day,
-        backgroundColor: '#FFD600',
-        borderColor: '#FFD600',
-        textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -288,9 +288,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         title: response.data.title,
         description: response.data.description,
         start: response.data.event_day, // event_day를 start로 매핑
-        backgroundColor: '#FFD600',
-        borderColor: '#FFD600',
-        textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -371,9 +371,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         title: response.data.title,
         description: response.data.description,
         start: response.data.event_day,
-        backgroundColor: '#FFD600',
-        borderColor: '#FFD600',
-        textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -419,7 +419,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 로컬 상태에서도 해당 이벤트 제거 (UI 업데이트를 위함)
       const index = events.value.findIndex(e => e.id === eventId);
-      if (index !== -1) {
+    if (index !== -1) {
         events.value.splice(index, 1);
       }
       
@@ -570,9 +570,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         return null
       }
       
-      // API 호출 (pregnancy_id와 날짜로 조회)
-      const response = await api.get(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/`, {
-        params: { date: normalizedDate }
+      // API 호출 (POST 메서드로 변경)
+      const response = await api.post(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/`, {
+        diary_date: normalizedDate
       })
       
       // 응답 데이터 변환
@@ -582,7 +582,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         content: response.data.content,
         photos: Array.isArray(response.data.photos) 
           ? response.data.photos.map(photo => ({
-              id: photo.photo_id, // photo_id를 id로 매핑
+              id: photo.photo_id,
               image: photo.image,
               created_at: photo.created_at
             }))
@@ -684,7 +684,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 로컬 상태 업데이트
       const index = babyDiaries.value.findIndex(d => d.id === diaryId)
-      if (index !== -1) {
+    if (index !== -1) {
         babyDiaries.value[index] = {
           id: response.data.diary_id,
           date: response.data.diary_date,
@@ -719,8 +719,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 로컬 상태 업데이트
       const index = babyDiaries.value.findIndex(d => d.id === diaryId)
-      if (index !== -1) {
-        babyDiaries.value.splice(index, 1)
+    if (index !== -1) {
+      babyDiaries.value.splice(index, 1)
       }
       
       // 선택된 태교일기가 삭제된 일기와 같다면 초기화
@@ -1077,7 +1077,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       return true
     } catch (error) {
       console.error('LLM 요약 삭제 실패:', error)
-      return false
+    return false
     }
   }
 

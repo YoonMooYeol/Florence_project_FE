@@ -480,9 +480,12 @@ const handleDateSelect = ({ year, month }) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-yellow-200">
+  <div class="py-4 min-h-screen bg-yellow-200">
     <!-- 달 아이콘 박스 -->
-    <div class="bg-point py-1 flex justify-center items-center">
+    <div 
+      class="bg-point py-0 flex justify-center items-center cursor-pointer" 
+      @click="handleGoToToday"
+    >
       <div class="w-12 h-8">
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
@@ -737,14 +740,6 @@ const handleDateSelect = ({ year, month }) => {
   width: 100%;
 }
 
-.fc-day-today {
-  background-color: transparent !important;
-}
-
-.fc-day-today .fc-daygrid-day-frame {
-  background-color: rgba(255, 255, 255, 0.6);
-}
-
 /* 요일 헤더 영역 숨기기 */
 .fc-col-header {
   height: 0;
@@ -776,7 +771,7 @@ const handleDateSelect = ({ year, month }) => {
 }
 
 .fc-daygrid-day-frame {
-  padding-top: 48px;
+  padding-top: 36px;
   min-height: 180px;
   background-color: rgba(255, 255, 255, 0.6);
 }
@@ -807,19 +802,20 @@ const handleDateSelect = ({ year, month }) => {
 
 /* 날짜 상단 영역 스타일 */
 .fc-daygrid-day-top {
-  justify-content: flex-start;
-  flex-direction: row;
-  padding: 2px;
-  text-align: left;
-  min-height: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 24px;
   position: absolute;
   left: 0;
   top: 0;
+  width: 100%;
+  padding: 2px 4px;
 }
 
 /* 날짜 숫자 스타일 */
 .fc-daygrid-day-number {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #353535;
   font-weight: 400;
   width: 24px;
@@ -827,43 +823,52 @@ const handleDateSelect = ({ year, month }) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  margin: 0;
+  position: absolute;
+  left: -15px;
 }
 
-/* 오늘 날짜 숫자 스타일 */
+/* 오늘 날짜 스타일 */
+.fc-day-today {
+  background-color: #ffed90;
+}
+
+.fc-day-today .fc-daygrid-day-frame {
+  background-color: #fff5c2;
+}
+
 .fc-day-today .fc-daygrid-day-number {
-  background-color: var(--color-point);
-  border-radius: 50%;
+  color: var(--color-dark-gray);
   font-weight: 600;
-}
-
-/* 요일별 날짜 색상 */
-.fc-day-sun .fc-daygrid-day-number {
-  color: #e53e3e;
-}
-
-.fc-day-sat .fc-daygrid-day-number {
-  color: #3182ce;
 }
 
 /* LLM 요약 표시 스타일 */
 .llm-indicator {
-  font-size: 1.2rem;
-  color: #3182ce;
-  font-weight: 800;
+  font-size: 2rem;
   line-height: 1;
-  margin-top: -4px;
-  margin-right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3986ce;
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  left: 3px;
+  margin-top: -21px;
 }
 
 /* 아기 일기 표시 스타일 */
 .baby-diary-indicator {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   line-height: 1;
-  vertical-align: middle;
-  margin-top: -2px;
-  color: #e53e3e;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: #f05454;
+  width: 20px;
+  height: 0px;
+  position: absolute;
+  left: 12px;
+  margin-top: -12px;
 }
 
 /* 이벤트 스타일 */
