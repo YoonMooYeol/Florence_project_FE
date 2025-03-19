@@ -6,7 +6,7 @@ import FullCalendar from '@fullcalendar/vue3'
 import { useCalendarStore } from '@/store/calendar'
 import { useCalendarConfig } from '@/composables/useCalendarConfig'
 import { useModalManager } from '@/composables/useModalManager'
-import { normalizeDate, formatDate, weekdays } from '@/utils/dateUtils'
+import { normalizeDate, formatDate, weekdays, formatTime } from '@/utils/dateUtils'
 import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import CalendarHeader from '@/components/calendar/CalendarHeader.vue'
@@ -17,6 +17,7 @@ import LLMSummaryModal from '@/components/calendar/LLMSummaryModal.vue'
 import AddEventModal from '@/components/calendar/AddEventModal.vue'
 import AddDiaryTypeModal from '@/components/calendar/AddDiaryTypeModal.vue'
 import EventModal from '@/components/calendar/EventModal.vue'
+import { savePregnancyId } from '@/utils/auth'
 
 // import TodoList from './TodoList.vue'
 
@@ -249,6 +250,10 @@ const loadMonthEvents = async () => {
     const summaries = await calendarStore.fetchLLMSummaries(currentYear.value, currentMonth.value)
     logger.info(CONTEXT, `LLM 요약 ${summaries.length}개 로드됨`)
     
+    // 태교일기 데이터 로드 
+    const diaries = await calendarStore.fetchBabyDiaries(currentYear.value, currentMonth.value)
+    logger.info(CONTEXT, `태교일기 ${diaries.length}개 로드됨`)
+    
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()
       calendarApi.refetchEvents()
@@ -284,26 +289,36 @@ onMounted(async () => {
 
     logger.debug(CONTEXT, '현재 날짜 정보 업데이트됨')
 
-    // 임신 상태 설정
-    calendarStore.setPregnancyInfo(true, '애기')
-    logger.debug(CONTEXT, '임신 상태 설정됨')
+    // 임신 정보 초기화
+    logger.info(CONTEXT, '임신 정보 초기화 시작')
+    const result = await calendarStore.initPregnancyInfo()
+    logger.info(CONTEXT, '임신 정보 초기화 결과:', result)
 
-    // 이벤트 로드
+    // 임신 정보가 없으면 사용자 정보 입력 화면으로 리다이렉트
+    if (!result || !calendarStore.pregnancyId) {
+      logger.warn(CONTEXT, '임신 정보가 없습니다. 사용자 정보 입력 화면으로 리다이렉트합니다.')
+      
+      // 사용자에게 알림 메시지 표시
+      alert('임신 정보가 필요합니다. 임신 정보 등록 페이지로 이동합니다.')
+      
+      // 사용자 정보 입력 화면으로 리다이렉트
+      window.location.href = '/pregnancy/register'
+      return
+    }
+    
+    // 임신 ID를 localStorage와 sessionStorage에 저장
+    const pregnancyId = calendarStore.pregnancyId
+    savePregnancyId(pregnancyId)
+    
+    logger.info(CONTEXT, `임신 ID(${pregnancyId})를 저장했습니다.`)
+
+    // 이벤트 로드 (태교일기 포함)
     await loadMonthEvents()
     logger.info(CONTEXT, '월별 이벤트 로드됨')
-
-    // 아기 일기 데이터 불러오기
-    calendarStore.fetchBabyDiaries()
-    logger.debug(CONTEXT, '아기 일기 데이터 로드됨')
 
     // LLM 요약 삭제 이벤트 리스너 추가
     document.addEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
     logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 등록됨')
-
-    // 임신 정보 초기화 (App.vue에서 이동됨)
-    logger.info(CONTEXT, '임신 정보 초기화 시작')
-    const result = await calendarStore.initPregnancyInfo()
-    logger.info(CONTEXT, '임신 정보 초기화 결과:', result)
   } catch (error) {
     console.error('캘린더 초기화 중 오류:', error)
     handleError(error, `${CONTEXT}.onMounted`)

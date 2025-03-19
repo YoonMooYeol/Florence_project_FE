@@ -74,10 +74,27 @@ const emit = defineEmits(['close', 'add-event', 'view-event', 'view-llm-summary'
 
 const calendarStore = useCalendarStore()
 
+// 태교일기 API URL 기본 경로
 const baseUrl = 'calendars/baby-diaries/'
 
-const createBabyDiary = (diaryData) => {
-  return api.post(baseUrl, diaryData)
+// 태교일기 생성 함수
+const createBabyDiary = (pregnancyId, diaryData) => {
+  return api.post(`${baseUrl}pregnancy/${pregnancyId}/`, diaryData)
+}
+
+// 태교일기 수정 함수 (diary_id로)
+const updateBabyDiary = (diaryId, diaryData) => {
+  return api.put(`${baseUrl}${diaryId}/diary/`, diaryData)
+}
+
+// 태교일기 삭제 함수 (diary_id로)
+const deleteBabyDiary = (diaryId) => {
+  return api.delete(`${baseUrl}${diaryId}/diary/`)
+}
+
+// 태교일기 조회 함수 (diary_id로)
+const getBabyDiary = (diaryId) => {
+  return api.get(`${baseUrl}${diaryId}/diary/`)
 }
 
 const closeModal = () => {
@@ -149,94 +166,37 @@ const saveBabyDiary = async () => {
   console.log('태교일기 저장 시작...')
   
   try {
-    // 내용이 비어있는지 확인
-    if (!diaryContent.value || !diaryContent.value.trim()) {
-      alert('일기 내용을 입력해주세요.');
-      return;
-    }
-
     // 날짜 형식 - props.date를 그대로 사용
-    const diaryDate = props.date;
+    const diaryDate = props.date
     if (!diaryDate) {
-      console.error('날짜 정보가 없습니다');
-      alert('날짜 정보가 없어 저장할 수 없습니다.');
-      return;
+      console.error('날짜 정보가 없습니다')
+      alert('날짜 정보가 없어 저장할 수 없습니다.')
+      return
     }
     
-    console.log('태교일기 저장 날짜:', diaryDate);
+    console.log('태교일기 저장 날짜:', diaryDate)
     
-    // 임신 정보 확인 및 임신 ID 가져오기
-    let pregnancyId = calendarStore.pregnancyId;
+    // API 요청 바디에 날짜만 포함
+    const newDiary = await calendarStore.addBabyDiary({
+      date: diaryDate,
+      content: diaryContent.value || ''  // 내용이 없으면 빈 문자열
+    })
     
-    // 임신 ID가 없으면 API 호출로 가져오기 시도
-    if (!pregnancyId) {
-      try {
-        console.log('임신 정보 조회 API 호출');
-        const pregnancyResponse = await api.get('/accounts/pregnancies/');
-        console.log('임신 정보 API 응답:', pregnancyResponse.data);
-        
-        if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
-          const pregnancyData = pregnancyResponse.data[0];
-          console.log('현재 임신 정보:', pregnancyData);
-          
-          // 임신 ID 가져오기 - pregnancy_id 필드 사용
-          if (pregnancyData.pregnancy_id) {
-            pregnancyId = pregnancyData.pregnancy_id;
-            console.log('임신 ID 가져옴:', pregnancyId);
-            
-            // 스토어 업데이트
-            calendarStore.setPregnancyId(pregnancyId);
-            calendarStore.setPregnancyInfo(true, pregnancyData.baby_name || '아기', pregnancyId);
-          }
-        } else {
-          console.log('임신 정보가 없습니다.');
-          alert('임신 정보가 필요합니다. 임신 정보를 먼저 등록해주세요.');
-          
-          // 임신 정보 등록 페이지로 이동 여부 확인
-          if (confirm('임신 정보 등록 페이지로 이동하시겠습니까?')) {
-            window.location.href = '/pregnancy/register';
-          }
-          return;
-        }
-      } catch (error) {
-        console.error('임신 정보 조회 중 오류:', error);
-        alert('임신 정보를 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.');
-        return;
-      }
-    }
-    
-    // 임신 ID 확인
-    if (!pregnancyId) {
-      alert('임신 정보를 찾을 수 없습니다. 임신 정보를 먼저 등록해주세요.');
-      return;
-    }
-    
-    // 페이로드 구성
-    const payload = {
-      content: diaryContent.value,
-      diary_date: diaryDate,
-      pregnancy: pregnancyId
-    };
-    
-    console.log('서버로 전송되는 페이로드:', payload);
-
-    // 서버 호출
-    const response = await createBabyDiary(payload);
-    console.log('서버 응답:', response.data);
+    console.log('태교일기 저장 성공:', newDiary)
     
     // 성공 메시지
-    alert('일기가 저장되었습니다.');
-    
-    // 캘린더 데이터 새로고침
-    await calendarStore.fetchBabyDiaries();
+    alert('일기가 저장되었습니다.')
     
     // 모달 닫기
-    emit('close');
+    closeDiaryModal()
+    
+    // 선택된 일기 설정 (현재 화면에 표시)
+    calendarStore.setSelectedBabyDiary(newDiary)
   } catch (error) {
-    console.error('일기 저장 중 오류 발생:', error);
-    handleSaveError(error);
+    console.error('일기 저장 중 오류 발생:', error)
+    handleSaveError(error)
   }
-};
+}
 
 // 태교일기 저장 중 발생한 오류 처리 함수
 const handleSaveError = (error) => {
@@ -282,9 +242,129 @@ const handleSaveError = (error) => {
   }
 };
 
-const openDiaryModal = () => {
+// 태교일기 수정 함수
+const updateDiary = async () => {
+  if (!props.babyDiary || !props.babyDiary.id) {
+    console.error('수정할 일기 정보가 없습니다')
+    return
+  }
+  
+  try {
+    // 스토어 함수 사용
+    await calendarStore.updateBabyDiary(props.babyDiary.id, diaryContent.value)
+    alert('일기가 수정되었습니다.')
+    
+    // 다이어리 모달 닫기
+    closeDiaryModal()
+  } catch (error) {
+    console.error('일기 수정 실패:', error)
+    alert('일기 수정에 실패했습니다.')
+  }
+}
+
+// 태교일기 삭제 함수
+const deleteDiary = async () => {
+  if (!props.babyDiary || !props.babyDiary.id) {
+    console.error('삭제할 일기 정보가 없습니다')
+    return
+  }
+  
+  if (!confirm('정말로 이 일기를 삭제하시겠습니까?')) {
+    return
+  }
+  
+  try {
+    // 스토어 함수 사용
+    await calendarStore.deleteBabyDiary(props.babyDiary.id)
+    alert('일기가 삭제되었습니다.')
+    
+    // 모달 닫기
+    emit('close')
+  } catch (error) {
+    console.error('일기 삭제 실패:', error)
+    alert('일기 삭제에 실패했습니다.')
+  }
+}
+
+// 사진 업로드 함수
+const fileInput = ref(null)
+const selectedFile = ref(null)
+const isUploading = ref(false)
+
+// 파일 선택 버튼 클릭 이벤트
+const openFileSelector = () => {
+  fileInput.value.click()
+}
+
+// 파일 선택 이벤트 핸들러
+const handleFileSelect = (event) => {
+  const files = event.target.files
+  if (files.length > 0) {
+    selectedFile.value = files[0]
+    uploadPhoto()
+  }
+}
+
+// 사진 업로드
+const uploadPhoto = async () => {
+  if (!selectedFile.value) {
+    return
+  }
+  
+  if (!props.babyDiary || !props.babyDiary.id) {
+    alert('먼저 일기를 저장해주세요.')
+    return
+  }
+  
+  isUploading.value = true
+  
+  try {
+    // 스토어 함수 사용하여 사진 업로드
+    await calendarStore.addBabyDiaryPhoto(props.babyDiary.id, selectedFile.value)
+    
+    // 사진 목록 새로고침
+    await calendarStore.fetchBabyDiaryPhotos(props.babyDiary.id)
+    
+    // 입력 필드 초기화
+    selectedFile.value = null
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
+  } catch (error) {
+    console.error('사진 업로드 실패:', error)
+    alert('사진 업로드에 실패했습니다.')
+  } finally {
+    isUploading.value = false
+  }
+}
+
+// 사진 삭제
+const deletePhoto = async (photoId) => {
+  if (!confirm('이 사진을 삭제하시겠습니까?')) {
+    return
+  }
+  
+  try {
+    // 스토어 함수 사용하여 사진 삭제
+    await calendarStore.deleteBabyDiaryPhoto(props.babyDiary.id, photoId)
+    alert('사진이 삭제되었습니다.')
+  } catch (error) {
+    console.error('사진 삭제 실패:', error)
+    alert('사진 삭제에 실패했습니다.')
+  }
+}
+
+// 일기 모달 열기
+const openDiaryModal = (mode = 'create') => {
   showDiaryModal.value = true
-  diaryContent.value = ''
+  
+  if (mode === 'edit' && props.babyDiary) {
+    // 수정 모드일 경우 기존 내용 표시
+    diaryContent.value = props.babyDiary.content
+  } else {
+    // 생성 모드일 경우 내용 초기화
+    diaryContent.value = ''
+  }
 }
 
 const closeDiaryModal = () => {
@@ -297,31 +377,11 @@ const viewLLMSummary = (summary) => {
 }
 
 onMounted(async () => {
-  console.log('DayEventsModal 마운트됨, 임신 정보 초기화 시도');
+  console.log('DayEventsModal 마운트됨')
   
-  // 임신 정보 새로 조회
-  try {
-    console.log('임신 정보 API 요청 시작');
-    const pregnancyResponse = await api.get('/accounts/pregnancies/');
-    console.log('임신 정보 API 응답:', pregnancyResponse.data);
-    
-    if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
-      const pregnancyData = pregnancyResponse.data[0];
-      console.log('현재 임신 정보:', pregnancyData);
-      
-      // 캘린더 스토어 업데이트
-      if (pregnancyData.id) {
-        calendarStore.setPregnancyId(pregnancyData.id);
-        calendarStore.setPregnancyInfo(true, pregnancyData.nickname || '아기', pregnancyData.id);
-        console.log('API로부터 임신 정보 업데이트 완료:', pregnancyData.id);
-      }
-    } else {
-      console.log('임신 정보가 없습니다.');
-    }
-  } catch (error) {
-    console.error('임신 정보 초기화 중 오류:', error);
-  }
-});
+  // 임신 정보 초기화
+  await calendarStore.initPregnancyInfo()
+})
 </script>
 
 <template>
@@ -382,10 +442,10 @@ onMounted(async () => {
         </button>
       </div>
 
-      <div class="h-96 p-6 bg-ivory h-128">
+      <div class="h-96 p-6 bg-ivory overflow-y-auto">
         <!-- 일정 탭 -->
         <div v-if="activeTab === 'schedule'" class="space-y-4">
-          <div v-if="events && events.length > 0" class="space-y-2 h-128">
+          <div v-if="events && events.length > 0" class="space-y-2">
             <div
               v-for="event in events"
               :key="event.id"
@@ -428,20 +488,91 @@ onMounted(async () => {
 
         <!-- 아기와의 하루 탭 -->
         <div v-if="activeTab === 'baby'" class="space-y-4">
-          <div v-if="babyDiary" class="bg-white p-4 rounded-lg shadow">
-            <p class="text-dark-gray whitespace-pre-line h-128">
-              {{ babyDiary.content }}
-            </p>
+          <div v-if="babyDiary" class="space-y-6">
+            <!-- 일기 내용 -->
+            <div class="bg-white p-4 rounded-lg shadow">
+              <p class="text-dark-gray whitespace-pre-line">
+                {{ babyDiary.content }}
+              </p>
+            </div>
+            
+            <!-- 사진 갤러리 -->
+            <div v-if="babyDiary.photos && babyDiary.photos.length > 0" class="space-y-3">
+              <h4 class="text-sm font-medium text-gray-600">태교일기 사진</h4>
+              <div class="grid grid-cols-2 gap-2">
+                <div 
+                  v-for="photo in babyDiary.photos" 
+                  :key="photo.id" 
+                  class="relative rounded-lg overflow-hidden shadow-sm group"
+                >
+                  <img 
+                    :src="photo.image" 
+                    :alt="'태교일기 사진'" 
+                    class="w-full h-32 object-cover"
+                  />
+                  <button 
+                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    @click.stop="deletePhoto(photo.id)"
+                    title="사진 삭제"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 사진 추가 버튼 -->
+            <div class="flex space-x-2">
+              <input
+                type="file"
+                ref="fileInput"
+                accept="image/*"
+                class="hidden"
+                @change="handleFileSelect"
+              />
+              <button
+                class="flex-1 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm flex items-center justify-center space-x-1"
+                @click="openFileSelector"
+                :disabled="isUploading"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11a2 2 0 104 0 2 2 0 00-4 0z" />
+                </svg>
+                <span>사진 추가</span>
+                <span v-if="isUploading" class="ml-1">(업로드 중...)</span>
+              </button>
+              <button
+                class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm flex items-center justify-center space-x-1"
+                @click="openDiaryModal('edit')"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>수정</span>
+              </button>
+              <button
+                class="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm flex items-center justify-center space-x-1"
+                @click="deleteDiary"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>삭제</span>
+              </button>
+            </div>
           </div>
           <div v-else class="text-center py-4">
             <p class="text-gray-500">
               기록된 일기가 없습니다.
             </p>
           </div>
-          <div class="flex justify-center">
+          <div class="flex justify-center" v-if="!babyDiary">
             <button
               class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-              @click="openDiaryModal"
+              @click="openDiaryModal('create')"
             >
               기록하기
             </button>
@@ -469,10 +600,18 @@ onMounted(async () => {
             취소
           </button>
           <button
+            v-if="!babyDiary || !babyDiary.id"
             class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
             @click="saveBabyDiary"
           >
             저장하기
+          </button>
+          <button
+            v-else
+            class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+            @click="updateDiary"
+          >
+            수정하기
           </button>
         </div>
       </div>
