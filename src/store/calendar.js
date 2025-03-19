@@ -495,24 +495,37 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null;
     
     try {
-      // 현재 년월 기반으로 필터링
+      console.log('아기 일기 조회 시작');
+      
+      // 현재 표시 중인 년월의 시작일과 종료일 계산
       const year = currentYear.value;
       const month = currentMonth.value;
       
       // 월의 시작일과 종료일 계산
       const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
+      const endDate = new Date(year, month, 0); // 다음 달의 0일 = 현재 달의 마지막 일
       
       // YYYY-MM-DD 형식으로 변환
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       
-      // API 호출 시도 (baseURL에 v1이 포함되어 있음)
+      console.log(`${year}년 ${month}월 아기 일기 데이터 조회 시도 (${startDateStr} ~ ${endDateStr})`);
+      
+      // 현재 월의 일기만 조회하는 API 호출
       const response = await api.get(`calendars/baby-diaries/?start_date=${startDateStr}&end_date=${endDateStr}`);
       
-      babyDiaries.value = response.data;
+      console.log('아기 일기 조회 성공:', response.data ? response.data.length : 0, '개');
+      babyDiaries.value = response.data || [];
       return response.data;
     } catch (err) {
+      console.error('아기 일기 조회 중 오류:', err);
+      if (err.response) {
+        console.error('서버 응답 상태:', err.response.status);
+        if (err.response.data) {
+          console.error('서버 응답 데이터:', err.response.data);
+        }
+      }
+      
       error.value = '태교일기를 불러오는데 실패했습니다.';
       
       // 빈 배열 반환
@@ -523,26 +536,165 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
+  // 임신 정보 초기화 함수 개선
+  async function initPregnancyInfo () {
+    try {
+      console.log('임신 정보 초기화 시작');
+      const response = await api.get('/accounts/pregnancies/');
+      console.log('임신 정보 API 응답:', response);
+      
+      if (response.data && response.data.length > 0) {
+        const pregnancyData = response.data[0];
+        console.log('현재 임신 정보:', pregnancyData);
+        
+        isPregnant.value = true;
+        
+        // 아기 이름 설정 - nickname 또는 baby_name 필드 사용
+        if (pregnancyData.nickname) {
+          babyNickname.value = pregnancyData.nickname;
+        } else if (pregnancyData.baby_name) {
+          babyNickname.value = pregnancyData.baby_name;
+        } else {
+          babyNickname.value = '아기';
+        }
+        
+        // ID 설정 - id 또는 pregnancy_id 필드 사용
+        if (pregnancyData.id) {
+          pregnancyId.value = pregnancyData.id;
+          console.log('임신 ID 설정 (id 필드):', pregnancyId.value);
+        } else if (pregnancyData.pregnancy_id) {
+          pregnancyId.value = pregnancyData.pregnancy_id;
+          console.log('임신 ID 설정 (pregnancy_id 필드):', pregnancyId.value);
+        }
+        
+        return true;
+      } else {
+        console.log('임신 정보가 없습니다.');
+        isPregnant.value = false;
+        babyNickname.value = '아기';
+        pregnancyId.value = null;
+        
+        // 개발 환경에서는 임시 데이터 생성
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('개발 환경에서 임시 임신 정보 생성');
+          isPregnant.value = true;
+          babyNickname.value = '개발아기';
+          pregnancyId.value = 1;
+          return true;
+        }
+        
+        return false;
+      }
+    } catch (err) {
+      console.error('임신 정보 초기화 중 오류:', err);
+      
+      // 개발 환경에서는 임시 데이터 생성
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('개발 환경에서 임시 임신 정보 생성');
+        isPregnant.value = true;
+        babyNickname.value = '개발아기';
+        pregnancyId.value = 1;
+        return true;
+      }
+      
+      return false;
+    }
+  }
+
   // 특정 날짜의 아기 일기 조회
   async function fetchBabyDiaryByDate(date) {
     isLoading.value = true;
     error.value = null;
     
     try {
-      // API 호출 (baseURL에 v1이 포함되어 있음)
-      const response = await api.get(`calendars/baby-diaries/${date}/`);
-      
-      // 선택된 태교일기 업데이트
-      selectedBabyDiary.value = response.data;
-      
-      return response.data;
-    } catch (err) {
-      if (err.response && err.response.status === 404) {
-        return null;
-      } else {
-        error.value = '태교일기를 불러오는데 실패했습니다.';
-        return null;
+      // 임신 정보가 없으면 먼저 초기화 시도
+      if (!pregnancyId.value) {
+        console.log('임신 정보가 없어 초기화 시도');
+        await initPregnancyInfo();
       }
+      
+      // 날짜 정규화
+      const normalizedDate = normalizeDate(date);
+      
+      console.log('특정 날짜 일기 데이터 조회 시도:', normalizedDate);
+      
+      // 우선 이미 캐시된 일기 데이터에서 해당 날짜의 일기를 찾음
+      if (babyDiaries.value && babyDiaries.value.length > 0) {
+        console.log('캐시된 일기 데이터 확인 (총', babyDiaries.value.length, '개)');
+        const foundDiary = babyDiaries.value.find(diary => diary.diary_date === normalizedDate);
+        
+        if (foundDiary) {
+          console.log('캐시에서 일기 데이터 찾음:', foundDiary);
+          selectedBabyDiary.value = foundDiary;
+          return foundDiary;
+        }
+        
+        console.log('캐시에서 해당 날짜의 일기를 찾을 수 없음, API 호출 시도');
+      }
+      
+      // API로 특정 날짜의 일기를 직접 조회
+      try {
+        console.log(`API로 ${normalizedDate} 일기 조회 시도`);
+        const response = await api.get(`calendars/baby-diaries/?diary_date=${normalizedDate}`);
+        
+        // 응답 데이터 처리
+        if (response.data && response.data.length > 0) {
+          const diaryData = response.data[0]; // 첫 번째 항목을 사용
+          console.log('API에서 일기 데이터 찾음:', diaryData);
+          
+          // 캐시 업데이트 (해당 날짜의 일기가 캐시에 없는 경우에만)
+          const existingIndex = babyDiaries.value.findIndex(diary => diary.diary_date === normalizedDate);
+          if (existingIndex === -1) {
+            console.log('캐시에 일기 데이터 추가');
+            babyDiaries.value.push(diaryData);
+          } else {
+            console.log('캐시의 일기 데이터 업데이트');
+            babyDiaries.value[existingIndex] = diaryData;
+          }
+          
+          selectedBabyDiary.value = diaryData;
+          return diaryData;
+        } else {
+          console.log('API에서 일기 데이터를 찾을 수 없음');
+          selectedBabyDiary.value = null;
+          return null;
+        }
+      } catch (apiError) {
+        console.error('특정 날짜 일기 조회 API 오류:', apiError);
+        
+        // API 오류 발생 시 (서버 500 오류 등) 기존 방식으로 폴백
+        console.log('API 오류 발생, 모든 일기 조회 후 클라이언트에서 필터링 시도');
+        const allDiariesResponse = await api.get('calendars/baby-diaries/');
+        
+        // 전체 일기 데이터 캐싱
+        babyDiaries.value = allDiariesResponse.data || [];
+        console.log('전체 일기 데이터 조회 완료:', babyDiaries.value.length, '개');
+        
+        // 해당 날짜의 일기 찾기
+        const diaryData = babyDiaries.value.find(diary => diary.diary_date === normalizedDate);
+        
+        if (diaryData) {
+          console.log('전체 일기 데이터에서 일기 찾음:', diaryData);
+          selectedBabyDiary.value = diaryData;
+          return diaryData;
+        } else {
+          console.log('전체 일기 데이터에서도 해당 날짜 일기를 찾을 수 없음');
+          selectedBabyDiary.value = null;
+          return null;
+        }
+      }
+    } catch (err) {
+      console.error('일기 데이터 조회 중 오류:', err);
+      if (err.response) {
+        console.error('서버 응답 상태:', err.response.status);
+        if (err.response.data) {
+          console.error('서버 응답 데이터:', err.response.data);
+        }
+      }
+      
+      error.value = '일기 데이터를 불러오는데 실패했습니다.';
+      selectedBabyDiary.value = null;
+      return null;
     } finally {
       isLoading.value = false;
     }
@@ -759,28 +911,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     pregnancyId.value = id
   }
 
-  async function initPregnancyInfo () {
-    try {
-      const response = await api.get('/accounts/pregnancies/')
-      
-      if (response.data && response.data.length > 0) {
-        const pregnancyData = response.data[0]
-        isPregnant.value = true
-        if (pregnancyData.nickname) {
-          babyNickname.value = pregnancyData.nickname
-        }
-        if (pregnancyData.id) {
-          pregnancyId.value = pregnancyData.id
-        }
-        return true
-      } else {
-        return false
-      }
-    } catch (err) {
-      return false
-    }
-  }
-
   // 받침 유무에 따라 적절한 조사 선택 함수
   function getJosa (word, josa1, josa2) {
     if (!word || word.length === 0) return josa1
@@ -790,6 +920,31 @@ export const useCalendarStore = defineStore('calendar', () => {
       return (charCode - 0xAC00) % 28 > 0 ? josa1 : josa2
     }
     return josa1
+  }
+
+  // 특정 날짜에 일기가 있는지 확인하는 함수
+  function hasBabyDiary(date) {
+    // 날짜 정규화
+    const normalizedDate = normalizeDate(date);
+    
+    // 일기 데이터가 없거나 빈 배열이면 false 반환
+    if (!babyDiaries.value || babyDiaries.value.length === 0) {
+      console.log('hasBabyDiary: 일기 데이터가 없음');
+      return false;
+    }
+    
+    console.log('hasBabyDiary: 날짜 확인', normalizedDate, '일기 데이터 개수:', babyDiaries.value.length);
+    
+    // 해당 날짜의 일기가 있는지 확인
+    const hasDiary = babyDiaries.value.some(diary => {
+      const result = diary.diary_date === normalizedDate;
+      if (result) {
+        console.log('hasBabyDiary: 일치하는 일기 찾음', diary);
+      }
+      return result;
+    });
+    
+    return hasDiary;
   }
 
   // 게터 (getters)
@@ -852,11 +1007,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     // 날짜 문자열 정규화 (YYYY-MM-DD 형식으로)
     const formattedDate = normalizeDate(dateStr)
     return llmSummaries.value.some(summary => summary.date === formattedDate)
-  }
-
-  const hasBabyDiary = (dateStr) => {
-    const formattedDate = normalizeDate(dateStr)
-    return babyDiaries.value.some(diary => diary.date === formattedDate)
   }
 
   // 스토어 초기화 함수

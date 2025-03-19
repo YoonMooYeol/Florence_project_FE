@@ -1,6 +1,6 @@
 <script setup>
 import { watch, ref, onMounted } from 'vue'
-import { formatDate, formatTime } from '@/utils/dateUtils'
+import { formatDate, formatTime, toYYYYMMDD } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
 import api from '@/utils/axios'
 
@@ -32,11 +32,15 @@ const isClickable = ref(false)
 const diaryContent = ref('')
 const activeTab = ref('schedule') // 초기 활성 탭은 '일정' 탭
 const showDiaryModal = ref(false)
+const isLoading = ref(false)
+const currentDiaryId = ref(null)
 
 // 모달이 열렸을 때 props 변화 감지 및 처리
 watch(() => props.show, async (newValue) => {
   if (newValue) {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
+    console.log('현재 일기 데이터:', props.babyDiary)
+    
     // 모달이 열리면 클릭 방지 설정 (800ms 동안)
     isClickable.value = false
     
@@ -61,15 +65,34 @@ watch(() => props.show, async (newValue) => {
 })
 
 // babyDiary가 변경될 때 diaryContent 업데이트
-watch(() => props.babyDiary, (newDiary) => {
+watch(() => props.babyDiary, (newDiary, oldDiary) => {
+  console.log('babyDiary 변경 감지', newDiary);
+  console.log('이전 diary:', oldDiary, '새 diary:', newDiary);
+  
   if (newDiary) {
-    diaryContent.value = newDiary.content
+    console.log('일기 내용 업데이트:', newDiary.content);
+    diaryContent.value = newDiary.content || '';
+    
+    // 일기가 있는 경우, 수정 모달 열 때 내용 복사
+    if (showDiaryModal.value) {
+      console.log('일기 수정 모달에 내용 설정:', newDiary.content);
+      diaryContent.value = newDiary.content || '';
+    }
   } else {
-    diaryContent.value = ''
+    console.log('일기 내용 초기화');
+    diaryContent.value = '';
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
-const emit = defineEmits(['close', 'add-event', 'view-event', 'view-llm-summary'])
+// date prop이 변경될 때 처리
+watch(() => props.date, (newDate, oldDate) => {
+  console.log('date prop 변경:', oldDate, '->', newDate);
+  if (!newDate) {
+    console.warn('date prop이 유효하지 않습니다:', newDate);
+  }
+})
+
+const emit = defineEmits(['close', 'add-event', 'view-event', 'view-llm-summary', 'refresh-calendar'])
 
 const calendarStore = useCalendarStore()
 
@@ -77,6 +100,56 @@ const baseUrl = 'calendars/baby-diaries/'
 
 const createBabyDiary = (diaryData) => {
   return api.post(baseUrl, diaryData)
+}
+
+// 알림 메시지 표시 함수
+const sendNotification = (message, type) => {
+  console.log(`알림: ${message} (유형: ${type})`);
+  alert(message);
+}
+
+// 태교일기 데이터 갱신 함수
+const refreshBabyDiary = async () => {
+  try {
+    console.log('태교일기 데이터 갱신 시작');
+    if (!props.date) {
+      console.error('날짜 정보가 없어 일기 데이터를 갱신할 수 없습니다');
+      return;
+    }
+
+    // 전체 일기 데이터 갱신 - 캘린더의 하트 표시를 위함
+    console.log('전체 일기 데이터 갱신 시도');
+    await calendarStore.fetchBabyDiaries();
+    console.log('전체 일기 데이터 갱신 완료');
+    
+    // 선택한 날짜에 대한 일기 데이터 다시 가져오기
+    console.log('선택 날짜 일기 데이터 조회:', props.date);
+    const diaryData = await calendarStore.fetchBabyDiaryByDate(props.date);
+    
+    // 일기 데이터가 존재하는지 확인
+    if (diaryData) {
+      console.log('선택 날짜 일기 데이터 조회 성공:', diaryData);
+    } else {
+      console.log('선택 날짜 일기 데이터가 없습니다');
+    }
+    
+    // 부모 컴포넌트에 캘린더 새로고침 요청
+    console.log('캘린더 새로고침 요청 이벤트 발생');
+    emit('refresh-calendar');
+    
+    console.log('태교일기 데이터 갱신 완료');
+    
+    return diaryData;
+  } catch (error) {
+    console.error('태교일기 데이터 갱신 중 오류:', error);
+    // 오류가 발생해도 캘린더 업데이트는 시도
+    try {
+      emit('refresh-calendar');
+    } catch (refreshError) {
+      console.error('캘린더 새로고침 요청 중 오류:', refreshError);
+    }
+    return null;
+  }
 }
 
 const closeModal = () => {
@@ -145,150 +218,116 @@ const formatEventTime = (event) => {
 
 // 태교일기 저장 함수
 const saveBabyDiary = async () => {
-  console.log('태교일기 저장 시작...')
-  
   try {
-    // 내용이 비어있는지 확인
-    if (!diaryContent.value || !diaryContent.value.trim()) {
-      alert('일기 내용을 입력해주세요.');
-      return;
-    }
-
-    // 날짜 형식 - props.date를 그대로 사용
-    const diaryDate = props.date;
-    if (!diaryDate) {
-      console.error('날짜 정보가 없습니다');
-      alert('날짜 정보가 없어 저장할 수 없습니다.');
-      return;
-    }
+    isLoading.value = true;
+    console.log('태교일기 저장 시작');
+    console.log('현재 임신 ID:', calendarStore.pregnancyId);
+    console.log('현재 일기 내용:', diaryContent.value);
     
-    console.log('태교일기 저장 날짜:', diaryDate);
-    
-    // 임신 정보 확인 및 임신 ID 가져오기
-    let pregnancyId = calendarStore.pregnancyId;
-    
-    // 임신 ID가 없으면 API 호출로 가져오기 시도
-    if (!pregnancyId) {
-      try {
-        console.log('임신 정보 조회 API 호출');
-        const pregnancyResponse = await api.get('/accounts/pregnancies/');
-        console.log('임신 정보 API 응답:', pregnancyResponse.data);
-        
-        if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
-          const pregnancyData = pregnancyResponse.data[0];
-          console.log('현재 임신 정보:', pregnancyData);
-          
-          // 임신 ID 가져오기 - pregnancy_id 필드 사용
-          if (pregnancyData.pregnancy_id) {
-            pregnancyId = pregnancyData.pregnancy_id;
-            console.log('임신 ID 가져옴:', pregnancyId);
-            
-            // 스토어 업데이트
-            calendarStore.setPregnancyId(pregnancyId);
-            calendarStore.setPregnancyInfo(true, pregnancyData.baby_name || '아기', pregnancyId);
-          }
-        } else {
-          console.log('임신 정보가 없습니다.');
-          alert('임신 정보가 필요합니다. 임신 정보를 먼저 등록해주세요.');
-          
-          // 임신 정보 등록 페이지로 이동 여부 확인
-          if (confirm('임신 정보 등록 페이지로 이동하시겠습니까?')) {
-            window.location.href = '/pregnancy/register';
-          }
-          return;
-        }
-      } catch (error) {
-        console.error('임신 정보 조회 중 오류:', error);
-        alert('임신 정보를 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.');
+    // 임신정보 먼저 확인
+    if (!calendarStore.pregnancyId) {
+      console.log('임신 정보 없음, 초기화 시도');
+      const pregnancyInitialized = await calendarStore.initPregnancyInfo();
+      
+      if (!pregnancyInitialized) {
+        console.log('임신 정보 초기화 실패');
+        sendNotification('임신정보를 먼저 등록해주세요.', 'error');
+        isLoading.value = false;
         return;
       }
+      
+      console.log('임신 정보 초기화 성공:', calendarStore.pregnancyId);
     }
     
-    // 임신 ID 확인
-    if (!pregnancyId) {
-      alert('임신 정보를 찾을 수 없습니다. 임신 정보를 먼저 등록해주세요.');
+    // 내용이 없는 경우 경고
+    if (!diaryContent.value || diaryContent.value.trim() === '') {
+      console.log('일기 내용이 비어있음');
+      sendNotification('일기 내용을 입력해주세요.', 'error');
+      isLoading.value = false;
       return;
     }
     
-    // 페이로드 구성
     const payload = {
       content: diaryContent.value,
-      diary_date: diaryDate,
-      pregnancy: pregnancyId
+      diary_date: toYYYYMMDD(props.date),
+      pregnancy: calendarStore.pregnancyId
     };
     
-    console.log('서버로 전송되는 페이로드:', payload);
-
-    // 서버 호출
-    const response = await createBabyDiary(payload);
-    console.log('서버 응답:', response.data);
+    console.log('태교일기 저장 데이터:', payload);
     
-    // 성공 메시지
-    alert('일기가 저장되었습니다.');
+    let savedDiary;
     
-    // 캘린더 데이터 새로고침
+    // 기존 일기가 있으면 업데이트, 없으면 새로 생성
+    if (props.babyDiary && props.babyDiary.diary_id) {
+      console.log('기존 일기 업데이트 (ID:', props.babyDiary.diary_id, ')');
+      const response = await api.put(`calendars/baby-diaries/${props.babyDiary.diary_id}/`, payload);
+      savedDiary = response.data;
+      sendNotification('태교일기가 수정되었습니다.', 'success');
+    } else {
+      console.log('새 일기 생성');
+      const response = await createBabyDiary(payload);
+      savedDiary = response.data;
+      currentDiaryId.value = savedDiary.diary_id;
+      sendNotification('태교일기가 저장되었습니다.', 'success');
+    }
+    
+    console.log('태교일기 저장 완료:', savedDiary);
+    
+    // 일기 목록 새로고침 (캘린더 업데이트용)
     await calendarStore.fetchBabyDiaries();
     
     // 모달 닫기
-    emit('close');
-  } catch (error) {
-    console.error('일기 저장 중 오류 발생:', error);
-    handleSaveError(error);
-  }
-};
-
-// 태교일기 저장 중 발생한 오류 처리 함수
-const handleSaveError = (error) => {
-  console.error('태교일기 저장 오류:', error);
-  
-  if (error.response) {
-    console.error('오류 상태 코드:', error.response.status);
+    closeDiaryModal();
     
-    if (error.response.data) {
-      // 전체 오류 객체 로깅
-      console.log('서버 응답 오류 상세 정보:', JSON.stringify(error.response.data));
-      
-      // 오류 유형별 처리
-      if (error.response.data.diary_date) {
-        alert(`날짜 오류: ${error.response.data.diary_date[0]}`);
-      } 
-      else if (error.response.data.pregnancy) {
-        const errorMsg = error.response.data.pregnancy[0];
-        console.error('임신 정보 오류:', errorMsg);
-        
-        if (errorMsg.includes('존재하지 않습니다')) {
-          alert('임신 정보가 존재하지 않습니다. 임신 정보를 등록해주세요.');
-          
-          // 임신 정보 등록 페이지로 이동 여부 확인
-          if (confirm('임신 정보 등록 페이지로 이동하시겠습니까?')) {
-            window.location.href = '/pregnancy/register';
-          }
-        } else {
-          alert(`임신 정보 오류: ${errorMsg}`);
-        }
+    // 아기와의 하루 탭으로 전환
+    activeTab.value = 'baby';
+    
+    // 캘린더 전체 갱신 요청 (하트 아이콘 업데이트)
+    emit('refresh-calendar');
+    
+    // 일기 탭 콘텐츠 화면 새로고침
+    setTimeout(async () => {
+      console.log('저장 후 일기 탭 상태 확인');
+      try {
+        // 데이터 다시 한번 확인
+        const diaryData = await calendarStore.fetchBabyDiaryByDate(props.date);
+        console.log('최종 확인된 일기 데이터:', diaryData);
+      } catch (refreshError) {
+        console.error('데이터 재확인 중 오류:', refreshError);
       }
-      else if (error.response.data.error) {
-        alert(`저장 실패: ${error.response.data.error}`);
-      } 
-      else {
-        alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
-      }
+    }, 300);
+  } catch (error) {
+    console.error('태교일기 저장 중 오류:', error);
+    
+    if (error.response && error.response.status === 401) {
+      sendNotification('로그인이 필요합니다.', 'error');
+    } else if (error.response && error.response.status === 400) {
+      sendNotification('입력값이 올바르지 않습니다.', 'error');
+      console.error('400 오류 응답:', error.response.data);
     } else {
-      alert(`서버 오류 (${error.response.status}): 일기 저장에 실패했습니다.`);
+      sendNotification('태교일기 저장 중 오류가 발생했습니다.', 'error');
     }
-  } else {
-    alert('일기 저장에 실패했습니다. 네트워크 연결을 확인해주세요.');
+  } finally {
+    isLoading.value = false;
   }
 };
 
 const openDiaryModal = () => {
-  showDiaryModal.value = true
-  diaryContent.value = ''
+  console.log('일기 작성/수정 모달 열기');
+  // 일기가 있으면 내용을 불러와 수정 모드로 설정
+  if (props.babyDiary && props.babyDiary.content) {
+    console.log('기존 일기 내용으로 모달 열기:', props.babyDiary.content);
+    diaryContent.value = props.babyDiary.content;
+  } else {
+    console.log('새 일기 작성 모달 열기');
+    diaryContent.value = '';
+  }
+  showDiaryModal.value = true;
 }
 
 const closeDiaryModal = () => {
-  showDiaryModal.value = false
-  diaryContent.value = ''
+  console.log('일기 작성/수정 모달 닫기');
+  showDiaryModal.value = false;
 }
 
 onMounted(async () => {
@@ -322,130 +361,142 @@ onMounted(async () => {
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+    @click.self="closeModal"
   >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
-      <div class="bg-point px-6 py-4 flex justify-between items-center">
-        <h3 class="text-lg font-bold text-dark-gray">
-          {{ formatDate(date) }}
-        </h3>
-        <button
-          class="text-dark-gray hover:text-gray-700"
-          @click="closeModal"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+    <div class="bg-white rounded-lg shadow-lg w-11/12 md:w-3/4 lg:w-1/2">
+      <!-- 모달 헤더 -->
+      <div class="p-4 bg-point rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-semibold text-dark-gray">
+            {{ formatDate(date) }}
+          </h3>
+          <button
+            class="text-dark-gray hover:text-white"
+            @click="closeModal"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
-
-      <!-- 탭 메뉴 -->
-      <div class="flex border-b border-gray-200">
-        <button
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
-          :class="activeTab === 'schedule' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
-          @click="activeTab = 'schedule'"
-        >
-          일정
-        </button>
-        <button
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
-          :class="activeTab === 'daily' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
-          @click="activeTab = 'daily'"
-        >
-          오늘의 하루
-        </button>
-        <button
-          v-if="calendarStore.isPregnant"
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
-          :class="activeTab === 'baby' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
-          data-tab="baby"
-          @click="activeTab = 'baby'"
-        >
-          {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
-        </button>
-      </div>
-
-      <div class="h-96 p-6 bg-ivory h-128">
-        <!-- 일정 탭 -->
-        <div v-if="activeTab === 'schedule'" class="space-y-4">
-          <div v-if="events && events.length > 0" class="space-y-2 h-128">
-            <div
-              v-for="event in events"
-              :key="event.id"
-              class="bg-white p-4 rounded-lg shadow cursor-pointer hover:bg-gray-50"
-              @click="viewEvent(event)"
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              class="h-6 w-6" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
             >
-              <h4 class="font-medium text-dark-gray">
-                {{ event.title }}
-                <span v-if="event.recurring && event.recurring !== 'none'" class="text-sm text-gray-500 ml-2">
-                  ({{ getRecurringText(event.recurring) }})
-                </span>
-              </h4>
-              <p class="text-sm text-gray-500">
-                {{ formatEventTime(event) }}
+              <path 
+                stroke-linecap="round" 
+                stroke-linejoin="round" 
+                stroke-width="2" 
+                d="M6 18L18 6M6 6l12 12" 
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 모달 내용 - 높이 조정 -->
+      <div class="h-[400px] bg-ivory overflow-y-auto">
+        <!-- 탭 버튼 -->
+        <div class="flex border-b border-gray-200">
+          <button
+            class="flex-1 py-3 px-4 text-center font-medium transition-colors"
+            :class="activeTab === 'schedule' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+            @click="activeTab = 'schedule'"
+          >
+            일정
+          </button>
+          <button
+            class="flex-1 py-3 px-4 text-center font-medium transition-colors"
+            :class="activeTab === 'daily' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+            @click="activeTab = 'daily'"
+          >
+            오늘의 하루
+          </button>
+          <button
+            v-if="calendarStore.isPregnant"
+            class="flex-1 py-3 px-4 text-center font-medium transition-colors"
+            :class="activeTab === 'baby' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+            data-tab="baby"
+            @click="activeTab = 'baby'"
+          >
+            {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
+          </button>
+        </div>
+
+        <div class="p-6 bg-ivory h-auto overflow-y-auto">
+          <!-- 일정 탭 -->
+          <div v-if="activeTab === 'schedule'" class="space-y-4">
+            <div v-if="events && events.length > 0" class="space-y-2">
+              <div
+                v-for="event in events"
+                :key="event.id"
+                class="bg-white p-4 rounded-lg shadow cursor-pointer hover:bg-gray-50"
+                @click="viewEvent(event)"
+              >
+                <h4 class="font-medium text-dark-gray">
+                  {{ event.title }}
+                  <span v-if="event.recurring && event.recurring !== 'none'" class="text-sm text-gray-500 ml-2">
+                    ({{ getRecurringText(event.recurring) }})
+                  </span>
+                </h4>
+                <p class="text-sm text-gray-500">
+                  {{ formatEventTime(event) }}
+                </p>
+              </div>
+            </div>
+            <div v-else class="text-center py-4">
+              <p class="text-gray-500">
+                등록된 일정이 없습니다.
+              </p>
+            </div>
+            <div class="flex justify-center">
+              <button
+                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                @click="addEvent"
+              >
+                일정 추가
+              </button>
+            </div>
+          </div>
+
+          <!-- 오늘의 하루 탭 -->
+          <div v-if="activeTab === 'daily'" class="space-y-4">
+            <div v-if="llmSummary" class="bg-white p-4 rounded-lg shadow">
+              <p class="text-dark-gray whitespace-pre-line">
+                {{ llmSummary.summary }}
+              </p>
+            </div>
+            <div v-else class="text-center py-4">
+              <p class="text-gray-500">
+                데이터가 없습니다.
               </p>
             </div>
           </div>
-          <div v-else class="text-center py-4">
-            <p class="text-gray-500">
-              등록된 일정이 없습니다.
-            </p>
-          </div>
-          <div class="flex justify-center">
-            <button
-              class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-              @click="addEvent"
-            >
-              일정 추가
-            </button>
-          </div>
-        </div>
 
-        <!-- 오늘의 하루 탭 -->
-        <div v-if="activeTab === 'daily'" class="space-y-4">
-          <div v-if="llmSummary" class="bg-white p-4 rounded-lg shadow">
-            <p class="text-dark-gray whitespace-pre-line h-128">
-              {{ llmSummary.summary }}
-            </p>
-          </div>
-          <div v-else class="text-center py-4">
-            <p class="text-gray-500">
-              데이터가 없습니다.
-            </p>
-          </div>
-        </div>
-
-        <!-- 아기와의 하루 탭 -->
-        <div v-if="activeTab === 'baby'" class="space-y-4">
-          <div v-if="babyDiary" class="bg-white p-4 rounded-lg shadow">
-            <p class="text-dark-gray whitespace-pre-line h-128">
-              {{ babyDiary.content }}
-            </p>
-          </div>
-          <div v-else class="text-center py-4">
-            <p class="text-gray-500">
-              기록된 일기가 없습니다.
-            </p>
-          </div>
-          <div class="flex justify-center">
-            <button
-              class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-              @click="openDiaryModal"
-            >
-              기록하기
-            </button>
+          <!-- 아기와의 하루 탭 -->
+          <div v-if="activeTab === 'baby'" class="space-y-4">
+            <div v-if="babyDiary && babyDiary.content" class="bg-white p-4 rounded-lg shadow relative min-h-[300px]">
+              <div class="text-dark-gray font-medium mb-2">{{ formatDate(date) }} 태교일기</div>
+              <pre class="text-dark-gray whitespace-pre-wrap font-sans h-[240px] overflow-y-auto">{{ babyDiary.content }}</pre>
+              <button
+                class="absolute bottom-2 right-2 px-4 py-1 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors text-sm"
+                @click="openDiaryModal"
+              >
+                수정하기
+              </button>
+            </div>
+            <div v-else class="text-center py-4">
+              <p class="text-gray-500">
+                기록된 일기가 없습니다.
+              </p>
+              <div class="flex justify-center mt-4">
+                <button
+                  class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                  @click="openDiaryModal"
+                >
+                  기록하기
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

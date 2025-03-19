@@ -59,6 +59,12 @@ const handleDateClick = (info) => {
     const dateStr = normalizeDate(info.dateStr) // YYYY-MM-DD 형식으로 정규화
     logger.debug(CONTEXT, '날짜 클릭됨 (정규화 후):', dateStr)
 
+    // 날짜가 없으면 처리하지 않음
+    if (!dateStr) {
+      logger.error(CONTEXT, '날짜 정규화 후 날짜 정보가 없습니다')
+      return
+    }
+
     // 이미 같은 날짜의 모달이 열려있는지 확인
     const isSameDateModalOpen =
       modalManager.showDayEventsModal.value &&
@@ -78,6 +84,12 @@ const handleDateClick = (info) => {
     logger.debug(CONTEXT, `날짜(${dateStr}) 설정 시도`)
     const result = calendarStore.setSelectedDate(dateStr)
     logger.debug(CONTEXT, '날짜 설정 결과:', result)
+
+    // 유효한 날짜가 설정되었는지 확인
+    if (!result) {
+      logger.error(CONTEXT, '날짜 설정에 실패했습니다')
+      return
+    }
 
     // 실제 모달 열기
     logger.debug(CONTEXT, '일일 일정 모달 열기 시도')
@@ -448,6 +460,138 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
   }
 }
 
+// 모달 관련 핸들러 함수
+const handleCloseDayEventsModal = () => {
+  logger.debug(CONTEXT, '일일 일정 모달 닫기')
+  modalManager.closeDayEventsModal()
+  
+  // 모달이 닫힐 때 하트 아이콘 업데이트 시도
+  setTimeout(() => {
+    updateHeartIcons();
+  }, 200);
+}
+
+const handleViewEvent = (event) => {
+  logger.debug(CONTEXT, '이벤트 상세 모달 열기:', event)
+  modalManager.openEventDetailModal(event)
+}
+
+const handleAddEvent = () => {
+  logger.debug(CONTEXT, '일정 추가 모달 열기')
+  modalManager.openAddEventModal()
+}
+
+// FullCalendar에 날짜 셀 렌더링 커스터마이징 추가
+calendarOptions.dayCellDidMount = function(info) {
+  try {
+    // 해당 날짜에 일기가 있는지 확인
+    const dateStr = normalizeDate(info.date);
+    if (!dateStr) return; // 유효하지 않은 날짜는 처리하지 않음
+    
+    // hasBabyDiary 함수를 호출하여 해당 날짜에 일기가 있는지 확인
+    const hasDiary = calendarStore.hasBabyDiary(dateStr);
+    
+    if (hasDiary) {
+      // 일기가 있는 경우 하트 아이콘 추가
+      const heartIcon = document.createElement('span');
+      heartIcon.className = 'diary-heart-icon';
+      heartIcon.innerHTML = '♥︎';
+      heartIcon.style.color = '#FF6B6B';
+      heartIcon.style.position = 'absolute';
+      heartIcon.style.top = '2px';
+      heartIcon.style.right = '5px';
+      heartIcon.style.fontSize = '12px';
+      heartIcon.style.zIndex = '10';
+      
+      // 이미 하트 아이콘이 있는지 확인
+      const existingHeart = info.el.querySelector('.diary-heart-icon');
+      if (existingHeart) {
+        // 이미 있으면 교체하지 않음
+        return;
+      }
+      
+      info.el.appendChild(heartIcon);
+      info.el.style.position = 'relative';
+      console.log('하트 아이콘 추가됨:', dateStr);
+    }
+  } catch (error) {
+    logger.error(CONTEXT, '날짜 셀 마운트 중 오류:', error);
+  }
+};
+
+// 캘린더가 렌더링될 때마다 일기 표시 업데이트
+calendarOptions.viewDidMount = async function() {
+  try {
+    logger.debug(CONTEXT, '캘린더 뷰 마운트 시 일기 데이터 로드 시작');
+    
+    // 아기 일기 데이터 불러오기
+    const diaries = await calendarStore.fetchBabyDiaries();
+    logger.debug(CONTEXT, `아기 일기 데이터 로드 완료: ${diaries ? diaries.length : 0}개 일기`);
+    
+    // 모든 날짜 셀을 다시 렌더링하기 위해 캘린더 새로고침
+    setTimeout(() => {
+      try {
+        if (calendarRef.value) {
+          const calendarApi = calendarRef.value.getApi();
+          calendarApi.render(); // 전체 캘린더 다시 렌더링
+          logger.debug(CONTEXT, '캘린더 다시 렌더링 완료');
+        }
+      } catch (renderError) {
+        logger.error(CONTEXT, '캘린더 다시 렌더링 중 오류:', renderError);
+      }
+    }, 200);
+  } catch (error) {
+    logger.error(CONTEXT, '일기 데이터 로드 중 오류:', error);
+  }
+};
+
+// 하트 아이콘 수동 업데이트 함수
+const updateHeartIcons = async () => {
+  try {
+    logger.debug(CONTEXT, '하트 아이콘 수동 업데이트 시작');
+    
+    // 일기 데이터 다시 로드
+    await calendarStore.fetchBabyDiaries();
+    
+    if (!calendarRef.value) {
+      logger.warn(CONTEXT, '캘린더 참조가 없어 업데이트할 수 없음');
+      return;
+    }
+    
+    const calendarApi = calendarRef.value.getApi();
+    
+    // 캘린더 다시 렌더링
+    calendarApi.render();
+    logger.debug(CONTEXT, '하트 아이콘 업데이트 완료');
+  } catch (error) {
+    logger.error(CONTEXT, '하트 아이콘 업데이트 중 오류:', error);
+  }
+};
+
+// 캘린더 새로고침 처리 함수
+const handleRefreshCalendar = async () => {
+  logger.debug(CONTEXT, '캘린더 새로고침 요청됨 (일기 데이터 갱신)');
+  
+  try {
+    // 아기 일기 데이터 새로 불러오기
+    await calendarStore.fetchBabyDiaries();
+    
+    // 하트 아이콘 업데이트
+    updateHeartIcons();
+    
+    logger.debug(CONTEXT, '캘린더 새로고침 완료');
+  } catch (error) {
+    logger.error(CONTEXT, '캘린더 새로고침 중 오류:', error);
+    handleError(error, CONTEXT);
+  }
+};
+
+// DayEventsModal에서 캘린더 새로고침 요청받을 때 처리
+const handleDayEventsModalRefresh = () => {
+  logger.debug(CONTEXT, '일일 일정 모달에서 캘린더 새로고침 요청받음');
+  handleRefreshCalendar();
+};
+
 </script>
 
 <template>
@@ -458,7 +602,7 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
       :current-month="currentMonth"
       @prev-month="handlePrevMonth"
       @next-month="handleNextMonth"
-      @today="handleGoToToday"
+      @go-to-today="handleGoToToday"
     />
 
     <!-- 요일 표시 (추가됨) -->
@@ -595,21 +739,23 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
 
     <!-- 일일 일정 모달 -->
     <DayEventsModal
+      v-if="modalManager.showDayEventsModal.value"
       :show="modalManager.showDayEventsModal.value"
       :date="calendarStore.selectedDate"
       :events="calendarStore.eventsForSelectedDate"
       :llm-summary="calendarStore.llmSummaryForSelectedDate"
-      :baby-diary="calendarStore.babyDiaryForSelectedDate"
-      @close="modalManager.closeDayEventsModal"
-      @add-event="modalManager.openAddEventModal"
-      @view-event="modalManager.openEventDetailModal"
-      @view-llm-summary="modalManager.openLLMDetailModal"
+      :baby-diary="calendarStore.selectedBabyDiary"
+      @close="handleCloseDayEventsModal"
+      @view-event="handleViewEvent"
+      @add-event="handleAddEvent"
+      @refresh-calendar="handleDayEventsModalRefresh"
     />
 
     <!-- 일정 상세 모달 -->
     <EventDetailModal
+      v-if="modalManager.showEventDetailModal.value"
       :show="modalManager.showEventDetailModal.value"
-      :event="calendarStore.selectedEvent"
+      :event="modalManager.eventDetailEvent.value"
       @close="modalManager.closeEventDetailModal"
       @delete="handleEventDelete"
     />
@@ -1148,5 +1294,12 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 45;
+}
+
+.fc-daygrid-day {
+  position: relative;
+}
+.diary-heart-icon {
+  z-index: 5;
 }
 </style>

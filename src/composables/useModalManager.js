@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useCalendarStore } from '@/store/calendar'
 import * as logger from '@/utils/logger'
 import { asyncErrorHandler } from '@/utils/errorHandler'
@@ -20,6 +20,19 @@ export function useModalManager () {
   const showLLMDetailModal = ref(false)
   const showDailyDiaryModal = ref(false)
   const showBabyDiaryModal = ref(false)
+
+  // 모달 데이터 상태
+  const dayEvents = ref([])
+  const llmSummary = computed(() => calendarStore.selectedLLMSummary)
+  const babyDiary = computed(() => calendarStore.selectedBabyDiary)
+
+  /**
+   * 모달이 사용하는 데이터 초기화
+   */
+  const initializeModalData = () => {
+    // 이벤트 데이터 초기화
+    dayEvents.value = []
+  }
 
   /**
    * 모달 열기 전 다른 모달들을 닫는 유틸리티 함수
@@ -55,10 +68,20 @@ export function useModalManager () {
     try {
       // 날짜 정규화
       const normalizedDate = normalizeDate(date);
+      
+      // 날짜 정규화 후 유효성 체크
+      if (!normalizedDate) {
+        logger.warn(CONTEXT, '날짜 정규화 실패, 유효하지 않은 날짜 형식입니다:', date);
+        return;
+      }
+      
       logger.debug(CONTEXT, `정규화된 날짜: ${normalizedDate}`);
     
       // 선택된 이벤트 초기화 (중요!)
       calendarStore.setSelectedEvent(null);
+      
+      // 모달 데이터 초기화
+      initializeModalData();
       
       // 다른 모달은 모두 닫기 (먼저 실행하여 UI 정리)
       logger.debug(CONTEXT, '다른 모달들을 모두 닫습니다.')
@@ -67,6 +90,13 @@ export function useModalManager () {
       // 선택된 날짜 설정
       logger.debug(CONTEXT, `선택된 날짜 설정: ${normalizedDate}`);
       const selectedDate = calendarStore.setSelectedDate(normalizedDate);
+      
+      // 날짜 설정 실패 체크
+      if (!selectedDate) {
+        logger.warn(CONTEXT, '날짜 설정에 실패했습니다. 모달을 열지 않습니다.');
+        return;
+      }
+      
       logger.debug(CONTEXT, `날짜 설정 완료: ${selectedDate}`);
       
       // 이벤트 객체 다시 한번 초기화 (확실히 처리)
@@ -82,12 +112,13 @@ export function useModalManager () {
           // 해당 날짜의 이벤트 로딩 시도
           logger.debug(CONTEXT, '해당 날짜의 이벤트를 로드합니다');
           const events = await calendarStore.fetchDayEvents(normalizedDate);
+          dayEvents.value = events || [];
           logger.debug(CONTEXT, `해당 날짜의 이벤트 로드 완료: ${events?.length || 0}개 이벤트`);
           
           // 아기 일기 정보도 함께 로드
           try {
-            await calendarStore.fetchBabyDiaryByDate(normalizedDate);
-            logger.debug(CONTEXT, '아기 일기 정보 로드 완료');
+            const diary = await calendarStore.fetchBabyDiaryByDate(normalizedDate);
+            logger.debug(CONTEXT, '아기 일기 정보 로드 완료:', diary ? 'O' : 'X');
           } catch (diaryError) {
             logger.error(CONTEXT, '아기 일기 로드 중 오류:', diaryError);
           }
@@ -98,10 +129,13 @@ export function useModalManager () {
       
     } catch (error) {
       logger.error(CONTEXT, '모달 열기 중 오류:', error);
-      // 오류가 발생해도 모달은 유지
-      if (!showDayEventsModal.value) {
-        showDayEventsModal.value = true;
-      }
+      // 오류가 발생한 경우 모달 상태 정리
+      showDayEventsModal.value = false;
+      calendarStore.setSelectedDate(null);
+      calendarStore.setSelectedEvent(null);
+      calendarStore.setSelectedLLMSummary(null);
+      calendarStore.setSelectedBabyDiary(null);
+      initializeModalData();
     }
   }
 
@@ -111,6 +145,9 @@ export function useModalManager () {
     
     // 선택된 이벤트 정보 초기화
     calendarStore.setSelectedEvent(null)
+    
+    // 모달 데이터 초기화
+    initializeModalData();
     
     // 모든 모달 닫기
     closeOtherModals(null)
@@ -271,6 +308,11 @@ export function useModalManager () {
     showLLMDetailModal,
     showDailyDiaryModal,
     showBabyDiaryModal,
+
+    // 모달 데이터
+    dayEvents,
+    llmSummary,
+    babyDiary,
 
     // 모달 관련 함수
     openDiaryTypeModal,

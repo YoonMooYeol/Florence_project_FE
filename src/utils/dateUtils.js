@@ -210,3 +210,12 @@ export function calculateFromLastPeriod(lastPeriodDate) {
     dueDate
   }
 }
+
+/**
+ * 날짜를 YYYY-MM-DD 형식으로 변환
+ * @param {string|Date} date - 날짜 문자열 또는 Date 객체
+ * @returns {string} YYYY-MM-DD 형식의 날짜 문자열
+ */
+export function toYYYYMMDD(date) {
+  return normalizeDate(date);
+}
