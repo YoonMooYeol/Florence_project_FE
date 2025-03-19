@@ -404,12 +404,12 @@ const parseMarkdown = (text) => {
     </div>
 
     <!-- 에러 메시지 -->
-    <div
+    <!-- <div
       v-if="errorMessage"
       class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-2 mt-14"
     >
       <p>{{ errorMessage }}</p>
-    </div>
+    </div> -->
 
     <!-- 대화 메시지 영역 -->
     <div

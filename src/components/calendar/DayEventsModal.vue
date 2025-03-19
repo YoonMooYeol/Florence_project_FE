@@ -308,61 +308,164 @@ const canUploadMorePhotos = computed(() => {
   return currentPhotoCount.value < MAX_PHOTOS
 })
 
-// 파일 선택 버튼 클릭 이벤트
-const openFileSelector = () => {
-  // 최대 사진 수 확인
-  if (!canUploadMorePhotos.value) {
-    alert(`최대 ${MAX_PHOTOS}개의 사진만 등록할 수 있습니다.`)
-    return
-  }
-  fileInput.value.click()
-}
-
 // 파일 선택 이벤트 핸들러
-const handleFileSelect = (event) => {
-  const files = event.target.files
-  if (files.length > 0) {
-    selectedFile.value = files[0]
-    uploadPhoto()
+const handleFileSelect = async (event) => {
+  event.preventDefault();
+  console.log('파일 선택 이벤트 발생');
+  
+  // FileList 객체 로깅
+  console.log('FileList 객체:', event.target.files);
+  console.log('FileList 유효성:', event.target.files ? 'valid' : 'invalid');
+  console.log('FileList 길이:', event.target.files ? event.target.files.length : 'N/A');
+  
+  if (!event.target.files || event.target.files.length === 0) {
+    console.warn('선택된 파일이 없습니다.');
+    selectedFile.value = null;
+    return;
   }
+  
+  const file = event.target.files[0];
+  console.log('선택된 파일:', file.name, file.type, file.size);
+  
+  // 이미지 파일 형식 검사
+  if (!file.type.match('image.*')) {
+    console.error('유효하지 않은 파일 형식:', file.type);
+    alert('이미지 파일만 업로드 가능합니다.');
+    event.target.value = '';
+    selectedFile.value = null;
+    return;
+  }
+  
+  // 파일 크기 검사 (10MB 제한)
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    console.error('파일 크기 초과:', file.size);
+    alert('파일 크기는 10MB 이하여야 합니다.');
+    event.target.value = '';
+    selectedFile.value = null;
+    return;
+  }
+  
+  selectedFile.value = file;
+  console.log('파일이 선택되었습니다:', selectedFile.value.name);
+  
+  // 파일 선택 즉시 업로드 시작
+  await uploadPhoto();
 }
 
 // 사진 업로드
 const uploadPhoto = async () => {
+  console.log('업로드 함수 호출됨');
+  
   if (!selectedFile.value) {
-    return
+    console.warn('업로드할 파일이 선택되지 않았습니다.');
+    return;
   }
   
   if (!props.babyDiary || !props.babyDiary.id) {
-    alert('먼저 일기를 저장해주세요.')
-    return
+    console.error('일기 정보가 없거나 ID가 없습니다.', props.babyDiary);
+    
+    // 일기 데이터가 없는 경우 자동으로 생성 시도
+    if (props.date) {
+      try {
+        console.log('일기 자동 생성 시도...');
+        const newDiary = await calendarStore.addBabyDiary({
+          date: props.date,
+          content: ''
+        });
+        
+        console.log('일기 자동 생성 성공:', newDiary);
+        
+        // 성공적으로 일기가 생성되었지만, 아직 props가 업데이트되지 않았을 수 있으므로
+        // 생성된 일기 ID를 직접 사용
+        const diaryId = newDiary.id;
+        
+        await uploadPhotoToDiary(diaryId);
+      } catch (error) {
+        console.error('일기 자동 생성 실패:', error);
+        alert('일기 정보를 먼저 저장해주세요.');
+      }
+      return;
+    }
+    
+    alert('일기 정보를 먼저 저장해주세요.');
+    return;
   }
   
-  // 최대 사진 수 확인
+  await uploadPhotoToDiary(props.babyDiary.id);
+}
+
+// 일기에 사진 업로드하는 헬퍼 함수
+const uploadPhotoToDiary = async (diaryId) => {
+  // 사진 개수 제한 검사
   if (!canUploadMorePhotos.value) {
-    alert(`최대 ${MAX_PHOTOS}개의 사진만 등록할 수 있습니다.`)
-    return
+    console.warn('최대 사진 개수에 도달했습니다:', currentPhotoCount.value, '/', MAX_PHOTOS);
+    alert(`최대 ${MAX_PHOTOS}개의 사진만 업로드할 수 있습니다.`);
+    return;
   }
   
-  isUploading.value = true
+  console.log('사진 업로드 시작:', selectedFile.value.name, 'to diary ID:', diaryId);
+  
+  // 파일 정보 로깅
+  console.log('파일 유형:', selectedFile.value.type);
+  console.log('파일 크기:', selectedFile.value.size, 'bytes');
+  console.log('파일 마지막 수정일:', new Date(selectedFile.value.lastModified).toISOString());
+  
+  // 인증 토큰 확인
+  const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+  if (!accessToken) {
+    console.error('인증 토큰이 없습니다. 사진을 업로드할 수 없습니다.');
+    alert('인증 토큰이 없습니다. 다시 로그인해주세요.');
+    return;
+  }
+  
+  isUploading.value = true;
   
   try {
-    // 스토어 함수 사용하여 사진 업로드
-    await calendarStore.addBabyDiaryPhoto(props.babyDiary.id, selectedFile.value)
+    console.log('calendarStore.addBabyDiaryPhoto 호출 시작');
+    
+    // 파일 객체 유효성 최종 확인
+    if (!selectedFile.value || !selectedFile.value.name || !selectedFile.value.type) {
+      throw new Error('선택된 파일이 유효하지 않습니다.');
+    }
+    
+    await calendarStore.addBabyDiaryPhoto(diaryId, selectedFile.value);
+    
+    console.log('사진 업로드 성공');
+    alert('사진이 성공적으로 업로드되었습니다.');
+    
+    // 파일 입력 필드 초기화
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
+    selectedFile.value = null;
     
     // 사진 목록 새로고침
-    await calendarStore.fetchBabyDiaryPhotos(props.babyDiary.id)
-    
-    // 입력 필드 초기화
-    selectedFile.value = null
-    if (fileInput.value) {
-      fileInput.value.value = ''
-    }
+    await calendarStore.fetchBabyDiaryPhotos(diaryId);
   } catch (error) {
-    console.error('사진 업로드 실패:', error)
-    alert('사진 업로드에 실패했습니다.')
+    console.error('사진 업로드 실패:', error.response || error);
+    
+    let errorMessage = '사진 업로드에 실패했습니다.';
+    
+    if (error.response) {
+      const status = error.response.status;
+      
+      if (status === 401) {
+        errorMessage = '인증이 필요합니다. 다시 로그인해주세요.';
+      } else if (status === 403) {
+        errorMessage = '권한이 없습니다.';
+      } else if (status === 413) {
+        errorMessage = '파일 크기가 너무 큽니다.';
+      } else if (status === 415) {
+        errorMessage = '지원하지 않는 파일 형식입니다.';
+      } else if (status === 500) {
+        errorMessage = '서버 오류가 발생했습니다.';
+      }
+    }
+    
+    alert(errorMessage);
   } finally {
-    isUploading.value = false
+    isUploading.value = false;
   }
 }
 
@@ -376,6 +479,7 @@ const openUpdatePhoto = (photoId) => {
 const handleUpdateFileSelect = (event) => {
   const files = event.target.files
   if (files.length > 0 && selectedPhotoId.value) {
+    // 즉시 사진 업데이트 실행
     updatePhoto(selectedPhotoId.value, files[0])
   }
 }
@@ -486,12 +590,18 @@ const getThumbnailUrl = (imageUrl) => {
   // 이미지 URL이 없으면 기본 이미지 경로 반환
   if (!imageUrl) return '/images/photo_placeholder.png';
   
+  // 이미 캐시 방지 파라미터가 있는지 확인
+  if (imageUrl.includes('_cache=')) {
+    return imageUrl;
+  }
+  
   // 이미지 URL 캐시 방지 및 무작위 쿼리 파라미터 추가
   const randomParam = new Date().getTime();
   
   // 이미지 URL이 상대 경로인 경우 절대 경로로 변환
   let fullUrl = imageUrl;
-  if (!imageUrl.startsWith('http')) {
+  // localhost 또는 127.0.0.1 포함 체크
+  if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/media')) {
     fullUrl = window.location.origin + imageUrl;
   }
   
@@ -525,10 +635,35 @@ const handleImageError = (event, photo) => {
     // 기본 이미지 설정
     imgElement.src = '/images/photo_placeholder.png';
     
-    // 이미지 재시도 로직 제거 (오류 발생 가능성 높음)
+    // 이미지를 다시 로드하는 시도 (3초 지연)
+    setTimeout(() => {
+      if (photo && photo.image_thumbnail) {
+        const newUrl = getThumbnailUrl(photo.image_thumbnail);
+        console.log('이미지 다시 로드 시도:', newUrl);
+        
+        // 새로운 이미지 객체를 생성하여 미리 로드
+        const preloadImg = new Image();
+        preloadImg.onload = function() {
+          console.log('이미지 미리 로드 성공');
+          imgElement.src = newUrl;
+        };
+        preloadImg.onerror = function() {
+          console.log('이미지 미리 로드 실패, 원본 이미지 시도');
+          // 썸네일 실패 시 원본 이미지 시도
+          imgElement.src = getThumbnailUrl(photo.image);
+        };
+        preloadImg.src = newUrl;
+      }
+    }, 3000);
   } catch (e) {
     console.error('이미지 오류 처리 실패:', e);
   }
+}
+
+// 이미지 로드 성공 처리 함수
+const handleImageLoad = (event, photo) => {
+  console.log('이미지 로드 성공:', photo.id);
+  // 성공적으로 이미지가 로드된 후 처리할 작업이 있으면 여기에 추가
 }
 
 onMounted(async () => {
@@ -656,19 +791,20 @@ onMounted(async () => {
               <h4 class="text-sm font-medium text-gray-600">
                 태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
               </h4>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 gap-3">
                 <div 
                   v-for="photo in babyDiary.photos" 
                   :key="photo.id" 
-                  class="relative rounded-lg overflow-hidden shadow-sm group"
+                  class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
                   style="aspect-ratio: 1/1; height: auto;"
                 >
                   <img 
                     :src="photo.image_thumbnail || getThumbnailUrl(photo.image)" 
                     :alt="'태교일기 사진'" 
                     class="w-full h-full object-cover"
-                    loading="lazy"
+                    loading="eager"
                     @error="handleImageError($event, photo)"
+                    @load="handleImageLoad($event, photo)"
                     onerror="this.onerror=null; if(this && this.src != '/images/photo_placeholder.png') this.src='/images/photo_placeholder.png';"
                   />
                   
@@ -676,9 +812,9 @@ onMounted(async () => {
                   <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-200"></div>
                   
                   <!-- 버튼 -->
-                  <div class="absolute top-1 right-1 flex space-x-1 z-10">
+                  <div class="absolute top-1 right-1 flex space-x-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button 
-                      class="bg-blue-500 text-white rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      class="bg-blue-500 text-white rounded-full p-1.5 shadow-md"
                       @click.prevent.stop="openUpdatePhoto(photo.id)"
                       title="사진 수정"
                     >
@@ -688,7 +824,7 @@ onMounted(async () => {
                     </button>
                     
                     <button 
-                      class="bg-red-500 text-white rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      class="bg-red-500 text-white rounded-full p-1.5 shadow-md"
                       @click.prevent.stop="deletePhoto(photo.id)"
                       title="사진 삭제"
                     >
@@ -702,40 +838,76 @@ onMounted(async () => {
                     <div class="text-white text-sm">업데이트 중...</div>
                   </div>
                 </div>
+                
+                <!-- 사진 추가 버튼 (MAX_PHOTOS보다 적을 때만 표시) -->
+                <div 
+                  v-if="canUploadMorePhotos"
+                  class="relative border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-point hover:bg-gray-50 transition-all"
+                  style="aspect-ratio: 1/1; height: auto;"
+                  @click="fileInput.click()"
+                >
+                  <div class="flex flex-col items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span class="text-sm text-gray-500 mt-2">사진 추가</span>
+                  </div>
+                  <input
+                    type="file"
+                    ref="fileInput"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleFileSelect"
+                    :disabled="isUploading || !canUploadMorePhotos"
+                  />
+                </div>
               </div>
             </div>
             
-            <!-- 사진 추가 버튼 -->
-            <div class="flex space-x-2">
-              <input
-                type="file"
-                ref="fileInput"
-                accept="image/*"
-                class="hidden"
-                @change="handleFileSelect"
-              />
-              <input
-                type="file"
-                ref="updateFileInput"
-                accept="image/*"
-                class="hidden"
-                @change="handleUpdateFileSelect"
-              />
-              <button
-                class="flex-1 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm flex items-center justify-center space-x-1"
-                @click="openFileSelector"
-                :disabled="isUploading || isUpdating || !canUploadMorePhotos"
-                :class="{'opacity-50 cursor-not-allowed': !canUploadMorePhotos}"
+            <!-- 사진이 없을 때 표시되는 영역 -->
+            <div v-else class="space-y-3">
+              <h4 class="text-sm font-medium text-gray-600">
+                태교일기 사진 (0/{{ MAX_PHOTOS }})
+              </h4>
+              <div 
+                class="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-point hover:bg-gray-50 transition-all"
+                @click="fileInput.click()"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11a2 2 0 104 0 2 2 0 00-4 0z" />
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                <span>
-                  {{ canUploadMorePhotos ? '사진 추가' : `최대 ${MAX_PHOTOS}개의 사진이 등록되었습니다` }}
-                  <span v-if="isUploading" class="ml-1">(업로드 중...)</span>
-                </span>
-              </button>
+                <p class="mt-4 text-gray-500 text-center">사진을 추가하려면 클릭하세요</p>
+                <input
+                  type="file"
+                  ref="fileInput"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleFileSelect"
+                  :disabled="isUploading"
+                />
+              </div>
+            </div>
+            
+            <!-- 숨겨진 파일 입력 요소 -->
+            <input
+              type="file"
+              ref="updateFileInput"
+              accept="image/*"
+              class="hidden"
+              @change="handleUpdateFileSelect"
+            />
+            
+            <!-- 업로드 중인 상태 표시 -->
+            <div v-if="isUploading" class="mt-2 p-2 bg-blue-50 text-blue-700 rounded-lg text-sm flex items-center">
+              <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>사진 업로드 중...</span>
+            </div>
+            
+            <!-- 태교일기 수정 및 삭제 버튼 -->
+            <div class="flex space-x-2 mt-4">
               <button
                 class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm flex items-center justify-center space-x-1"
                 @click="openDiaryModal('edit')"

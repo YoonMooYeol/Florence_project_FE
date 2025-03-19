@@ -32,6 +32,14 @@ export const useCalendarStore = defineStore('calendar', () => {
   const isLoading = ref(false)
   const error = ref(null)
 
+  // 추가: 모든 요청 헤더에 토큰 삽입을 위한 helper 함수
+  function getAuthHeaders() {
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    return {
+      Authorization: `Bearer ${token}`
+    };
+  }
+
   // 액션 (actions)
   async function fetchEvents() {
     isLoading.value = true;
@@ -736,57 +744,106 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
     
     try {
+      console.log(`태교일기 사진 업로드 시작 - diary_id: ${diaryId}, 파일 이름: ${photoFile.name}`)
+      console.log(`파일 타입: ${photoFile.type}, 파일 크기: ${photoFile.size} bytes`)
+
       // FormData 객체 생성 및 파일 추가
       const formData = new FormData()
       formData.append('image', photoFile)
-      
-      // 설정 객체 - 멀티파트 폼데이터 요청
-      const config = {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      formData.append('category', 'diary') // 필수 카테고리 필드 추가
+
+      // 디버깅 정보
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`FormData: ${key} = File(${value.name}, ${value.type}, ${value.size} bytes)`)
+        } else {
+          console.log(`FormData: ${key} = ${value}`)
         }
       }
-      
-      // API 호출
-      const response = await api.post(`calendars/baby-diaries/${diaryId}/photo/`, formData, config)
-      
-      // 응답 처리
+
+      // API 호출 설정
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...getAuthHeaders()
+        }
+      }
+
+      // API URL 형식 확인
+      const apiUrl = `calendars/baby-diaries/${diaryId}/photo/`
+      console.log(`API 호출: POST ${apiUrl}`)
+
+      const response = await api.post(apiUrl, formData, config)
+
+      console.log('API 응답:', response.status, response.statusText)
+      console.log('API 응답 데이터:', response.data)
+
+      if (!response.data) {
+        console.error('API 응답 데이터가 없습니다')
+        throw new Error('서버 응답 데이터가 없습니다')
+      }
+
       let newPhotos = []
-      
       if (Array.isArray(response.data)) {
+        console.log(`배열 응답 받음, 개수: ${response.data.length}`)
         newPhotos = response.data.map(photo => ({
-          id: photo.photo_id,   // photo_id를 id로 매핑
+          id: photo.photo_id,
           image: photo.image,
-          image_thumbnail: photo.image_thumbnail || photo.thumbnail_url || photo.image, // 썸네일 URL 추가 (여러 가능한 경로 확인)
+          image_thumbnail: photo.image_thumbnail || photo.image,
           created_at: photo.created_at
         }))
       } else {
-        // 단일 객체인 경우
+        console.log('단일 객체 응답 받음')
         newPhotos = [{
-          id: response.data.photo_id,  // photo_id를 id로 매핑
+          id: response.data.photo_id,
           image: response.data.image,
-          image_thumbnail: response.data.image_thumbnail || response.data.thumbnail_url || response.data.image, // 썸네일 URL 추가 (여러 가능한 경로 확인)
+          image_thumbnail: response.data.image_thumbnail || response.data.image,
           created_at: response.data.created_at
         }]
       }
-      
-      // 기존 일기의 사진 목록 가져오기
+
+      console.log(`처리된 사진 데이터:`, newPhotos)
+
       const babyDiary = babyDiaries.value.find(diary => diary.id === diaryId)
-      
       if (babyDiary) {
-        // 기존 사진 배열과 새 사진 배열 병합
-        babyDiary.photos = [...(babyDiary.photos || []), ...newPhotos]
-        
-        // 선택된 일기가 있고, 같은 일기라면 선택된 일기의 사진 목록도 업데이트
-        if (selectedBabyDiary.value && selectedBabyDiary.value.id === diaryId) {
-          selectedBabyDiary.value.photos = [...(selectedBabyDiary.value.photos || []), ...newPhotos]
+        // 이미 배열인지 확인하고, 없으면 초기화
+        if (!Array.isArray(babyDiary.photos)) {
+          babyDiary.photos = []
         }
+        babyDiary.photos = [...babyDiary.photos, ...newPhotos]
+        console.log(`일기 사진 목록 업데이트 완료, 현재 사진 개수: ${babyDiary.photos.length}`)
+        
+        if (selectedBabyDiary.value && selectedBabyDiary.value.id === diaryId) {
+          // 선택된 일기도 같은 방식으로 처리
+          if (!Array.isArray(selectedBabyDiary.value.photos)) {
+            selectedBabyDiary.value.photos = []
+          }
+          selectedBabyDiary.value.photos = [...selectedBabyDiary.value.photos, ...newPhotos]
+          console.log('선택된 일기의 사진 목록도 업데이트 완료')
+        }
+      } else {
+        console.log(`일기 ID ${diaryId}를 찾을 수 없음`)
       }
-      
+
+      console.log('태교일기 사진 업로드 성공')
       return newPhotos
     } catch (err) {
       console.error('태교일기 사진 업로드 오류:', err)
-      error.value = '태교일기 사진을 업로드하는 중 오류가 발생했습니다.'
+      if (err.response) {
+        console.error('오류 상태:', err.response.status)
+        console.error('오류 데이터:', err.response.data)
+        if (err.response.status === 401) {
+          error.value = '인증이 필요합니다. 다시 로그인해주세요.'
+        } else if (err.response.status === 403) {
+          error.value = '권한이 없습니다.'
+        } else if (err.response.status === 500) {
+          error.value = '서버 오류가 발생했습니다.'
+        } else {
+          error.value = `태교일기 사진을 업로드하는 중 오류가 발생했습니다. (${err.response.status})`
+        }
+      } else {
+        error.value = '태교일기 사진을 업로드하는 중 오류가 발생했습니다.'
+      }
       throw err
     } finally {
       isLoading.value = false
@@ -830,34 +887,63 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
     
     try {
-      // API 호출
-      const response = await api.get(`calendars/baby-diaries/${diaryId}/photo/`)
-      
-      // 응답 데이터를 전처리하여 일관된 형식으로 변환
+      console.log(`태교일기 사진 불러오기 시작 - diary_id: ${diaryId}`)
+
+      // 변경: 모든 헤더에 토큰 추가
+      const config = {
+        headers: {
+          'Accept': 'application/json',
+          ...getAuthHeaders()
+        }
+      }
+
+      console.log(`API 호출: GET calendars/baby-diaries/${diaryId}/photo/`)
+      const response = await api.get(`calendars/baby-diaries/${diaryId}/photo/`, config)
+
+      console.log('API 응답:', response.status, response.statusText)
+      console.log('API 응답 데이터 개수:', Array.isArray(response.data) ? response.data.length : 'not array')
+
       const mappedPhotos = Array.isArray(response.data) 
         ? response.data.map(photo => ({
-            id: photo.photo_id,   // photo_id를 id로 매핑
+            id: photo.photo_id,
             image: photo.image,
-            image_thumbnail: photo.image_thumbnail || photo.thumbnail_url || photo.image, // 썸네일 URL 추가 (여러 가능한 경로 확인)
+            image_thumbnail: photo.image_thumbnail || photo.image,
             created_at: photo.created_at
           }))
         : []
-      
-      // 로컬 상태 업데이트
+
+      console.log(`매핑된 사진 데이터 개수: ${mappedPhotos.length}`)
+
       const diary = babyDiaries.value.find(d => d.id === diaryId)
       if (diary) {
         diary.photos = mappedPhotos
+        console.log(`일기 사진 목록 업데이트 완료, 현재 사진 개수: ${mappedPhotos.length}`)
       }
       
-      // 선택된 일기의 사진도 업데이트
       if (selectedBabyDiary.value && selectedBabyDiary.value.id === diaryId) {
         selectedBabyDiary.value.photos = mappedPhotos
+        console.log('선택된 일기의 사진 목록도 업데이트 완료')
       }
-      
+
+      console.log('태교일기 사진 불러오기 성공')
       return mappedPhotos
     } catch (err) {
       console.error('태교일기 사진 불러오기 오류:', err)
-      error.value = '태교일기 사진을 불러오는 중 오류가 발생했습니다.'
+      if (err.response) {
+        console.error('오류 상태:', err.response.status)
+        console.error('오류 데이터:', err.response.data)
+        if (err.response.status === 401) {
+          error.value = '인증이 필요합니다. 다시 로그인해주세요.'
+        } else if (err.response.status === 403) {
+          error.value = '권한이 없습니다.'
+        } else if (err.response.status === 500) {
+          error.value = '서버 오류가 발생했습니다.'
+        } else {
+          error.value = `태교일기 사진을 불러오는 중 오류가 발생했습니다. (${err.response.status})`
+        }
+      } else {
+        error.value = '태교일기 사진을 불러오는 중 오류가 발생했습니다.'
+      }
       return []
     } finally {
       isLoading.value = false
@@ -870,50 +956,81 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
     
     try {
-      // FormData 객체 생성 및 파일 추가
+      console.log(`태교일기 사진 업데이트 시작 - diary_id: ${diaryId}, photo_id: ${photoId}`)
+      console.log(`파일 타입: ${newPhotoFile.type}, 파일 크기: ${newPhotoFile.size} bytes`)
+
       const formData = new FormData()
       formData.append('image', newPhotoFile)
-      
-      // 설정 객체 - 멀티파트 폼데이터 요청
-      const config = {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      formData.append('category', 'diary') // 필수 카테고리 필드 추가
+
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`FormData: ${key} = File(${value.name}, ${value.type}, ${value.size} bytes)`)
+        } else {
+          console.log(`FormData: ${key} = ${value}`)
         }
       }
-      
-      // API 호출 (PATCH 메서드 사용)
-      const response = await api.patch(`calendars/baby-diaries/${diaryId}/photo/${photoId}/`, formData, config)
-      
-      // 응답 처리
-      const updatedPhoto = {
-        id: response.data.photo_id || photoId,  // photo_id를 id로 매핑
-        image: response.data.image,
-        image_thumbnail: response.data.image_thumbnail || response.data.thumbnail_url || response.data.image, // 썸네일 URL 추가 (여러 가능한 경로 확인)
-        created_at: response.data.created_at
+
+      // API 호출 설정
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...getAuthHeaders()
+        }
       }
-      
-      // 로컬 상태 업데이트
+
+      // API URL 형식 확인
+      const apiUrl = `calendars/baby-diaries/${diaryId}/photo/${photoId}/`
+      console.log(`API 호출: PATCH ${apiUrl}`)
+
+      const response = await api.patch(apiUrl, formData, config)
+
+      console.log('API 응답:', response.status, response.statusText)
+      console.log('API 응답 데이터:', response.data)
+
+      const updatedPhoto = {
+        id: response.data.photo_id || photoId,
+        image: response.data.image,
+        image_thumbnail: response.data.image_thumbnail || response.data.image,
+        created_at: response.data.created_at
+      };
+
       const diary = babyDiaries.value.find(d => d.id === diaryId)
       if (diary && diary.photos) {
         const photoIndex = diary.photos.findIndex(p => p.id === photoId)
         if (photoIndex !== -1) {
-          // 기존 사진 객체를 새 사진 객체로 교체
           diary.photos[photoIndex] = updatedPhoto
+          console.log('일기 사진 업데이트 완료')
         }
       }
       
-      // 선택된 일기의 사진도 업데이트
       if (selectedBabyDiary.value && selectedBabyDiary.value.id === diaryId && selectedBabyDiary.value.photos) {
         const photoIndex = selectedBabyDiary.value.photos.findIndex(p => p.id === photoId)
         if (photoIndex !== -1) {
           selectedBabyDiary.value.photos[photoIndex] = updatedPhoto
+          console.log('선택된 일기의 사진도 업데이트 완료')
         }
       }
-      
+
+      console.log('태교일기 사진 업데이트 성공')
       return updatedPhoto
     } catch (err) {
       console.error('태교일기 사진 업데이트 오류:', err)
-      error.value = '태교일기 사진을 업데이트하는 중 오류가 발생했습니다.'
+      if (err.response) {
+        console.error('오류 상태:', err.response.status)
+        console.error('오류 데이터:', err.response.data)
+        if (err.response.status === 401) {
+          error.value = '인증이 필요합니다. 다시 로그인해주세요.'
+        } else if (err.response.status === 403) {
+          error.value = '권한이 없습니다.'
+        } else if (err.response.status === 500) {
+          error.value = '서버 오류가 발생했습니다.'
+        } else {
+          error.value = `태교일기 사진을 업데이트하는 중 오류가 발생했습니다. (${err.response.status})`
+        }
+      } else {
+        error.value = '태교일기 사진을 업데이트하는 중 오류가 발생했습니다.'
+      }
       throw err
     } finally {
       isLoading.value = false
