@@ -240,8 +240,14 @@ const handleGoToToday = async () => {
 const loadMonthEvents = async () => {
   try {
     logger.info(CONTEXT, `${currentYear.value}년 ${currentMonth.value}월 이벤트 로딩 시작`)
+    
+    // 이벤트 데이터 로드
     const events = await calendarStore.fetchEvents()
     logger.info(CONTEXT, `이벤트 ${events.length}개 로드됨`)
+    
+    // LLM 요약 데이터 로드
+    const summaries = await calendarStore.fetchLLMSummaries(currentYear.value, currentMonth.value)
+    logger.info(CONTEXT, `LLM 요약 ${summaries.length}개 로드됨`)
     
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()

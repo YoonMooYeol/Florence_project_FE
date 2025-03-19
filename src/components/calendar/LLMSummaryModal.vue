@@ -6,8 +6,9 @@ const props = defineProps({
   summary: {
     type: Object,
     default: () => ({
-      date: '',
-      summary: ''
+      summary_id: '',
+      summary_date: '',
+      summary_text: ''
     })
   },
   show: {
@@ -33,9 +34,9 @@ const closeModal = () => {
 }
 
 const deleteSummary = () => {
-  if (props.summary && props.summary.date) {
-    console.log('LLM 요약 삭제 버튼 클릭:', props.summary.date)
-    emit('delete', props.summary.date)
+  if (props.summary && props.summary.summary_id) {
+    console.log('LLM 요약 삭제 버튼 클릭:', props.summary.summary_id)
+    emit('delete', props.summary.summary_id)
   }
 }
 </script>
@@ -80,7 +81,7 @@ const deleteSummary = () => {
               날짜
             </h4>
             <p class="text-dark-gray">
-              {{ formatDate(summary.date) }}
+              {{ formatDate(summary.summary_date) }}
             </p>
           </div>
 
@@ -89,8 +90,8 @@ const deleteSummary = () => {
               대화 요약
             </h4>
             <div class="bg-white p-4 rounded-lg border border-gray-200">
-              <p class="text-dark-gray">
-                {{ summary.summary }}
+              <p class="text-dark-gray whitespace-pre-line">
+                {{ summary.summary_text }}
               </p>
             </div>
           </div>
