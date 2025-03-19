@@ -319,7 +319,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
       v-if="activeTab === 'search'"
       class="p-4"
     >
-      <div class="flex mb-4">
+      <div class="flex">
         <input
           v-model="searchQuery"
           type="text"
@@ -345,14 +345,6 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
           </svg>
         </button>
       </div>
-
-      <!-- 내 정보 보기 버튼
-      <button
-        class="w-full mb-4 px-4 py-3 bg-base-yellow rounded-md text-dark-gray font-medium hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-point-yellow"
-        @click="fetchMyInfo"
-      >
-        내 정보 보기
-      </button> -->
     </div>
 
     <!-- 로딩 표시 -->
@@ -616,7 +608,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
     <div
       v-if="((activeTab === 'following' || activeTab === 'followers') && !isLoading && users.length === 0) ||
         (activeTab === 'search' && !searchResult && !selectedUser && !isLoading)"
-      class="p-4 text-center bg-white m-4 rounded-lg shadow-md"
+      class="p-4 text-center bg-white rounded-lg shadow-md"
     >
       <p class="text-gray-500 py-8">
         {{ activeTab === 'search' ? '이메일로 사용자를 검색해 보세요.' :

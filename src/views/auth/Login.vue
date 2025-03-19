@@ -156,14 +156,12 @@ const initiateKakaoLogin = () => {
     // 카카오 REST API 키
     const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
     if (!KAKAO_REST_API_KEY) {
-      console.error('카카오 API 키가 설정되지 않았습니다.')
       alert('카카오 로그인을 위한 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
       return
     }
 
     // 향후 통합된 콜백 URL로 변경할 수 있지만, 현재는 호환성을 위해 원래 URL 유지
     const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI
-    console.log('카카오 로그인 리디렉션 URL:', REDIRECT_URI)
 
     // 카카오 인증 페이지로 리다이렉션
     window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
@@ -172,7 +170,6 @@ const initiateKakaoLogin = () => {
     // const NEW_REDIRECT_URI = `${window.location.origin}/auth/callback/kakao`
     // window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${NEW_REDIRECT_URI}&response_type=code`
   } catch (error) {
-    console.error('카카오 로그인 초기화 오류:', error)
     alert('카카오 로그인 초기화 중 오류가 발생했습니다: ' + error.message)
   }
 }
@@ -180,13 +177,10 @@ const initiateKakaoLogin = () => {
 // 네이버 로그인 실행 함수
 const initiateNaverLogin = () => {
   try {
-    console.log('네이버 로그인 시작...')
     // 네이버 Client ID
     const NAVER_CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID
-    console.log('네이버 클라이언트 ID:', NAVER_CLIENT_ID ? '설정됨' : '설정되지 않음')
 
     if (!NAVER_CLIENT_ID) {
-      console.error('네이버 클라이언트 ID가 설정되지 않았습니다.')
       alert('네이버 로그인을 위한 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
       return
     }
@@ -195,20 +189,14 @@ const initiateNaverLogin = () => {
     const REDIRECT_URI_RAW = import.meta.env.VITE_NAVER_REDIRECT_URI
     const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
 
-    console.log('네이버 로그인 환경:', import.meta.env.VITE_APP_ENV || 'undefined')
-    console.log('네이버 로그인 리디렉션 URL (원본):', REDIRECT_URI_RAW)
-    console.log('네이버 로그인 리디렉션 URL (인코딩됨):', REDIRECT_URI)
-
     // 상태 토큰 (CSRF 방지)
     const STATE = Math.random().toString(36).substring(2, 15)
-    console.log('네이버 로그인 상태 토큰:', STATE)
 
     // 상태 토큰 저장
     localStorage.setItem('naverLoginState', STATE)
 
     // 네이버 인증 URL 생성
     const authUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${NAVER_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&state=${STATE}`
-    console.log('네이버 인증 URL:', authUrl)
 
     // 네이버 인증 페이지로 리다이렉션
     window.location.href = authUrl
@@ -217,7 +205,6 @@ const initiateNaverLogin = () => {
     // const NEW_REDIRECT_URI = encodeURIComponent(`${window.location.origin}/auth/callback/naver`)
     // const authUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${NAVER_CLIENT_ID}&redirect_uri=${NEW_REDIRECT_URI}&state=${STATE}`
   } catch (error) {
-    console.error('네이버 로그인 초기화 오류:', error)
     alert('네이버 로그인 초기화 중 오류가 발생했습니다: ' + error.message)
   }
 }
@@ -225,13 +212,10 @@ const initiateNaverLogin = () => {
 // 구글 로그인 실행 함수
 const initiateGoogleLogin = () => {
   try {
-    console.log('구글 로그인 시작...')
     // 구글 Client ID
     const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
-    console.log('구글 클라이언트 ID:', GOOGLE_CLIENT_ID ? '설정됨' : '설정되지 않음')
 
     if (!GOOGLE_CLIENT_ID) {
-      console.error('구글 클라이언트 ID가 설정되지 않았습니다.')
       alert('구글 로그인을 위한 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
       return
     }
@@ -240,16 +224,11 @@ const initiateGoogleLogin = () => {
     const REDIRECT_URI_RAW = import.meta.env.VITE_GOOGLE_REDIRECT_URI
     const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
 
-    console.log('구글 로그인 환경:', import.meta.env.VITE_APP_ENV || 'undefined')
-    console.log('구글 로그인 리디렉션 URL (원본):', REDIRECT_URI_RAW)
-    console.log('구글 로그인 리디렉션 URL (인코딩됨):', REDIRECT_URI)
-
     // 범위 설정 (이메일, 프로필 정보)
     const SCOPE = encodeURIComponent('email profile')
 
     // 구글 인증 URL 생성
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=${SCOPE}&access_type=offline&include_granted_scopes=true`
-    console.log('구글 인증 URL:', authUrl)
 
     // 구글 인증 페이지로 리다이렉션
     window.location.href = authUrl
@@ -258,7 +237,6 @@ const initiateGoogleLogin = () => {
     // const NEW_REDIRECT_URI = encodeURIComponent(`${window.location.origin}/auth/callback/google`)
     // const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${NEW_REDIRECT_URI}&scope=${SCOPE}&access_type=offline&include_granted_scopes=true`
   } catch (error) {
-    console.error('구글 로그인 초기화 오류:', error)
     alert('구글 로그인 초기화 중 오류가 발생했습니다: ' + error.message)
   }
 }

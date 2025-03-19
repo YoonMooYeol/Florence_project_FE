@@ -30,13 +30,6 @@ onMounted(() => {
     const name = urlParams.get('name')
     const isPregnant = urlParams.get('is_pregnant') === 'true'
 
-    console.log('네이버 콜백 파라미터:', {
-      token: token ? token.substring(0, 10) + '...' : '없음',
-      userId,
-      name,
-      isPregnant
-    })
-
     if (token && refresh) {
       // 토큰 저장 - 스토어를 통해 저장
       authStore.setAccessToken(token)
@@ -63,14 +56,7 @@ onMounted(() => {
         isPregnant: isPregnant
       }, true)
 
-      console.log('네이버 로그인 성공 - 토큰 저장 완료', {
-        localToken: localStorage.getItem('accessToken') ? '저장됨' : '없음',
-        sessionToken: sessionStorage.getItem('accessToken') ? '저장됨' : '없음',
-        storeToken: authStore.accessToken ? '저장됨' : '없음'
-      })
-
       // 토큰 설정 후 API 인증 헤더 직접 설정 (중요)
-      console.log('API 인증 헤더 직접 설정 시도...')
       const apiBaseUrl = 'http://127.0.0.1:8000/v1'
       // 원래 axios 인스턴스에 직접 헤더 설정
       axios.defaults.headers.common.Authorization = `Bearer ${token}`
@@ -81,10 +67,10 @@ onMounted(() => {
         }
       })
       .then(response => {
-        console.log('토큰 검증 성공:', response.data)
+        // 토큰 검증 성공
       })
       .catch(error => {
-        console.error('토큰 검증 실패:', error)
+        // 토큰 검증 실패
       })
 
       // 성공 알림 (타이밍 증가)
@@ -92,12 +78,8 @@ onMounted(() => {
         alert('네이버 로그인에 성공했습니다')
         // 로딩 상태 종료
         isLoading.value = false
-        // 다시 한번 토큰이 있는지 확인
-        const finalToken = localStorage.getItem('accessToken')
-        console.log('최종 확인 - 토큰 존재 여부:', !!finalToken)
         
         // 페이지 새로고침 후 리다이렉트 (토큰 로딩 문제 해결)
-        console.log('페이지를 새로고침하고 캘린더로 이동합니다.')
         sessionStorage.setItem('redirectAfterLogin', '/calendar')
         window.location.href = '/calendar' // router.push 대신 location 사용
       }, 1000) // 1초로 증가
@@ -112,7 +94,6 @@ onMounted(() => {
 // 오류 처리를 위한 함수
 function handleError (message) {
   error.value = message
-  console.error(message)
   isLoading.value = false
 
   // 사용자에게 알림

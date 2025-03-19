@@ -50,17 +50,9 @@ const findIdApi = async () => {
       name: formData.name.trim(),
       phone_number: formData.phoneNumber.trim()
     }
-    console.log('API 요청 데이터:', JSON.stringify(requestData, null, 2))
-    console.log('전화번호 길이:', requestData.phone_number.length)
     const response = await api.post('/accounts/find_username/', requestData)
-    console.log('API 응답 데이터:', JSON.stringify(response.data, null, 2))
-    console.log('응답 타입:', typeof response.data)
-    console.log('응답 키:', Object.keys(response.data))
     return response.data
   } catch (error) {
-    console.error('서버 응답:', JSON.stringify(error.response?.data, null, 2))
-    console.error('에러 상태 코드:', error.response?.status)
-    console.error('에러 헤더:', error.response?.headers)
     if (error.response?.data?.non_field_errors?.[0]) {
       const errorMessage = error.response.data.non_field_errors[0].replace('이름', '닉네임')
       throw new Error(errorMessage)
@@ -101,7 +93,6 @@ const handleSubmit = async () => {
 
   try {
     const response = await findIdApi()
-    console.log('서버 응답:', response)
     if (response && response.masked_email) {
       foundUsername.value = response.masked_email
       errors.form = ''
@@ -109,7 +100,6 @@ const handleSubmit = async () => {
       errors.form = '일치하는 사용자 정보를 찾을 수 없습니다.'
     }
   } catch (error) {
-    console.error('아이디 찾기 오류:', error)
     errors.form = error.message
   } finally {
     isSubmitting.value = false
