@@ -297,7 +297,7 @@ onMounted(async () => {
       alert('임신 정보가 필요합니다. 임신 정보 등록 페이지로 이동합니다.')
       
       // 사용자 정보 입력 화면으로 리다이렉트
-      window.location.href = '/pregnancy/register'
+      window.location.href = '/pregnancy-info-register'
       return
     }
     
