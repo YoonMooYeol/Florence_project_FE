@@ -158,6 +158,12 @@ const validateForm = () => {
     errors.email = ''
   }
 
+  // 이메일 인증 확인 추가
+  if (!isEmailVerified.value) {
+    errors.email = '이메일 인증이 필요합니다'
+    isValid = false
+  }
+
   // 전화번호 검증
   const phoneRegex = /^\d{3}-\d{3,4}-\d{4}$/
   if (!formData.phone_number.trim()) {
@@ -255,6 +261,13 @@ const clearFieldError = (field) => {
 // 회원가입 처리 함수
 const handleSubmit = async () => {
   errors.form = ''
+
+  // 이메일 인증 확인 추가
+  if (!isEmailVerified.value) {
+    errors.email = '이메일 인증이 필요합니다'
+    errors.form = '이메일 인증을 완료해주세요'
+    return
+  }
 
   if (!validateForm()) {
     return
@@ -389,45 +402,50 @@ onUnmounted(() => {
 /* 이메일 인증 관련 로직 추가 */
 const sendVerificationCode = async () => {
   if (!formData.email.trim()) {
-    alert("이메일을 입력해주세요.");
-    return;
+    alert('이메일을 입력해주세요')
+    return
   }
   if (!emailRegex.test(formData.email)) {
-    alert("유효한 이메일 주소를 입력해주세요.");
-    return;
+    alert('유효한 이메일 주소를 입력해주세요')
+    return
   }
-  isSendingCode.value = true;
+  isSendingCode.value = true
   try {
-    await api.post('/accounts/send_register/', { email: formData.email });
-    verificationPopupVisible.value = true;
-    alert("인증번호가 전송되었습니다. 이메일을 확인해주세요.");
+    await api.post('/accounts/send_register/', { email: formData.email })
+    verificationPopupVisible.value = true
+    alert('인증번호가 전송되었습니다. 이메일을 확인해주세요.')
   } catch (error) {
-    console.error("인증번호 전송 실패", error);
-    alert("인증번호 전송에 실패했습니다.");
+    console.error('인증번호 전송 실패', error)
+    alert('인증번호 전송에 실패했습니다.')
   } finally {
-    isSendingCode.value = false;
+    isSendingCode.value = false
   }
-};
+}
 
 const verifyCode = async () => {
   if (!verificationCode.value.trim()) {
-    alert("인증번호를 입력해주세요.");
-    return;
+    alert('인증번호를 입력해주세요')
+    return
   }
-  isVerifyingCode.value = true;
+  isVerifyingCode.value = true
   try {
-    await api.post('/accounts/check_register/', { email: formData.email, code: verificationCode.value });
-    verificationStatus.value = 'verified';
-    verificationPopupVisible.value = false;
-    isEmailVerified.value = true;
-    alert("이메일 인증이 완료되었습니다.");
+    await api.post('/accounts/check_register/', { email: formData.email, code: verificationCode.value })
+    verificationStatus.value = 'verified'
+    verificationPopupVisible.value = false
+    isEmailVerified.value = true
+    alert('이메일 인증이 완료되었습니다.')
   } catch (error) {
-    console.error("인증번호 확인 실패", error);
-    alert("인증번호가 일치하지 않습니다. 다시 시도해주세요.");
+    console.error('인증번호 확인 실패', error)
+    alert('인증번호가 일치하지 않습니다. 다시 시도해주세요.')
   } finally {
-    isVerifyingCode.value = false;
+    isVerifyingCode.value = false
   }
-};
+}
+
+// 인증 팝업 취소 함수
+const cancelVerification = () => {
+  verificationPopupVisible.value = false
+}
 </script>
 
 <template>
@@ -581,6 +599,9 @@ const verifyCode = async () => {
           </div>
           <p v-if="errors.email" class="mt-1 text-sm text-red-600">
             {{ errors.email }}
+          </p>
+          <p v-if="isEmailVerified" class="mt-1 text-sm text-green-600 font-bold">
+            ✓ 이메일 인증이 완료되었습니다
           </p>
         </div>
 
@@ -747,9 +768,10 @@ const verifyCode = async () => {
           <button
             type="submit"
             class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-[10px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || !isEmailVerified"
           >
             <span v-if="isSubmitting">처리 중...</span>
+            <span v-else-if="!isEmailVerified">이메일 인증 필요</span>
             <span v-else>회원가입</span>
           </button>
 
@@ -777,7 +799,7 @@ const verifyCode = async () => {
         <button @click="verifyCode" :disabled="isVerifyingCode" class="flex-1 py-2 bg-yellow-200 text-dark-gray font-bold border border-yellow-300 rounded-[10px] hover:bg-yellow-300 focus:outline-none">
           확인
         </button>
-        <button @click="verificationPopupVisible = false" class="flex-1 py-2 bg-yellow-200 text-dark-gray font-bold border border-yellow-300 rounded-[10px] hover:bg-yellow-300 focus:outline-none">
+        <button @click="cancelVerification" class="flex-1 py-2 bg-gray-200 text-dark-gray font-bold border border-gray-300 rounded-[10px] hover:bg-gray-300 focus:outline-none">
           취소
         </button>
       </div>
