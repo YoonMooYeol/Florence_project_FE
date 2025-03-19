@@ -36,23 +36,12 @@ const fetchFollowingUsers = async () => {
   isLoading.value = true
   errorMessage.value = ''
   try {
-    const response = await api.get('/accounts/follow/following/')
-    console.log('팔로잉 사용자 목록 데이터:', response.data)
+    const response = await api.get('/accounts/follow-list/following/')
 
     // 백엔드에서 받아온 데이터 구조 변경됨
     // 이제 각 항목에 following_detail 필드가 있고 is_following 필드도 포함됨
-    if (response.data && response.data.length > 0) {
-      response.data.forEach((item, index) => {
-        console.log(`팔로잉 항목 ${index}:`, item)
-        // 추가된 필드 확인
-        console.log('following_detail:', item.following_detail)
-        console.log('is_following:', item.is_following)
-      })
-    }
-
     users.value = response.data
   } catch (error) {
-    console.error('팔로잉 사용자 목록 불러오기 오류:', error)
     users.value = [] // 오류 발생 시 빈 배열 설정
     
     if (error.response) {
@@ -74,19 +63,13 @@ const fetchFollowingUsers = async () => {
 }
 
 // 팔로워 사용자 목록 불러오기
-// 팔로워 사용자 목록 불러오기
 const fetchFollowersUsers = async () => {
   isLoading.value = true
   errorMessage.value = ''
   try {
-    const response = await api.get('/accounts/follow/followers/')
-    console.log('팔로워 사용자 목록 데이터:', response.data)
-
-    // 이제 백엔드에서 직접 is_following 정보를 제공함
-    // 기존의 팔로잉 목록을 가져와서 비교하는 로직 제거
+    const response = await api.get('/accounts/follow-list/followers/')
     users.value = response.data
   } catch (error) {
-    console.error('팔로워 사용자 목록 불러오기 오류:', error)
     users.value = [] // 오류 발생 시 빈 배열 설정
     
     if (error.response) {
@@ -121,21 +104,17 @@ const searchUserByEmail = async () => {
   try {
     // 이메일로 사용자 검색 (백엔드에서 이제 is_following 정보 포함)
     const response = await api.get(`/accounts/search/?email=${searchQuery.value.trim()}`)
-    console.log('이메일 검색 결과:', response.data)
 
     // 백엔드에서 is_following 값을 제공하므로 별도 요청 필요 없음
     // 응답에 is_following 필드가 없다면 기본값으로 false 설정
     if (response.data && response.data.user_id) {
       if (response.data.is_following === undefined) {
         response.data.is_following = false
-        console.log('is_following 필드가 없어 기본값 false로 설정')
       }
     }
 
     searchResult.value = response.data
-    console.log('최종 검색 결과:', searchResult.value)
   } catch (error) {
-    console.error('사용자 검색 오류:', error)
     users.value = [] // 검색 오류 시 빈 결과 표시
     
     if (error.response) {
@@ -174,17 +153,14 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
     return
   }
 
-  console.log(`팔로우/언팔로우 시작: 사용자 ID ${userId}, 현재 팔로우 상태: ${isCurrentlyFollowing}`)
   isFollowLoading.value = true
 
   try {
     if (isCurrentlyFollowing) {
       // 언팔로우
-      console.log(`언팔로우 요청: ${userId}`)
       await api.delete('/accounts/follow/', {
         data: { user_id: userId }
       })
-      console.log(`사용자 ID ${userId} 언팔로우 성공`)
 
       // 검색 결과였다면 검색 결과 업데이트
       if (searchResult.value && searchResult.value.user_id === userId) {
@@ -199,11 +175,9 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
       }
     } else {
       // 팔로우
-      console.log(`팔로우 요청: ${userId}`)
       await api.post('/accounts/follow/', {
         user_id: userId
       })
-      console.log(`사용자 ID ${userId} 팔로우 성공`)
 
       // 검색 결과였다면 검색 결과 업데이트
       if (searchResult.value && searchResult.value.user_id === userId) {
@@ -216,8 +190,6 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
       }
     }
   } catch (error) {
-    console.error('팔로우 상태 변경 중 오류:', error)
-    console.error('오류 상세:', error.response?.data)
     errorMessage.value = error.response?.data?.error || error.response?.data?.detail || '팔로우 상태를 변경하는 중 오류가 발생했습니다.'
   } finally {
     isFollowLoading.value = false
