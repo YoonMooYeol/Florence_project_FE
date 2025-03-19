@@ -79,9 +79,20 @@ const handleDateClick = (info) => {
     const result = calendarStore.setSelectedDate(dateStr)
     logger.debug(CONTEXT, '날짜 설정 결과:', result)
 
-    // 실제 모달 열기
-    logger.debug(CONTEXT, '일일 일정 모달 열기 시도')
-    modalManager.openDayEventsModal(dateStr)
+    // 데이터 로드 후 모달 열기
+    loadDayData(dateStr).then(data => {
+      // 모달 데이터 설정
+      modalManager.dayEvents.value = data.events || []
+      modalManager.llmSummary.value = data.llmSummary
+      modalManager.babyDiary.value = data.babyDiary
+      
+      // 실제 모달 열기
+      logger.debug(CONTEXT, '일일 일정 모달 열기 시도')
+      modalManager.openDayEventsModal(dateStr)
+    }).catch(error => {
+      logger.error(CONTEXT, '날짜 데이터 로드 중 오류:', error)
+      alert('데이터를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.')
+    })
   } catch (error) {
     logger.error(CONTEXT, '날짜 클릭 처리 중 오류 발생:', error)
     handleError(error, CONTEXT)
@@ -154,6 +165,42 @@ calendarOptions.eventContent = function (arg) {
   // 오직 타이틀만 표시합니다
   return { html: `<span class="fc-event-title">${arg.event.title}</span>` }
 }
+
+// 날짜 셀 렌더링 커스터마이징 (하트 표시 추가)
+calendarOptions.dayCellDidMount = function(info) {
+  // 날짜 정보 가져오기
+  const date = normalizeDate(info.date);
+  
+  // 날짜 표시 컨테이너에 내용 추가
+  const dateContainer = info.el.querySelector('.fc-daygrid-day-top');
+  if (!dateContainer) return;
+  
+  // 이전 컨텐츠 삭제 후 새 컨텐츠로 대체
+  const dateNumber = info.el.querySelector('.fc-daygrid-day-number').textContent;
+  dateContainer.innerHTML = '';
+  
+  // 새 컨테이너 생성
+  const container = document.createElement('div');
+  container.className = 'day-cell-content';
+  
+  // 날짜 숫자 텍스트 추가
+  const numberElem = document.createElement('span');
+  numberElem.className = 'fc-daygrid-day-number';
+  numberElem.textContent = dateNumber;
+  container.appendChild(numberElem);
+  
+  // 아기 일기 표시 (하트)
+  if (calendarStore.hasBabyDiary(date)) {
+    const heartElem = document.createElement('span');
+    heartElem.className = 'baby-diary-indicator';
+    heartElem.textContent = '♥';
+    heartElem.style.color = '#e53e3e';
+    container.appendChild(heartElem);
+    console.log(`${date}에 하트 표시 추가됨`);
+  }
+  
+  dateContainer.appendChild(container);
+};
 
 // 이벤트 소스 설정 - FullCalendar가 직접 데이터를 가져오게 함
 calendarOptions.eventSources = [
@@ -236,11 +283,32 @@ const handleGoToToday = async () => {
   await loadMonthEvents()
 }
 
+// 초기 데이터 로드
+const loadInitialData = async () => {
+  try {
+    logger.info(CONTEXT, '초기 데이터 로드 시작')
+    // 일정 및 일기 데이터 로드
+    await calendarStore.fetchEvents()
+    
+    // 태교일기 데이터도 함께 로드
+    await calendarStore.fetchBabyDiaries()
+    
+    logger.info(CONTEXT, '초기 데이터 로드 완료')
+  } catch (error) {
+    logger.error(CONTEXT, '초기 데이터 로드 중 오류:', error)
+    handleError(error, CONTEXT)
+  }
+}
+
 // 현재 월의 이벤트 로딩 함수
 const loadMonthEvents = async () => {
   try {
     logger.info(CONTEXT, `${currentYear.value}년 ${currentMonth.value}월 이벤트 로딩 시작`)
     const events = await calendarStore.fetchEvents()
+    
+    // 태교일기 데이터도 함께 새로고침
+    await calendarStore.fetchBabyDiaries()
+    
     logger.info(CONTEXT, `이벤트 ${events.length}개 로드됨`)
     
     if (calendarRef.value) {
@@ -250,53 +318,71 @@ const loadMonthEvents = async () => {
       // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
       requestAnimationFrame(() => {
         calendarApi.render()
-        logger.info(CONTEXT, '캘린더 렌더링 완료')
       })
     }
   } catch (error) {
-    logger.error(CONTEXT, '이벤트 로드 중 오류 발생:', error)
-    handleError(error, `${CONTEXT}.loadMonthEvents`)
+    logger.error(CONTEXT, '월별 이벤트 로드 중 오류:', error)
+    handleError(error, CONTEXT)
   }
 }
 
-// 컴포넌트 마운트 시 현재 날짜 정보 초기화
-onMounted(async () => {
-  logger.info(CONTEXT, '캘린더 컴포넌트 마운트됨')
-
+// 일일 모달 열기 전 해당 날짜의 데이터 로드
+const loadDayData = async (date) => {
   try {
-    // 현재 날짜로 초기화
-    const today = new Date()
-    currentYear.value = today.getFullYear()
-    currentMonth.value = today.getMonth() + 1
-
-    // 캘린더 API를 통해 날짜 설정
-    if (calendarRef.value) {
-      const calendarApi = calendarRef.value.getApi()
-      calendarApi.gotoDate(today)
-      calendarApi.render()
-    }
-
-    logger.debug(CONTEXT, '현재 날짜 정보 업데이트됨')
-
-    // 임신 상태 설정
-    calendarStore.setPregnancyInfo(true, '애기')
-    logger.debug(CONTEXT, '임신 상태 설정됨')
-
+    logger.info(CONTEXT, `${date} 일일 데이터 로드 시작`)
+    
     // 이벤트 로드
-    await loadMonthEvents()
-    logger.info(CONTEXT, '월별 이벤트 로드됨')
-
-    // 아기 일기 데이터 불러오기
-    calendarStore.fetchBabyDiaries()
-    logger.debug(CONTEXT, '아기 일기 데이터 로드됨')
+    const dayEvents = await calendarStore.fetchDayEvents(date)
+    logger.info(CONTEXT, `${date} 일정 ${dayEvents.length}개 로드됨`)
+    
+    // LLM 요약 로드 (해당 기능이 있는 경우)
+    const llmSummary = calendarStore.llmSummaryForSelectedDate.value
+    
+    // 태교일기 로드
+    const babyDiary = await calendarStore.fetchBabyDiaryByDate(date)
+    logger.info(CONTEXT, `${date} 태교일기 로드 ${babyDiary ? '성공' : '없음'}`)
+    
+    if (babyDiary) {
+      logger.debug(CONTEXT, '로드된 태교일기 데이터:', babyDiary);
+    }
+    
+    return {
+      events: dayEvents,
+      llmSummary,
+      babyDiary
+    }
   } catch (error) {
-    console.error('캘린더 초기화 중 오류:', error)
-    handleError(error, `${CONTEXT}.onMounted`)
+    logger.error(CONTEXT, '일일 데이터 로드 중 오류:', error)
+    handleError(error, CONTEXT)
+    return {
+      events: [],
+      llmSummary: null,
+      babyDiary: null
+    }
   }
+}
 
-  // LLM 요약 삭제 이벤트 리스너
-  document.addEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
-  logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 등록됨')
+// 생명주기 훅
+onMounted(async () => {
+  try {
+    logger.info(CONTEXT, 'Calendar 컴포넌트 마운트됨')
+    
+    // 캘린더 API를 스토어에 저장 (필수)
+    if (calendarRef.value) {
+      const api = calendarRef.value.getApi()
+      calendarStore.setCalendarApi(api)
+      logger.info(CONTEXT, 'FullCalendar API가 스토어에 저장되었습니다.')
+    }
+    
+    // 임신 정보 초기화
+    await calendarStore.initPregnancyInfo()
+    
+    // 초기 데이터 로드
+    await loadInitialData()
+  } catch (error) {
+    logger.error(CONTEXT, '마운트 중 오류 발생:', error)
+    handleError(error, CONTEXT)
+  }
 })
 
 // LLM 요약 삭제 이벤트 핸들러
@@ -440,6 +526,50 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
   } catch (error) {
     console.error('일정 삭제 중 오류:', error)
     alert(error.message || '일정 삭제 중 오류가 발생했습니다.')
+  }
+}
+
+// 이벤트 핸들러
+const handleDayEventsModalClose = () => {
+  modalManager.closeDayEventsModal()
+}
+
+const handleAddEvent = () => {
+  modalManager.closeDayEventsModal()
+  modalManager.openAddEventModal()
+}
+
+const handleViewEvent = (event) => {
+  calendarStore.setSelectedEvent(event)
+  modalManager.openEventDetailModal(event)
+}
+
+const handleUpdateBabyDiary = (updatedDiary) => {
+  console.log('태교일기 업데이트됨:', updatedDiary);
+  
+  // 현재 모달의 데이터도 업데이트
+  modalManager.babyDiary.value = updatedDiary;
+  
+  // 스토어의 babyDiaries 배열에 업데이트
+  if (updatedDiary) {
+    const index = calendarStore.babyDiaries.findIndex(diary => 
+      diary.diary_id === updatedDiary.diary_id || diary.id === updatedDiary.id
+    );
+    
+    if (index !== -1) {
+      calendarStore.babyDiaries[index] = updatedDiary;
+    } else {
+      calendarStore.babyDiaries.push(updatedDiary);
+    }
+    
+    // 선택된 일기도 업데이트
+    calendarStore.setSelectedBabyDiary(updatedDiary);
+    
+    // 캘린더 갱신 - 하트 표시 업데이트
+    if (calendarStore.calendarApi.value) {
+      logger.debug(CONTEXT, '캘린더 API로 렌더링 직접 갱신');
+      calendarStore.calendarApi.value.render();
+    }
   }
 }
 
@@ -590,15 +720,16 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
 
     <!-- 일일 일정 모달 -->
     <DayEventsModal
+      v-if="modalManager.showDayEventsModal.value"
       :show="modalManager.showDayEventsModal.value"
       :date="calendarStore.selectedDate"
-      :events="calendarStore.eventsForSelectedDate"
-      :llm-summary="calendarStore.llmSummaryForSelectedDate"
-      :baby-diary="calendarStore.babyDiaryForSelectedDate"
-      @close="modalManager.closeDayEventsModal"
-      @add-event="modalManager.openAddEventModal"
-      @view-event="modalManager.openEventDetailModal"
-      @view-llm-summary="modalManager.openLLMDetailModal"
+      :events="modalManager.dayEvents.value"
+      :llm-summary="modalManager.llmSummary.value"
+      :baby-diary="modalManager.babyDiary.value"
+      @close="handleDayEventsModalClose"
+      @add-event="handleAddEvent"
+      @view-event="handleViewEvent"
+      @update:baby-diary="handleUpdateBabyDiary"
     />
 
     <!-- 일정 상세 모달 -->
@@ -751,11 +882,13 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
 
 /* 아기 일기 표시 스타일 */
 .baby-diary-indicator {
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   line-height: 1;
   vertical-align: middle;
+  margin-left: 2px;
   margin-top: -2px;
   color: #e53e3e;
+  font-weight: bold;
 }
 
 /* 이벤트 스타일 */

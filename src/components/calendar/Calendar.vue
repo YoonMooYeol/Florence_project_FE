@@ -1,0 +1,156 @@
+<template>
+  <div class="calendar-container">
+    <div class="grid grid-cols-7 gap-1">
+      <div
+        v-for="day in calendarData"
+        :key="day.date"
+        class="relative aspect-square p-2 border border-gray-200"
+        :class="{
+          'bg-gray-50': !day.isCurrentMonth,
+          'cursor-pointer hover:bg-gray-50': day.isCurrentMonth
+        }"
+        @click="day.isCurrentMonth && handleDateClick(day.date)"
+      >
+        <div class="flex justify-between items-start">
+          <span
+            class="text-sm"
+            :class="{
+              'text-gray-400': !day.isCurrentMonth,
+              'font-bold': isToday(day.date)
+            }"
+          >
+            {{ day.day }}
+          </span>
+          <span v-if="day.hasDiary" class="text-point text-sm">♥︎</span>
+        </div>
+        <div class="mt-1 space-y-1">
+          <div
+            v-for="event in day.events"
+            :key="event.id"
+            class="text-xs p-1 rounded bg-point text-dark-gray truncate"
+          >
+            {{ event.title }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { useCalendarStore } from '@/store/calendar'
+
+const calendarStore = useCalendarStore()
+
+// 달력 데이터 캐싱 방지
+const forceUpdate = ref(0)
+
+// 일기 데이터가 변경될 때마다 달력 갱신
+watch(() => calendarStore.babyDiaries, () => {
+  console.log('태교일기 데이터 변경 감지, 달력 갱신');
+  forceUpdate.value++;
+}, { deep: true })
+
+// 달력 데이터 계산
+const calendarData = computed(() => {
+  // 강제 갱신 트리거
+  forceUpdate.value;
+  
+  const year = calendarStore.currentYear
+  const month = calendarStore.currentMonth
+  const firstDay = new Date(year, month - 1, 1)
+  const lastDay = new Date(year, month, 0)
+  const daysInMonth = lastDay.getDate()
+  const startingDay = firstDay.getDay()
+
+  const days = []
+  const prevMonthDays = new Date(year, month - 1, 0).getDate()
+
+  // 이전 달의 날짜들
+  for (let i = startingDay - 1; i >= 0; i--) {
+    const date = `${year}-${String(month - 1).padStart(2, '0')}-${String(prevMonthDays - i).padStart(2, '0')}`;
+    const hasDiary = calendarStore.hasBabyDiary(date);
+    
+    days.push({
+      date,
+      day: prevMonthDays - i,
+      isCurrentMonth: false,
+      events: [],
+      hasDiary
+    })
+  }
+
+  // 현재 달의 날짜들
+  for (let i = 1; i <= daysInMonth; i++) {
+    const date = `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+    const events = calendarStore.getEventsByDate(date);
+    const hasDiary = calendarStore.hasBabyDiary(date);
+    
+    console.log(`${date} 일기 여부:`, hasDiary);
+    
+    days.push({
+      date,
+      day: i,
+      isCurrentMonth: true,
+      events,
+      hasDiary
+    })
+  }
+
+  // 다음 달의 날짜들
+  const remainingDays = 42 - days.length // 6주 달력을 위해
+  for (let i = 1; i <= remainingDays; i++) {
+    const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+    const hasDiary = calendarStore.hasBabyDiary(date);
+    
+    days.push({
+      date,
+      day: i,
+      isCurrentMonth: false,
+      events: [],
+      hasDiary
+    })
+  }
+
+  return days
+})
+
+// 초기 데이터 로드
+onMounted(async () => {
+  await calendarStore.fetchBabyDiaries();
+  console.log('캘린더 마운트 시 태교일기 데이터 로드 완료');
+})
+
+// 오늘 날짜인지 확인
+const isToday = (date) => {
+  const today = new Date()
+  const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  return date === todayString
+}
+
+// 날짜 클릭 핸들러
+const handleDateClick = (date) => {
+  calendarStore.setSelectedDate(date)
+}
+</script>
+
+<style scoped>
+.calendar-container {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.text-point {
+  color: #FFD600;
+}
+
+.text-dark-gray {
+  color: #353535;
+}
+
+.bg-point {
+  background-color: #FFD600;
+}
+</style> 

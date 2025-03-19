@@ -30,8 +30,10 @@ const props = defineProps({
 // 필요한 상태 변수들
 const isClickable = ref(false)
 const diaryContent = ref('')
-const activeTab = ref('schedule') // 초기 활성 탭은 '일정' 탭
+const activeTab = ref('schedule')
 const showDiaryModal = ref(false)
+const isEditing = ref(false)
+const currentDiaryId = ref(null)
 
 // 모달이 열렸을 때 props 변화 감지 및 처리
 watch(() => props.show, async (newValue) => {
@@ -62,14 +64,21 @@ watch(() => props.show, async (newValue) => {
 
 // babyDiary가 변경될 때 diaryContent 업데이트
 watch(() => props.babyDiary, (newDiary) => {
+  console.log('태교일기 데이터 감지됨:', newDiary);
   if (newDiary) {
     diaryContent.value = newDiary.content
+    currentDiaryId.value = newDiary.diary_id || newDiary.id
+    isEditing.value = false
+    console.log('태교일기 데이터 설정:', diaryContent.value, currentDiaryId.value);
   } else {
     diaryContent.value = ''
+    currentDiaryId.value = null
+    isEditing.value = false
+    console.log('태교일기 데이터 초기화');
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
-const emit = defineEmits(['close', 'add-event', 'view-event', 'view-llm-summary'])
+const emit = defineEmits(['close', 'add-event', 'view-event', 'view-llm-summary', 'update:babyDiary'])
 
 const calendarStore = useCalendarStore()
 
@@ -143,7 +152,7 @@ const formatEventTime = (event) => {
   }
 }
 
-// 태교일기 저장 함수
+// 태교일기 저장/수정 함수
 const saveBabyDiary = async () => {
   console.log('태교일기 저장 시작...')
   
@@ -178,23 +187,18 @@ const saveBabyDiary = async () => {
           const pregnancyData = pregnancyResponse.data[0];
           console.log('현재 임신 정보:', pregnancyData);
           
-          // 임신 ID 가져오기 - pregnancy_id 필드 사용
-          if (pregnancyData.pregnancy_id) {
-            pregnancyId = pregnancyData.pregnancy_id;
+          // 임신 ID 가져오기
+          if (pregnancyData.id) {
+            pregnancyId = pregnancyData.id;
             console.log('임신 ID 가져옴:', pregnancyId);
             
             // 스토어 업데이트
             calendarStore.setPregnancyId(pregnancyId);
-            calendarStore.setPregnancyInfo(true, pregnancyData.baby_name || '아기', pregnancyId);
+            calendarStore.setPregnancyInfo(true, pregnancyData.nickname || '아기', pregnancyId);
           }
         } else {
           console.log('임신 정보가 없습니다.');
           alert('임신 정보가 필요합니다. 임신 정보를 먼저 등록해주세요.');
-          
-          // 임신 정보 등록 페이지로 이동 여부 확인
-          if (confirm('임신 정보 등록 페이지로 이동하시겠습니까?')) {
-            window.location.href = '/pregnancy/register';
-          }
           return;
         }
       } catch (error) {
@@ -204,91 +208,118 @@ const saveBabyDiary = async () => {
       }
     }
     
-    // 임신 ID 확인
-    if (!pregnancyId) {
-      alert('임신 정보를 찾을 수 없습니다. 임신 정보를 먼저 등록해주세요.');
-      return;
-    }
-    
     // 페이로드 구성
     const payload = {
-      content: diaryContent.value,
-      diary_date: diaryDate,
-      pregnancy: pregnancyId
+      pregnancy: pregnancyId,
+      content: diaryContent.value.trim(),
+      diary_date: diaryDate
     };
     
     console.log('서버로 전송되는 페이로드:', payload);
 
-    // 서버 호출
-    const response = await createBabyDiary(payload);
-    console.log('서버 응답:', response.data);
+    let response;
+    if (isEditing.value && currentDiaryId.value) {
+      // 수정
+      response = await api.put(`${baseUrl}${currentDiaryId.value}/`, payload);
+      console.log('일기 수정 성공:', response.data);
+    } else {
+      // 새로 작성
+      response = await api.post(baseUrl, payload);
+      console.log('일기 저장 성공:', response.data);
+    }
     
     // 성공 메시지
-    alert('일기가 저장되었습니다.');
+    alert(isEditing.value ? '일기가 수정되었습니다.' : '일기가 저장되었습니다.');
     
-    // 캘린더 데이터 새로고침
+    // 캘린더 데이터 새로고침 (전체 일기 목록부터 업데이트)
     await calendarStore.fetchBabyDiaries();
     
-    // 모달 닫기
-    emit('close');
+    // 현재 날짜의 태교일기 다시 조회
+    const updatedDiary = await calendarStore.fetchBabyDiaryByDate(diaryDate);
+    console.log('업데이트된 태교일기:', updatedDiary);
+    
+    if (updatedDiary) {
+      // 응답 데이터에 id 필드 추가 (diary_id를 id로도 저장)
+      updatedDiary.id = updatedDiary.diary_id;
+      
+      // 로컬 데이터 업데이트 - 부모 컴포넌트로 데이터 전송 전에 로컬 상태도 업데이트
+      diaryContent.value = updatedDiary.content;
+      currentDiaryId.value = updatedDiary.diary_id;
+      
+      // 스토어에 바로 설정
+      calendarStore.setSelectedBabyDiary(updatedDiary);
+      
+      // 부모 컴포넌트에 업데이트된 데이터 전달
+      emit('update:babyDiary', updatedDiary);
+    }
+    
+    // 일기 작성/수정 모달만 닫고 날짜 모달은 유지
+    closeDiaryModal();
+    
+    // 페이지 새로고침 대신 activeTab을 'baby'로 설정하여 바로 일기 탭으로 이동
+    activeTab.value = 'baby';
+    
+    // 캘린더 강제 갱신 - window 전체를 갱신하지 않고 캘린더 API로 렌더링
+    if (calendarStore.calendarApi) {
+      console.log('캘린더 API로 렌더링 강제 갱신 시도');
+      calendarStore.calendarApi.render();
+    }
   } catch (error) {
     console.error('일기 저장 중 오류 발생:', error);
-    handleSaveError(error);
-  }
-};
-
-// 태교일기 저장 중 발생한 오류 처리 함수
-const handleSaveError = (error) => {
-  console.error('태교일기 저장 오류:', error);
-  
-  if (error.response) {
-    console.error('오류 상태 코드:', error.response.status);
     
-    if (error.response.data) {
-      // 전체 오류 객체 로깅
-      console.log('서버 응답 오류 상세 정보:', JSON.stringify(error.response.data));
+    // 오류 응답 상세 분석 및 사용자 친화적인 메시지 표시
+    if (error.response) {
+      console.log('오류 응답 데이터:', error.response.data);
+      console.log('오류 상태 코드:', error.response.status);
       
-      // 오류 유형별 처리
-      if (error.response.data.diary_date) {
-        alert(`날짜 오류: ${error.response.data.diary_date[0]}`);
-      } 
-      else if (error.response.data.pregnancy) {
-        const errorMsg = error.response.data.pregnancy[0];
-        console.error('임신 정보 오류:', errorMsg);
-        
-        if (errorMsg.includes('존재하지 않습니다')) {
-          alert('임신 정보가 존재하지 않습니다. 임신 정보를 등록해주세요.');
-          
-          // 임신 정보 등록 페이지로 이동 여부 확인
-          if (confirm('임신 정보 등록 페이지로 이동하시겠습니까?')) {
-            window.location.href = '/pregnancy/register';
-          }
+      if (error.response.status === 400) {
+        // 중복 일기 작성 시도
+        alert('일기를 이미 작성하셨습니다.');
+      } else if (error.response.data) {
+        // 서버에서 전달한 오류 메시지가 있으면 표시
+        if (error.response.data.diary_date) {
+          alert(`날짜 오류: ${error.response.data.diary_date[0]}`);
+        } else if (error.response.data.content) {
+          alert(`내용 오류: ${error.response.data.content[0]}`);
+        } else if (error.response.data.pregnancy) {
+          alert(`임신 정보 오류: ${error.response.data.pregnancy[0]}`);
+        } else if (error.response.data.non_field_errors) {
+          alert(`오류: ${error.response.data.non_field_errors[0]}`);
+        } else if (error.response.data.detail) {
+          alert(`오류: ${error.response.data.detail}`);
         } else {
-          alert(`임신 정보 오류: ${errorMsg}`);
+          alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
         }
-      }
-      else if (error.response.data.error) {
-        alert(`저장 실패: ${error.response.data.error}`);
-      } 
-      else {
-        alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
+      } else {
+        alert('일기 저장에 실패했습니다. 네트워크 연결을 확인해주세요.');
       }
     } else {
-      alert(`서버 오류 (${error.response.status}): 일기 저장에 실패했습니다.`);
+      alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
     }
-  } else {
-    alert('일기 저장에 실패했습니다. 네트워크 연결을 확인해주세요.');
   }
 };
 
 const openDiaryModal = () => {
   showDiaryModal.value = true
-  diaryContent.value = ''
+  console.log('일기 모달 열기, 현재 일기 데이터:', props.babyDiary);
+  if (props.babyDiary) {
+    diaryContent.value = props.babyDiary.content
+    currentDiaryId.value = props.babyDiary.diary_id || props.babyDiary.id
+    isEditing.value = true
+    console.log('수정 모드로 열기:', diaryContent.value, currentDiaryId.value);
+  } else {
+    diaryContent.value = ''
+    currentDiaryId.value = null
+    isEditing.value = false
+    console.log('새 일기 작성 모드로 열기');
+  }
 }
 
 const closeDiaryModal = () => {
   showDiaryModal.value = false
   diaryContent.value = ''
+  currentDiaryId.value = null
+  isEditing.value = false
 }
 
 onMounted(async () => {
@@ -429,10 +460,20 @@ onMounted(async () => {
 
         <!-- 아기와의 하루 탭 -->
         <div v-if="activeTab === 'baby'" class="space-y-4">
-          <div v-if="babyDiary" class="bg-white p-4 rounded-lg shadow">
-            <p class="text-dark-gray whitespace-pre-line h-128">
-              {{ babyDiary.content }}
-            </p>
+          <div v-if="props.babyDiary && props.babyDiary.content" class="bg-white p-4 rounded-lg shadow relative min-h-[300px]">
+            <div class="bg-ivory p-4 rounded-lg mb-4 h-[200px] overflow-y-auto">
+              <p class="text-dark-gray whitespace-pre-line">
+                {{ props.babyDiary.content }}
+              </p>
+            </div>
+            <div class="flex justify-end">
+              <button
+                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                @click="openDiaryModal"
+              >
+                수정하기
+              </button>
+            </div>
           </div>
           <div v-else class="text-center py-4">
             <p class="text-gray-500">
@@ -444,7 +485,7 @@ onMounted(async () => {
               class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
               @click="openDiaryModal"
             >
-              기록하기
+              {{ props.babyDiary ? '새로 기록하기' : '기록하기' }}
             </button>
           </div>
         </div>
@@ -452,15 +493,15 @@ onMounted(async () => {
     </div>
   </div>
 
-  <!-- 태교일기 작성 모달 -->
+  <!-- 태교일기 작성/수정 모달 -->
   <div v-if="showDiaryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg w-full max-w-md mx-auto">
       <div class="p-6">
-        <h3 class="text-lg font-bold mb-4">오늘 하루 기록하기 ♥︎</h3>
+        <h3 class="text-lg font-bold mb-4">{{ isEditing ? '일기 수정하기' : '오늘 하루 기록하기' }} ♥︎</h3>
         <textarea
           v-model="diaryContent"
           class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point resize-none h-64"
-          placeholder="아기와의 소중한 하루를 기록해보세요...♥︎"
+          :placeholder="isEditing ? '일기를 수정해보세요...♥︎' : '아기와의 소중한 하루를 기록해보세요...♥︎'"
         />
         <div class="flex justify-end space-x-2 mt-4">
           <button
@@ -473,7 +514,7 @@ onMounted(async () => {
             class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
             @click="saveBabyDiary"
           >
-            저장하기
+            {{ isEditing ? '수정하기' : '저장하기' }}
           </button>
         </div>
       </div>

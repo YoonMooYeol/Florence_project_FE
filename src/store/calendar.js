@@ -28,6 +28,15 @@ export const useCalendarStore = defineStore('calendar', () => {
   const pregnancyId = ref(null)
   const isLoading = ref(false)
   const error = ref(null)
+  
+  // FullCalendar API 객체
+  const calendarApi = ref(null)
+  
+  // FullCalendar API 설정 함수
+  function setCalendarApi(api) {
+    calendarApi.value = api
+    console.log('캘린더 API가 스토어에 저장되었습니다.', api ? '성공' : '실패')
+  }
 
   // 액션 (actions)
   async function fetchEvents() {
@@ -251,7 +260,6 @@ export const useCalendarStore = defineStore('calendar', () => {
           
           if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
             const pregnancyData = pregnancyResponse.data[0];
-            // API 응답의 pregnancy_id 필드 확인
             if (pregnancyData.pregnancy_id) {
               newEvent.pregnancy = pregnancyData.pregnancy_id;
               pregnancyId.value = pregnancyData.pregnancy_id;
@@ -293,6 +301,41 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (newEvent.recurring && newEvent.recurring !== 'none') {
         apiPayload.is_recurring = true;
         apiPayload.recurrence_pattern = newEvent.recurring;
+        
+        // 선택한 날짜에서 필요한 정보 추출
+        const startDate = new Date(newEvent.start);
+        
+        // 반복 주기에 따른 추가 설정
+        switch (newEvent.recurring) {
+          case 'daily':
+            // 매일 반복 - 종료일 없음
+            apiPayload.recurrence_type = 'daily';
+            break;
+          case 'weekly':
+            // 매주 반복 - 요일 정보 추가 (0: 일요일, 1: 월요일, ..., 6: 토요일)
+            apiPayload.recurrence_type = 'weekly';
+            apiPayload.weekday = startDate.getDay();
+            break;
+          case 'monthly':
+            // 매월 반복 - 일자 정보 추가
+            apiPayload.recurrence_type = 'monthly';
+            apiPayload.day = startDate.getDate();
+            break;
+          case 'yearly':
+            // 매년 반복 - 월과 일자 정보 추가
+            apiPayload.recurrence_type = 'yearly';
+            apiPayload.month = startDate.getMonth() + 1; // 0-11을 1-12로 변환
+            apiPayload.day = startDate.getDate();
+            break;
+        }
+        
+        // 반복 시작일 설정
+        apiPayload.recurrence_start = normalizeDate(newEvent.start);
+        
+        // 반복 종료일 설정 (선택적)
+        if (newEvent.recurrence_end) {
+          apiPayload.recurrence_end = normalizeDate(newEvent.recurrence_end);
+        }
       }
       
       // 이벤트 타입 정보가 있으면 추가
@@ -304,16 +347,16 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       console.log('API 요청 페이로드:', apiPayload);
       
-      // API 호출 (baseURL에 v1이 포함되어 있음)
+      // API 호출
       const response = await api.post('calendars/events/', apiPayload);
       console.log('일정 추가 성공:', response.data);
       
       // API 응답 형식에 맞게 데이터 매핑
       const mappedEvent = {
-        id: response.data.event_id, // API 응답의 event_id를 id로 매핑
+        id: response.data.event_id,
         title: response.data.title,
         description: response.data.description,
-        start: response.data.event_day, // event_day를 start로 매핑
+        start: response.data.event_day,
         backgroundColor: '#FFD600',
         borderColor: '#FFD600',
         textColor: '#353535',
@@ -427,7 +470,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // UI 업데이트를 위해 로컬 상태 업데이트
       const index = events.value.findIndex(e => e.id === eventId);
-      if (index !== -1) {
+    if (index !== -1) {
         events.value[index] = mappedEvent;
       }
       
@@ -456,7 +499,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 로컬 상태에서도 해당 이벤트 제거 (UI 업데이트를 위함)
       const index = events.value.findIndex(e => e.id === eventId);
-      if (index !== -1) {
+    if (index !== -1) {
         events.value.splice(index, 1);
       }
       
@@ -546,6 +589,41 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
+  // 특정 날짜의 태교일기 조회
+  async function fetchBabyDiaryByDate(date) {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      console.log(`${date} 날짜의 태교일기 조회 시작`);
+      const response = await api.get('calendars/baby-diaries/', {
+        params: { diary_date: date }
+      });
+      
+      console.log('태교일기 조회 성공:', response.data);
+      
+      if (response.data && response.data.length > 0) {
+        const diary = response.data[0];
+        // diary_id를 id로도 저장
+        diary.id = diary.diary_id;
+        console.log('태교일기 데이터:', diary);
+        selectedBabyDiary.value = diary;
+        return diary;
+      } else {
+        console.log(`${date} 날짜의 태교일기가 없음`);
+        selectedBabyDiary.value = null;
+        return null;
+      }
+    } catch (err) {
+      console.error('태교일기 조회 중 오류 발생:', err);
+      error.value = '태교일기를 불러오는데 실패했습니다.';
+      selectedBabyDiary.value = null;
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   // 아기 일기 조회 함수 (개선 버전)
   async function fetchBabyDiaries() {
     isLoading.value = true;
@@ -554,193 +632,77 @@ export const useCalendarStore = defineStore('calendar', () => {
     console.log('태교일기 목록 조회 시작');
     
     try {
-      // 현재 년월 기반으로 필터링
-      const year = currentYear.value;
-      const month = currentMonth.value;
+      const response = await api.get('calendars/baby-diaries/');
+      console.log('태교일기 목록 조회 성공, 개수:', response.data ? response.data.length : 0);
       
-      // 월의 시작일과 종료일 계산
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
+      if (response.data && response.data.length > 0) {
+        // diary_id를 id로도 변환하여 저장
+        babyDiaries.value = response.data.map(diary => {
+          console.log('태교일기 항목:', diary.diary_date, diary.diary_id);
+          return {
+            ...diary,
+            id: diary.diary_id
+          };
+        });
+      } else {
+        babyDiaries.value = [];
+      }
       
-      // YYYY-MM-DD 형식으로 변환
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
-      
-      console.log(`${startDateStr}부터 ${endDateStr}까지의 태교일기 조회`);
-      
-      // API 호출 시도 (baseURL에 v1이 포함되어 있음)
-      const response = await api.get(`calendars/baby-diaries/?start_date=${startDateStr}&end_date=${endDateStr}`);
-      
-      console.log('태교일기 조회 성공:', response.data);
-      babyDiaries.value = response.data;
-      return response.data;
+      return babyDiaries.value;
     } catch (err) {
-      console.error('태교일기 조회 중 오류 발생:', err);
-      
-      // 오류 처리
+      console.error('태교일기 목록 조회 중 오류 발생:', err);
       error.value = '태교일기를 불러오는데 실패했습니다.';
-      console.error('태교일기 조회 오류:', err);
-      
-      // 빈 배열 반환
-      babyDiaries.value = [];
       return [];
     } finally {
       isLoading.value = false;
     }
   }
 
-  // 특정 날짜의 아기 일기 조회
-  async function fetchBabyDiaryByDate(date) {
-    isLoading.value = true;
-    error.value = null;
-    
-    console.log(`${date} 태교일기 조회 시작`);
-    
+  // 태교일기 저장
+  const createBabyDiary = async (diaryData) => {
     try {
-      // API 호출 (baseURL에 v1이 포함되어 있음)
-      const response = await api.get(`calendars/baby-diaries/${date}/`);
-      console.log(`${date} 태교일기 조회 성공:`, response.data);
-      
-      // 선택된 태교일기 업데이트
-      selectedBabyDiary.value = response.data;
-      
-      return response.data;
-    } catch (err) {
-      console.error(`${date} 태교일기 조회 중 오류 발생:`, err);
-      error.value = '태교일기를 불러오는데 실패했습니다.';
-      
-      if (err.response && err.response.status === 404) {
-        console.log('해당 날짜의 태교일기가 없습니다');
-        return null;
-      } else {
-        console.error('태교일기 조회 오류:', err);
-        return null;
-      }
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  // 태교일기 추가
-  async function addBabyDiary(newDiary) {
-    isLoading.value = true;
-    error.value = null;
-    
-    console.log('태교일기 추가 시도:', newDiary);
-    
-    try {
-      // API 호출 (baseURL에 v1이 포함되어 있음)
-      const response = await api.post('calendars/baby-diaries/', newDiary);
-      console.log('태교일기 추가 성공:', response.data);
-      
-      // 로컬 상태 업데이트 (UI 갱신용)
-      babyDiaries.value.push(response.data);
-      
-      return response.data;
-    } catch (err) {
-      console.error('태교일기 추가 중 오류 발생:', err);
-      
-      if (err.response) {
-        if (err.response.status === 400) {
-          error.value = '입력한 정보가 올바르지 않습니다.';
-          if (err.response.data && err.response.data.detail) {
-            error.value = err.response.data.detail;
+      // 임신 정보가 없으면 먼저 조회
+      if (!pregnancyId.value) {
+        const pregnancyResponse = await api.get('/accounts/pregnancies/')
+        if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
+          const pregnancyData = pregnancyResponse.data[0]
+          if (pregnancyData.id) {
+            pregnancyId.value = pregnancyData.id
+            diaryData.pregnancy = pregnancyData.id
           }
-        } else if (err.response.status === 409) {
-          error.value = '해당 날짜에 이미 태교일기가 존재합니다.';
-        } else {
-          error.value = '태교일기 저장에 실패했습니다.';
         }
       } else {
-        error.value = '태교일기 저장에 실패했습니다.';
+        diaryData.pregnancy = pregnancyId.value
       }
-      
-      throw err;
-    } finally {
-      isLoading.value = false;
+
+      const response = await api.post('calendars/baby-diaries/', diaryData)
+      return response.data
+    } catch (error) {
+      console.error('태교일기 저장 중 오류 발생:', error)
+      throw error
     }
   }
-  
+
   // 태교일기 수정
-  async function updateBabyDiary(date, content) {
-    isLoading.value = true;
-    error.value = null;
-    
-    console.log(`${date} 태교일기 수정 시도:`, content);
-    
+  const updateBabyDiary = async (id, diaryData) => {
     try {
-      // API 호출 (baseURL에 v1이 포함되어 있음)
-      const response = await api.put(`calendars/baby-diaries/${date}/`, { content });
-      console.log('태교일기 수정 성공:', response.data);
-      
-      // 로컬 상태 업데이트 (UI 갱신용)
-      const index = babyDiaries.value.findIndex(d => d.date === date);
-      if (index !== -1) {
-        babyDiaries.value[index] = response.data;
-      }
-      
+      const response = await api.put(`calendars/baby-diaries/${id}/`, diaryData);
       return response.data;
-    } catch (err) {
-      console.error('태교일기 수정 중 오류 발생:', err);
-      
-      if (err.response) {
-        if (err.response.status === 400) {
-          error.value = '입력한 정보가 올바르지 않습니다.';
-          if (err.response.data && err.response.data.detail) {
-            error.value = err.response.data.detail;
-          }
-        } else if (err.response.status === 404) {
-          error.value = '수정할 태교일기를 찾을 수 없습니다.';
-        } else {
-          error.value = '태교일기 수정에 실패했습니다.';
-        }
-      } else {
-        error.value = '태교일기 수정에 실패했습니다.';
-      }
-      
-      throw err;
-    } finally {
-      isLoading.value = false;
+    } catch (error) {
+      console.error('태교일기 수정 중 오류 발생:', error);
+      throw error;
     }
-  }
-  
+  };
+
   // 태교일기 삭제
-  async function deleteBabyDiary(date) {
-    isLoading.value = true;
-    error.value = null;
-    
-    console.log(`${date} 태교일기 삭제 시도`);
-    
+  const deleteBabyDiary = async (id) => {
     try {
-      // API 호출 (baseURL에 v1이 포함되어 있음)
-      await api.delete(`calendars/baby-diaries/${date}/`);
-      console.log('태교일기 삭제 성공');
-      
-      // 로컬 상태 업데이트 (UI 갱신용)
-      const index = babyDiaries.value.findIndex(d => d.date === date);
-      if (index !== -1) {
-        babyDiaries.value.splice(index, 1);
-      }
-      
-      return true;
-    } catch (err) {
-      console.error('태교일기 삭제 중 오류 발생:', err);
-      
-      if (err.response) {
-        if (err.response.status === 404) {
-          error.value = '삭제할 태교일기를 찾을 수 없습니다.';
-        } else {
-          error.value = '태교일기 삭제에 실패했습니다.';
-        }
-      } else {
-        error.value = '태교일기 삭제에 실패했습니다.';
-      }
-      
-      throw err;
-    } finally {
-      isLoading.value = false;
+      await api.delete(`calendars/baby-diaries/${id}/`);
+    } catch (error) {
+      console.error('태교일기 삭제 중 오류 발생:', error);
+      throw error;
     }
-  }
+  };
 
   // LLM 요약 관련 함수들은 서버 API를 통해 처리
   // 로컬 데이터 저장 기능 제거
@@ -778,7 +740,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 로컬 상태 업데이트 (UI 갱신용)
       const index = llmSummaries.value.findIndex(s => s.date === date);
-      if (index !== -1) {
+    if (index !== -1) {
         llmSummaries.value.splice(index, 1);
       }
       
@@ -880,7 +842,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     pregnancyId.value = id
   }
 
-  async function initPregnancyInfo () {
+  async function initPregnancyInfo() {
     try {
       const response = await api.get('/accounts/pregnancies/')
       console.log('임신 정보 조회 응답:', response.data)
@@ -888,11 +850,11 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (response.data && response.data.length > 0) {
         const pregnancyData = response.data[0]
         isPregnant.value = true
-        if (pregnancyData.nickname) {
-          babyNickname.value = pregnancyData.nickname
+        if (pregnancyData.baby_name) {
+          babyNickname.value = pregnancyData.baby_name
         }
-        if (pregnancyData.id) {
-          pregnancyId.value = pregnancyData.id
+        if (pregnancyData.pregnancy_id) {
+          pregnancyId.value = pregnancyData.pregnancy_id
           console.log('임신 ID 설정됨:', pregnancyId.value)
         }
         return true
@@ -966,12 +928,11 @@ export const useCalendarStore = defineStore('calendar', () => {
   })
 
   const llmSummaryForSelectedDate = computed(() => {
-    if (!selectedDate.value) return null
-
-    // 날짜 형식 정규화 (YYYY-MM-DD)
-    const formattedDate = normalizeDate(selectedDate.value)
-    return llmSummaries.value.find(summary => summary.date === formattedDate)
-  })
+    if (!selectedDate.value) return null;
+    return llmSummaries.value.find(summary => 
+      summary.date === selectedDate.value
+    );
+  });
 
   const babyDiaryForSelectedDate = computed(() => {
     if (!selectedDate.value) return null
@@ -985,10 +946,29 @@ export const useCalendarStore = defineStore('calendar', () => {
     return llmSummaries.value.some(summary => summary.date === formattedDate)
   }
 
-  const hasBabyDiary = (dateStr) => {
-    const formattedDate = normalizeDate(dateStr)
-    return babyDiaries.value.some(diary => diary.date === formattedDate)
-  }
+  const getEventsByDate = computed(() => (date) => {
+    return events.value.filter(event => {
+      const eventDate = event.start.split('T')[0]
+      return eventDate === date
+    })
+  })
+
+  // 아기 일기가 있는 날짜인지 확인하는 getter
+  const hasBabyDiary = computed(() => (date) => {
+    if (!date) return false;
+    const normalizedDate = normalizeDate(date);
+    
+    // 무결성 확인: babyDiaries가 undefined인 경우 빈 배열로 처리
+    if (!babyDiaries.value) return false;
+    
+    // 해당 날짜에 일기가 있는지 확인 (diary_date로 정확히 비교)
+    const hasDiary = babyDiaries.value.some(diary => 
+      diary.diary_date === normalizedDate
+    );
+    
+    console.log(`${normalizedDate} 일기 여부:`, hasDiary ? '있음' : '없음');
+    return hasDiary;
+  });
 
   // 스토어 초기화 함수
   function $reset() {
@@ -1031,7 +1011,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     deleteEvent,
     fetchBabyDiaries,
     fetchBabyDiaryByDate,
-    addBabyDiary,
+    createBabyDiary,
     updateBabyDiary,
     deleteBabyDiary,
     setSelectedDate,
@@ -1052,6 +1032,11 @@ export const useCalendarStore = defineStore('calendar', () => {
     llmSummaryForSelectedDate,
     babyDiaryForSelectedDate,
     hasLLMSummary,
-    hasBabyDiary
+    hasBabyDiary,
+    getEventsByDate,
+
+    // FullCalendar API
+    calendarApi,
+    setCalendarApi
   }
 })
