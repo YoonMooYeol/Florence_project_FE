@@ -533,7 +533,7 @@ const deletePhoto = async (photoId) => {
 
     // 페이지 새로고침 - 썸네일 문제 해결을 위해
     window.location.reload()
-  } catch (error) {
+    } catch (error) {
     console.error('사진 삭제 실패:', error)
     let errorMessage = '사진 삭제에 실패했습니다.'
 
@@ -1053,8 +1053,8 @@ onMounted(async () => {
           </div>
         </div>
       </div>
-    </div>
-  </div>
+          </div>
+        </div>
 
   <!-- 태교일기 작성 모달 -->
   <div
@@ -1066,13 +1066,13 @@ onMounted(async () => {
         <h3 class="text-lg font-bold mb-4">
           오늘 하루 기록하기 ♥︎
         </h3>
-        <textarea
-          v-model="diaryContent"
+            <textarea
+              v-model="diaryContent"
           class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point resize-none h-64"
-          placeholder="아기와의 소중한 하루를 기록해보세요...♥︎"
-        />
-        <div class="flex justify-end space-x-2 mt-4">
-          <button
+              placeholder="아기와의 소중한 하루를 기록해보세요...♥︎"
+            />
+            <div class="flex justify-end space-x-2 mt-4">
+              <button
             class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             @click="closeDiaryModal"
           >
@@ -1080,11 +1080,11 @@ onMounted(async () => {
           </button>
           <button
             v-if="!babyDiary || !babyDiary.id"
-            class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-            @click="saveBabyDiary"
-          >
-            저장하기
-          </button>
+                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                @click="saveBabyDiary"
+              >
+                저장하기
+              </button>
           <button
             v-else
             class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
