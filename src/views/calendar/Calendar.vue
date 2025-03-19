@@ -464,10 +464,75 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
   }
 }
 
+// 년/월 선택 핸들러
+const handleDateSelect = ({ year, month }) => {
+  currentYear.value = year
+  currentMonth.value = month
+  calendarStore.updateCurrentYearMonth(year, month)
+  
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.gotoDate(`${year}-${String(month).padStart(2, '0')}-01`)
+    loadMonthEvents()
+  }
+}
+
 </script>
 
 <template>
-  <div class="min-h-screen bg-ivory">
+  <div class="min-h-screen bg-yellow-200">
+    <!-- 달 아이콘 박스 -->
+    <div class="bg-point py-1 flex justify-center items-center">
+      <div class="w-12 h-8">
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          viewBox="0 0 32 32" 
+          class="w-full h-full"
+        >
+          <!-- 달 모양 -->
+          <path 
+            d="M20 4C13 4 8 9 8 16C8 22 13 28 20 28C23 28 25.5 27 27.5 25.5C23 26.5 18 24 16 20C14 16 15 10 19 7C20.5 5.5 22.5 4.5 25 4.5C23.5 4 21.5 4 20 4Z" 
+            fill="#353535"
+          />
+          <!-- 별 1 -->
+          <circle 
+            cx="30" 
+            cy="6" 
+            r="1.2" 
+            fill="#353535"
+          />
+          <!-- 별 2 -->
+          <circle 
+            cx="25" 
+            cy="15" 
+            r="1.5" 
+            fill="#353535"
+          />
+          <!-- 별 3 -->
+          <circle 
+            cx="32" 
+            cy="22" 
+            r="2" 
+            fill="#353535"
+          />
+          <!-- 별 4 -->
+          <circle 
+            cx="3" 
+            cy="10" 
+            r="2" 
+            fill="#353535"
+          />
+          <!-- 별 5 -->
+          <circle 
+            cx="7" 
+            cy="25" 
+            r="1.2" 
+            fill="#353535"
+          />
+        </svg>
+      </div>
+    </div>
+
     <!-- 상단 헤더 -->
     <CalendarHeader
       :current-year="currentYear"
@@ -475,10 +540,11 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
       @prev-month="handlePrevMonth"
       @next-month="handleNextMonth"
       @today="handleGoToToday"
+      @select-date="handleDateSelect"
     />
 
     <!-- 요일 표시 (추가됨) -->
-    <div class="bg-yellow-200 py-2">
+    <div class="bg-yellow-200 py-1">
       <div class="max-w-4xl mx-auto flex justify-around">
         <span
           v-for="(day, index) in weekdays"
@@ -658,7 +724,7 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
   padding-bottom: 0;
   position: relative;
   z-index: 0;
-  height: calc(100vh - 140px);
+  height: calc(100vh - 100px);
   margin-bottom: 0;
 }
 
@@ -667,12 +733,16 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
   font-family: "Noto Sans KR", "Roboto", sans-serif;
   border: none;
   background-color: transparent;
-  max-height: calc(100vh - 100px);
+  height: calc(100vh - 120px);
   width: 100%;
 }
 
 .fc-day-today {
-  background-color: rgba(255, 214, 0, 0.1);
+  background-color: transparent !important;
+}
+
+.fc-day-today .fc-daygrid-day-frame {
+  background-color: rgba(255, 255, 255, 0.6);
 }
 
 /* 요일 헤더 영역 숨기기 */
@@ -698,55 +768,74 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
 
 /* 날짜 셀 스타일 */
 .fc-daygrid-day {
-  border: none;
+  border: 1px solid rgba(181, 179, 179, 0.5);
   background-color: transparent;
   cursor: pointer;
   position: relative;
-  min-height: 50px;
+  min-height: 180px;
 }
 
 .fc-daygrid-day-frame {
-  padding: 4px;
-  border-radius: 8px;
-  min-height: 50px;
+  padding-top: 48px;
+  min-height: 180px;
   background-color: rgba(255, 255, 255, 0.6);
-  transition: background-color 0.2s ease;
 }
 
-.fc-daygrid-day:hover .fc-daygrid-day-frame {
-  background-color: rgba(255, 255, 255, 0.9);
+/* 토요일과 일요일 칸 스타일 */
+.fc-day-sat .fc-daygrid-day-frame,
+.fc-day-sun .fc-daygrid-day-frame {
+  background-color: rgba(255, 255, 255, 0);
+}
+
+/* 테이블 보더 스타일 */
+.fc-theme-standard td {
+  border: 1px solid rgba(181, 179, 179, 0.5);
+}
+
+.fc-theme-standard th {
+  border: 1px solid rgba(181, 179, 179, 0.3);
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  border: 1px solid rgba(181, 179, 179, 0.3);
+}
+
+/* 마지막 주의 선도 유지 */
+.fc .fc-scrollgrid-section:last-child > tr > td {
+  border-bottom: 1px solid rgba(181, 179, 179, 0.3)
 }
 
 /* 날짜 상단 영역 스타일 */
 .fc-daygrid-day-top {
-  justify-content: flex-start !important;
-  flex-direction: row !important;
-  padding: 4px 0 12px 4px !important;
-  text-align: left !important;
-  min-height: 40px !important;
-}
-
-/* 날짜와 표시 아이콘 컨테이너 */
-.day-cell-content {
-  display: flex;
+  justify-content: flex-start;
   flex-direction: row;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 12px;
-  width: fit-content;
+  padding: 2px;
+  text-align: left;
+  min-height: 40px;
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 
 /* 날짜 숫자 스타일 */
 .fc-daygrid-day-number {
   font-size: 0.9rem;
-  padding: 0 !important;
   color: #353535;
   font-weight: 400;
-  text-align: left !important;
-  position: static !important;
-  width: auto;
-  margin: 0 !important;
-  line-height: 1.5 !important;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+}
+
+/* 오늘 날짜 숫자 스타일 */
+.fc-day-today .fc-daygrid-day-number {
+  background-color: var(--color-point);
+  border-radius: 50%;
+  font-weight: 600;
 }
 
 /* 요일별 날짜 색상 */
@@ -1109,7 +1198,7 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
 }
 
 .fab-button:disabled:hover {
-  transform: scale(1) !important;
+  transform: scale(1);
 }
 
 .fab-button:disabled {
