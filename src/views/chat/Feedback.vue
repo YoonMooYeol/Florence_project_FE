@@ -130,7 +130,7 @@ const loadConversationWithFeedback = async () => {
     }
 
     logger.info(CONTEXT, '대화 및 피드백 불러오기:', conversationId.value)
-    const response = await apiClient.get(`/v1/healthcare/conversations/${conversationId.value}/`)
+    const response = await apiClient.get(`/healthcare/conversations/${conversationId.value}/`)
 
     conversation.value = response.data
 

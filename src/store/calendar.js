@@ -518,7 +518,13 @@ export const useCalendarStore = defineStore('calendar', () => {
         id: diary.diary_id,
         date: diary.diary_date,
         content: diary.content,
-        photos: diary.photos || []
+        photos: Array.isArray(diary.photos) 
+          ? diary.photos.map(photo => ({
+              id: photo.photo_id, // photo_id를 id로 매핑
+              image: photo.image,
+              created_at: photo.created_at
+            }))
+          : []
       }))
       
       return babyDiaries.value
@@ -556,15 +562,23 @@ export const useCalendarStore = defineStore('calendar', () => {
         return null
       }
       
-      // // API 호출 (pregnancy_id와 날짜로 조회)
-      // const response = await api.get(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/`)
+      // API 호출 (pregnancy_id와 날짜로 조회)
+      const response = await api.get(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/`, {
+        params: { date: normalizedDate }
+      })
       
       // 응답 데이터 변환
       const diaryData = {
         id: response.data.diary_id,
         date: response.data.diary_date,
         content: response.data.content,
-        photos: response.data.photos || []
+        photos: Array.isArray(response.data.photos) 
+          ? response.data.photos.map(photo => ({
+              id: photo.photo_id, // photo_id를 id로 매핑
+              image: photo.image,
+              created_at: photo.created_at
+            }))
+          : []
       }
       
       // 선택된 태교일기 업데이트
@@ -653,11 +667,11 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
   
   // 태교일기 수정
-  async function updateBabyDiary(diaryId, content) {
+  async function updateBabyDiary(diaryId, content, ) {
     try {
       // API 호출 - diary_id로 접근
-      const response = await api.put(`calendars/baby-diaries/${diaryId}/diary/`, { 
-        content: content 
+      const response = await api.put(`calendars/baby-diaries/${diaryId}/diary/`, {
+        content: content
       })
       
       // 로컬 상태 업데이트
@@ -718,45 +732,64 @@ export const useCalendarStore = defineStore('calendar', () => {
   
   // 태교일기 사진 추가
   async function addBabyDiaryPhoto(diaryId, photoFile) {
+    isLoading.value = true
+    error.value = null
+    
     try {
-      // FormData 생성
+      // FormData 객체 생성 및 파일 추가
       const formData = new FormData()
       formData.append('image', photoFile)
       
-      // API 호출
-      const response = await api.post(`calendars/baby-diaries/${diaryId}/photo/`, formData, {
+      // 설정 객체 - 멀티파트 폼데이터 요청
+      const config = {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
-      })
+      }
       
-      // 응답에서 첫 번째 사진 정보 가져오기 (서버가 배열로 반환)
-      const newPhoto = Array.isArray(response.data) ? response.data[0] : response.data
+      // API 호출
+      const response = await api.post(`calendars/baby-diaries/${diaryId}/photo/`, formData, config)
       
-      // 로컬 상태 업데이트
-      const diaryIndex = babyDiaries.value.findIndex(d => d.id === diaryId)
-      if (diaryIndex !== -1) {
-        // photos 배열이 없으면 생성
-        if (!babyDiaries.value[diaryIndex].photos) {
-          babyDiaries.value[diaryIndex].photos = []
-        }
+      // 응답 처리
+      let newPhotos = []
+      
+      if (Array.isArray(response.data)) {
+        newPhotos = response.data.map(photo => ({
+          id: photo.photo_id,   // photo_id를 id로 매핑
+          image: photo.image,
+          image_thumbnail: photo.image_thumbnail || photo.thumbnail_url || photo.image, // 썸네일 URL 추가 (여러 가능한 경로 확인)
+          created_at: photo.created_at
+        }))
+      } else {
+        // 단일 객체인 경우
+        newPhotos = [{
+          id: response.data.photo_id,  // photo_id를 id로 매핑
+          image: response.data.image,
+          image_thumbnail: response.data.image_thumbnail || response.data.thumbnail_url || response.data.image, // 썸네일 URL 추가 (여러 가능한 경로 확인)
+          created_at: response.data.created_at
+        }]
+      }
+      
+      // 기존 일기의 사진 목록 가져오기
+      const babyDiary = babyDiaries.value.find(diary => diary.id === diaryId)
+      
+      if (babyDiary) {
+        // 기존 사진 배열과 새 사진 배열 병합
+        babyDiary.photos = [...(babyDiary.photos || []), ...newPhotos]
         
-        // 새 사진 추가
-        babyDiaries.value[diaryIndex].photos.push(newPhoto)
-      }
-      
-      // 현재 선택된 일기에도 사진 추가
-      if (selectedBabyDiary.value && selectedBabyDiary.value.id === diaryId) {
-        if (!selectedBabyDiary.value.photos) {
-          selectedBabyDiary.value.photos = []
+        // 선택된 일기가 있고, 같은 일기라면 선택된 일기의 사진 목록도 업데이트
+        if (selectedBabyDiary.value && selectedBabyDiary.value.id === diaryId) {
+          selectedBabyDiary.value.photos = [...(selectedBabyDiary.value.photos || []), ...newPhotos]
         }
-        selectedBabyDiary.value.photos.push(newPhoto)
       }
       
-      return newPhoto
-    } catch (error) {
-      console.error('태교일기 사진 추가 실패:', error)
-      throw error
+      return newPhotos
+    } catch (err) {
+      console.error('태교일기 사진 업로드 오류:', err)
+      error.value = '태교일기 사진을 업로드하는 중 오류가 발생했습니다.'
+      throw err
+    } finally {
+      isLoading.value = false
     }
   }
   
@@ -793,25 +826,97 @@ export const useCalendarStore = defineStore('calendar', () => {
   
   // 태교일기 사진 조회
   async function fetchBabyDiaryPhotos(diaryId) {
+    isLoading.value = true
+    error.value = null
+    
     try {
       // API 호출
       const response = await api.get(`calendars/baby-diaries/${diaryId}/photo/`)
       
+      // 응답 데이터를 전처리하여 일관된 형식으로 변환
+      const mappedPhotos = Array.isArray(response.data) 
+        ? response.data.map(photo => ({
+            id: photo.photo_id,   // photo_id를 id로 매핑
+            image: photo.image,
+            image_thumbnail: photo.image_thumbnail || photo.thumbnail_url || photo.image, // 썸네일 URL 추가 (여러 가능한 경로 확인)
+            created_at: photo.created_at
+          }))
+        : []
+      
       // 로컬 상태 업데이트
-      const diaryIndex = babyDiaries.value.findIndex(d => d.id === diaryId)
-      if (diaryIndex !== -1) {
-        babyDiaries.value[diaryIndex].photos = response.data
+      const diary = babyDiaries.value.find(d => d.id === diaryId)
+      if (diary) {
+        diary.photos = mappedPhotos
       }
       
-      // 현재 선택된 일기에도 사진 정보 업데이트
+      // 선택된 일기의 사진도 업데이트
       if (selectedBabyDiary.value && selectedBabyDiary.value.id === diaryId) {
-        selectedBabyDiary.value.photos = response.data
+        selectedBabyDiary.value.photos = mappedPhotos
       }
       
-      return response.data
-    } catch (error) {
-      console.error('태교일기 사진 조회 실패:', error)
+      return mappedPhotos
+    } catch (err) {
+      console.error('태교일기 사진 불러오기 오류:', err)
+      error.value = '태교일기 사진을 불러오는 중 오류가 발생했습니다.'
       return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+  // 태교일기 사진 업데이트 (교체)
+  async function updateBabyDiaryPhoto(diaryId, photoId, newPhotoFile) {
+    isLoading.value = true
+    error.value = null
+    
+    try {
+      // FormData 객체 생성 및 파일 추가
+      const formData = new FormData()
+      formData.append('image', newPhotoFile)
+      
+      // 설정 객체 - 멀티파트 폼데이터 요청
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+      
+      // API 호출 (PATCH 메서드 사용)
+      const response = await api.patch(`calendars/baby-diaries/${diaryId}/photo/${photoId}/`, formData, config)
+      
+      // 응답 처리
+      const updatedPhoto = {
+        id: response.data.photo_id || photoId,  // photo_id를 id로 매핑
+        image: response.data.image,
+        image_thumbnail: response.data.image_thumbnail || response.data.thumbnail_url || response.data.image, // 썸네일 URL 추가 (여러 가능한 경로 확인)
+        created_at: response.data.created_at
+      }
+      
+      // 로컬 상태 업데이트
+      const diary = babyDiaries.value.find(d => d.id === diaryId)
+      if (diary && diary.photos) {
+        const photoIndex = diary.photos.findIndex(p => p.id === photoId)
+        if (photoIndex !== -1) {
+          // 기존 사진 객체를 새 사진 객체로 교체
+          diary.photos[photoIndex] = updatedPhoto
+        }
+      }
+      
+      // 선택된 일기의 사진도 업데이트
+      if (selectedBabyDiary.value && selectedBabyDiary.value.id === diaryId && selectedBabyDiary.value.photos) {
+        const photoIndex = selectedBabyDiary.value.photos.findIndex(p => p.id === photoId)
+        if (photoIndex !== -1) {
+          selectedBabyDiary.value.photos[photoIndex] = updatedPhoto
+        }
+      }
+      
+      return updatedPhoto
+    } catch (err) {
+      console.error('태교일기 사진 업데이트 오류:', err)
+      error.value = '태교일기 사진을 업데이트하는 중 오류가 발생했습니다.'
+      throw err
+    } finally {
+      isLoading.value = false
     }
   }
 
@@ -1147,6 +1252,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     addBabyDiaryPhoto,
     deleteBabyDiaryPhoto,
     fetchBabyDiaryPhotos,
+    updateBabyDiaryPhoto,
     setSelectedDate,
     setSelectedEvent,
     setSelectedLLMSummary,

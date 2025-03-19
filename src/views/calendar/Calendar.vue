@@ -108,25 +108,20 @@ const handleEventClick = (info) => {
           : normalizeDate(eventObj.start)
       }
 
-      // 현재 일일 일정 모달이 열려 있는지, 그리고 같은 날짜의 모달인지 확인
-      const isDayEventsModalOpen = modalManager.showDayEventsModal.value
-      const isSameDateSelected = eventDate && calendarStore.selectedDate.value === eventDate
-
-      if (!isDayEventsModalOpen || !isSameDateSelected) {
-        // 일일 일정 모달이 닫혀있거나 다른 날짜의 모달이 열려있으면
-        // 먼저 해당 날짜의 일일 일정 모달만 열기
-        logger.debug(CONTEXT, '일정 클릭: 먼저 일일 일정 모달을 엽니다:', eventDate)
-        calendarStore.setSelectedDate(eventDate)
-        modalManager.openDayEventsModal(eventDate)
-
-        // 모달이 열린 직후 사용자의 명시적인 선택을 기다리도록 변경
-        // 일정 목록에서 사용자가 직접 선택할 수 있게 함
-        logger.debug(CONTEXT, '일정 선택은 사용자가 목록에서 직접 선택하도록 대기')
+      // 날짜가 있으면 일일 이벤트 모달 열기
+      if (eventDate) {
+        // 일일 이벤트 모달이 닫혀있거나 다른 날짜인 경우에만 열기
+        if (!modalManager.showDayEventsModal.value || calendarStore.selectedDate.value !== eventDate) {
+          logger.debug(CONTEXT, '일정 클릭: 일일 일정 모달을 엽니다:', eventDate)
+          calendarStore.setSelectedDate(eventDate)
+          modalManager.openDayEventsModal(eventDate)
+        } else {
+          // 이미 해당 날짜의 DayEventsModal이 열려있는 경우에는 아무 작업도 하지 않음
+          logger.debug(CONTEXT, '이미 해당 날짜의 일일 일정 모달이 열려있습니다:', eventDate)
+        }
       } else {
-        // 일일 일정 모달이 이미 열려있고 동일한 날짜인 경우에는
-        // 해당 일정 상세 모달 직접 열기
-        logger.debug(CONTEXT, '동일한 날짜의 일일 일정 모달이 이미 열려있어 일정 상세 모달 직접 열기')
-        modalManager.openEventDetailModal(eventObj)
+        logger.warn(CONTEXT, '이벤트에 날짜 정보가 없습니다:', eventObj)
+        alert('일정의 날짜 정보가 없습니다.')
       }
     } else {
       console.warn('이벤트를 찾을 수 없음:', eventId)

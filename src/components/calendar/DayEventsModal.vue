@@ -1,5 +1,5 @@
 <script setup>
-import { watch, ref, onMounted } from 'vue'
+import { watch, ref, onMounted, computed } from 'vue'
 import { formatDate, formatTime } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
 import api from '@/utils/axios'
@@ -286,13 +286,35 @@ const deleteDiary = async () => {
   }
 }
 
-// 사진 업로드 함수
+// 사진 업로드
 const fileInput = ref(null)
+const updateFileInput = ref(null)
 const selectedFile = ref(null)
+const selectedPhotoId = ref(null)
 const isUploading = ref(false)
+const isUpdating = ref(false)
+
+// 최대 사진 수 제한
+const MAX_PHOTOS = 3
+
+// 현재 사진 수 계산 (컴퓨티드 속성)
+const currentPhotoCount = computed(() => {
+  if (!props.babyDiary || !props.babyDiary.photos) return 0
+  return props.babyDiary.photos.length
+})
+
+// 사진을 더 업로드할 수 있는지 확인 (컴퓨티드 속성)
+const canUploadMorePhotos = computed(() => {
+  return currentPhotoCount.value < MAX_PHOTOS
+})
 
 // 파일 선택 버튼 클릭 이벤트
 const openFileSelector = () => {
+  // 최대 사진 수 확인
+  if (!canUploadMorePhotos.value) {
+    alert(`최대 ${MAX_PHOTOS}개의 사진만 등록할 수 있습니다.`)
+    return
+  }
   fileInput.value.click()
 }
 
@@ -313,6 +335,12 @@ const uploadPhoto = async () => {
   
   if (!props.babyDiary || !props.babyDiary.id) {
     alert('먼저 일기를 저장해주세요.')
+    return
+  }
+  
+  // 최대 사진 수 확인
+  if (!canUploadMorePhotos.value) {
+    alert(`최대 ${MAX_PHOTOS}개의 사진만 등록할 수 있습니다.`)
     return
   }
   
@@ -338,8 +366,73 @@ const uploadPhoto = async () => {
   }
 }
 
+// 사진 수정 모드 열기
+const openUpdatePhoto = (photoId) => {
+  selectedPhotoId.value = photoId
+  updateFileInput.value.click()
+}
+
+// 사진 업데이트 이벤트 핸들러
+const handleUpdateFileSelect = (event) => {
+  const files = event.target.files
+  if (files.length > 0 && selectedPhotoId.value) {
+    updatePhoto(selectedPhotoId.value, files[0])
+  }
+}
+
+// 사진 업데이트
+const updatePhoto = async (photoId, file) => {
+  if (!file) {
+    return
+  }
+  
+  if (!props.babyDiary || !props.babyDiary.id) {
+    alert('일기 정보를 찾을 수 없습니다.')
+    return
+  }
+  
+  isUpdating.value = true
+  selectedPhotoId.value = photoId
+  
+  try {
+    // 스토어 함수 사용하여 사진 업데이트
+    await calendarStore.updateBabyDiaryPhoto(props.babyDiary.id, photoId, file)
+    
+    // 사진 목록 새로고침
+    await calendarStore.fetchBabyDiaryPhotos(props.babyDiary.id)
+    
+    // 입력 필드 초기화
+    if (updateFileInput.value) {
+      updateFileInput.value.value = ''
+    }
+  } catch (error) {
+    console.error('사진 업데이트 실패:', error)
+    let errorMessage = '사진 업데이트에 실패했습니다.'
+    
+    // 상세 에러 메시지 확인
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMessage = '사진을 찾을 수 없습니다. 페이지를 새로고침 해주세요.'
+      } else if (error.response.data && error.response.data.error) {
+        errorMessage = `오류: ${error.response.data.error}`
+      }
+    }
+    
+    alert(errorMessage)
+  } finally {
+    isUpdating.value = false
+    selectedPhotoId.value = null
+  }
+}
+
 // 사진 삭제
 const deletePhoto = async (photoId) => {
+  if (!photoId) {
+    console.error('사진 ID가 유효하지 않습니다:', photoId)
+    alert('유효하지 않은 사진입니다.')
+    return
+  }
+  
   if (!confirm('이 사진을 삭제하시겠습니까?')) {
     return
   }
@@ -347,10 +440,22 @@ const deletePhoto = async (photoId) => {
   try {
     // 스토어 함수 사용하여 사진 삭제
     await calendarStore.deleteBabyDiaryPhoto(props.babyDiary.id, photoId)
-    alert('사진이 삭제되었습니다.')
+    // 성공 메시지는 사용자 경험을 고려하여 꼭 필요한 경우만 표시
+    // alert('사진이 삭제되었습니다.')
   } catch (error) {
     console.error('사진 삭제 실패:', error)
-    alert('사진 삭제에 실패했습니다.')
+    let errorMessage = '사진 삭제에 실패했습니다.'
+    
+    // 상세 에러 메시지 확인
+    if (error.response) {
+      if (error.response.status === 404) {
+        errorMessage = '사진을 찾을 수 없습니다. 페이지를 새로고침 해주세요.'
+      } else if (error.response.data && error.response.data.error) {
+        errorMessage = `오류: ${error.response.data.error}`
+      }
+    }
+    
+    alert(errorMessage)
   }
 }
 
@@ -374,6 +479,56 @@ const closeDiaryModal = () => {
 
 const viewLLMSummary = (summary) => {
   emit('view-llm-summary', summary)
+}
+
+// 썸네일 URL로 변환하는 함수 개선
+const getThumbnailUrl = (imageUrl) => {
+  // 이미지 URL이 없으면 기본 이미지 경로 반환
+  if (!imageUrl) return '/images/photo_placeholder.png';
+  
+  // 이미지 URL 캐시 방지 및 무작위 쿼리 파라미터 추가
+  const randomParam = new Date().getTime();
+  
+  // 이미지 URL이 상대 경로인 경우 절대 경로로 변환
+  let fullUrl = imageUrl;
+  if (!imageUrl.startsWith('http')) {
+    fullUrl = window.location.origin + imageUrl;
+  }
+  
+  // URL에 이미 쿼리 파라미터가 있는지 확인
+  const separator = fullUrl.includes('?') ? '&' : '?';
+  
+  // 캐시 방지를 위한 타임스탬프 추가
+  return `${fullUrl}${separator}_cache=${randomParam}`;
+}
+
+// 이미지 로드 오류 처리 함수 개선
+const handleImageError = (event, photo) => {
+  console.warn('이미지 로드 오류:', photo.id);
+  
+  // event.target이 null인지 확인
+  if (!event || !event.target) {
+    console.error('이미지 엘리먼트를 찾을 수 없습니다');
+    return;
+  }
+  
+  try {
+    // 이미지가 로드되지 않은 경우 기본 이미지로 대체
+    const imgElement = event.target;
+    
+    // 이미 기본 이미지로 설정된 경우 추가 시도 방지
+    if (imgElement.src.includes('photo_placeholder.png')) {
+      console.log('이미 기본 이미지로 설정되어 있습니다');
+      return;
+    }
+    
+    // 기본 이미지 설정
+    imgElement.src = '/images/photo_placeholder.png';
+    
+    // 이미지 재시도 로직 제거 (오류 발생 가능성 높음)
+  } catch (e) {
+    console.error('이미지 오류 처리 실패:', e);
+  }
 }
 
 onMounted(async () => {
@@ -498,27 +653,54 @@ onMounted(async () => {
             
             <!-- 사진 갤러리 -->
             <div v-if="babyDiary.photos && babyDiary.photos.length > 0" class="space-y-3">
-              <h4 class="text-sm font-medium text-gray-600">태교일기 사진</h4>
+              <h4 class="text-sm font-medium text-gray-600">
+                태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
+              </h4>
               <div class="grid grid-cols-2 gap-2">
                 <div 
                   v-for="photo in babyDiary.photos" 
                   :key="photo.id" 
                   class="relative rounded-lg overflow-hidden shadow-sm group"
+                  style="aspect-ratio: 1/1; height: auto;"
                 >
                   <img 
-                    :src="photo.image" 
+                    :src="photo.image_thumbnail || getThumbnailUrl(photo.image)" 
                     :alt="'태교일기 사진'" 
-                    class="w-full h-32 object-cover"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                    @error="handleImageError($event, photo)"
+                    onerror="this.onerror=null; if(this && this.src != '/images/photo_placeholder.png') this.src='/images/photo_placeholder.png';"
                   />
-                  <button 
-                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    @click.stop="deletePhoto(photo.id)"
-                    title="사진 삭제"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  
+                  <!-- 마우스 오버 효과 -->
+                  <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-200"></div>
+                  
+                  <!-- 버튼 -->
+                  <div class="absolute top-1 right-1 flex space-x-1 z-10">
+                    <button 
+                      class="bg-blue-500 text-white rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      @click.prevent.stop="openUpdatePhoto(photo.id)"
+                      title="사진 수정"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    
+                    <button 
+                      class="bg-red-500 text-white rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      @click.prevent.stop="deletePhoto(photo.id)"
+                      title="사진 삭제"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div v-if="isUpdating && selectedPhotoId === photo.id" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
+                    <div class="text-white text-sm">업데이트 중...</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -532,17 +714,27 @@ onMounted(async () => {
                 class="hidden"
                 @change="handleFileSelect"
               />
+              <input
+                type="file"
+                ref="updateFileInput"
+                accept="image/*"
+                class="hidden"
+                @change="handleUpdateFileSelect"
+              />
               <button
                 class="flex-1 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm flex items-center justify-center space-x-1"
                 @click="openFileSelector"
-                :disabled="isUploading"
+                :disabled="isUploading || isUpdating || !canUploadMorePhotos"
+                :class="{'opacity-50 cursor-not-allowed': !canUploadMorePhotos}"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11a2 2 0 104 0 2 2 0 00-4 0z" />
                 </svg>
-                <span>사진 추가</span>
-                <span v-if="isUploading" class="ml-1">(업로드 중...)</span>
+                <span>
+                  {{ canUploadMorePhotos ? '사진 추가' : `최대 ${MAX_PHOTOS}개의 사진이 등록되었습니다` }}
+                  <span v-if="isUploading" class="ml-1">(업로드 중...)</span>
+                </span>
               </button>
               <button
                 class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm flex items-center justify-center space-x-1"
