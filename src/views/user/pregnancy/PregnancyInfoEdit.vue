@@ -2,7 +2,6 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
-import { calculateWeekFromDueDate, calculateDueDateFromWeek } from '@/utils/dateUtils'
 import SvgIcon from '@jamescoyle/vue-icon'
 import { mdiMotherNurse } from '@mdi/js'
 
@@ -39,19 +38,6 @@ const isEditMode = ref(false) // 수정 모드 상태
 // 현재 주차 옵션
 const weekOptions = Array.from({ length: 40 }, (_, i) => i + 1)
 
-// 출산예정일이 변경되면 임신 주차 자동 계산
-watch(() => pregnancyInfo.value.dueDate, (newDueDate) => {
-  if (newDueDate) {
-    pregnancyInfo.value.currentWeek = calculateWeekFromDueDate(newDueDate)
-  }
-})
-
-// 임신 주차가 변경되면 출산예정일 자동 계산
-watch(() => pregnancyInfo.value.currentWeek, (newWeek) => {
-  // oldWeek 체크 제거 - 초기값 변경 시에도 계산 적용
-  pregnancyInfo.value.dueDate = calculateDueDateFromWeek(newWeek)
-})
-
 // 임신 정보 불러오기
 const fetchPregnancyInfo = async () => {
   isLoading.value = true
@@ -74,15 +60,6 @@ const fetchPregnancyInfo = async () => {
         isFromRegistration: data.is_from_registration || false // 회원가입 시 등록 여부
       }
 
-      // 임신 주차만 있고 출산예정일이 없는 경우
-      if (data.current_week && !data.due_date) {
-        pregnancyInfo.value.dueDate = calculateDueDateFromWeek(data.current_week)
-      }
-      // 출산예정일만 있고 임신 주차가 없는 경우
-      else if (data.due_date && !data.current_week) {
-        pregnancyInfo.value.currentWeek = calculateWeekFromDueDate(data.due_date)
-      }
-
       // 수정 모드 초기값 설정: 항상 false(보기 모드)로 시작
       isEditMode.value = false
     } else {
@@ -91,7 +68,6 @@ const fetchPregnancyInfo = async () => {
       isEditMode.value = true // 정보가 없으면 바로 입력 가능하도록 수정 모드 활성화
     }
   } catch (error) {
-    console.error('임신 정보 불러오기 오류:', error)
     errorMessage.value = error.response?.data?.detail || '임신 정보를 불러오는 중 오류가 발생했습니다.'
   } finally {
     isLoading.value = false
@@ -143,10 +119,17 @@ const savePregnancyInfo = async () => {
       alert('출산 예정일 또는 현재 임신 주차 중 하나를 입력해주세요.')
       return
     }
-
-    // 출산예정일이 없으면 현재 임신 주차로부터 계산
-    if (!pregnancyInfo.value.dueDate && pregnancyInfo.value.currentWeek) {
-      pregnancyInfo.value.dueDate = calculateDueDateFromWeek(pregnancyInfo.value.currentWeek)
+    
+    // 마지막 생리일로 계산한 경우는 이미 계산이 완료되었으니 넘어감
+    // 출산예정일만 입력된 경우에는 임신주차 계산, 임신주차만 입력된 경우에는 출산예정일 계산
+    if (pregnancyInfo.value.dueDate && !pregnancyInfo.value.currentWeek) {
+      // 입력값이 데이터베이스에 그대로 저장되도록 calculateWeekFromDueDate 사용하지 않음
+      // 관리자에게 알림
+      alert('출산 예정일만 입력되었습니다. 임신 주차도 함께 입력하시는 것이 좋습니다.')
+    } else if (!pregnancyInfo.value.dueDate && pregnancyInfo.value.currentWeek) {
+      // 입력값이 데이터베이스에 그대로 저장되도록 calculateDueDateFromWeek 사용하지 않음
+      // 관리자에게 알림
+      alert('임신 주차만 입력되었습니다. 출산 예정일도 함께 입력하시는 것이 좋습니다.')
     }
 
     // 추가: 출산 예정일이 과거 날짜이면 경고 및 저장 중단
@@ -158,11 +141,6 @@ const savePregnancyInfo = async () => {
         return
       }
     }
-
-    // 현재 임신 주차가 없으면 출산예정일로부터 계산
-    if (!pregnancyInfo.value.currentWeek && pregnancyInfo.value.dueDate) {
-      pregnancyInfo.value.currentWeek = calculateWeekFromDueDate(pregnancyInfo.value.dueDate)
-    }
   }
 
   isSubmitting.value = true
@@ -170,13 +148,13 @@ const savePregnancyInfo = async () => {
 
   try {
     let response
-    // 2. API 요청 데이터 준비
+    // API 요청 데이터 준비
     const requestData = {
       baby_name: pregnancyInfo.value.babyName,
       due_date: pregnancyInfo.value.dueDate,
       current_week: pregnancyInfo.value.currentWeek,
       high_risk: pregnancyInfo.value.highRisk,
-      is_from_registration: pregnancyInfo.value.isFromRegistration // 회원가입 시 등록 여부 유지
+      is_from_registration: pregnancyInfo.value.isFromRegistration
     }
 
     if (pregnancyInfo.value.isPregnant) {
@@ -201,7 +179,6 @@ const savePregnancyInfo = async () => {
     // 임신 정보 새로고침
     await fetchPregnancyInfo()
   } catch (error) {
-    console.error('임신 정보 저장 오류:', error)
     errorMessage.value = error.response?.data?.detail || '임신 정보 저장 중 오류가 발생했습니다.'
   } finally {
     isSubmitting.value = false
@@ -215,8 +192,12 @@ const goBack = () => {
 
 // 출산까지 남은 일수 계산
 const getDaysUntilDueDate = () => {
+  if (!pregnancyInfo.value.dueDate) return 0
+  
   const dueDate = new Date(pregnancyInfo.value.dueDate)
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  dueDate.setHours(0, 0, 0, 0)
   const timeDiff = dueDate.getTime() - today.getTime()
   const daysUntilDue = Math.ceil(timeDiff / (1000 * 3600 * 24))
   return daysUntilDue
@@ -227,9 +208,11 @@ const calculateFromLastPeriod = () => {
   if (lastPeriodDate.value) {
     const lastPeriod = new Date(lastPeriodDate.value)
     const today = new Date()
+    
     // 임신 주차 계산 (마지막 생리일로부터 경과된 주 수)
     const weeksDiff = Math.floor((today - lastPeriod) / (7 * 24 * 60 * 60 * 1000))
     const calculatedWeek = Math.min(weeksDiff + 1, 40) // 최대 40주로 제한
+    
     // 출산예정일 계산 (마지막 생리일로부터 280일 후)
     const dueDate = new Date(lastPeriod)
     dueDate.setDate(dueDate.getDate() + 280)
