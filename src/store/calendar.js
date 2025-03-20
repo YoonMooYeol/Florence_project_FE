@@ -1196,7 +1196,6 @@ export const useCalendarStore = defineStore('calendar', () => {
             return true
           }
         } catch (detailErr) {
-          console.error('저장된 임신 ID로 정보 조회 실패:', detailErr)
           // 저장된 ID가 유효하지 않은 경우, 스토리지에서 제거
           localStorage.removeItem('pregnancyId')
           sessionStorage.removeItem('pregnancyId')

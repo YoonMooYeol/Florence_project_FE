@@ -584,6 +584,7 @@ const cancelVerification = () => {
               v-model="formData.email"
               type="email"
               :disabled="isEmailVerified"
+              @input="clearFieldError('email')"
               :class="{'bg-gray-200': isEmailVerified}"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               placeholder="이메일을 입력하세요"
@@ -591,10 +592,10 @@ const cancelVerification = () => {
             <button
               type="button"
               @click="handleEmailVerification"
-              class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-yellow-300 text-dark-gray rounded font-bold text-sm"
+              :class="['absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-dark-gray rounded font-bold text-sm', isSendingCode ? 'bg-gray-300' : 'bg-yellow-300']"
               :disabled="isSendingCode"
             >
-              {{ isEmailVerified ? '재입력' : '인증요청' }}
+              {{ isSendingCode ? '인증중' : (isEmailVerified ? '재입력' : '인증요청') }}
             </button>
           </div>
           <p v-if="errors.email" class="mt-1 text-sm text-red-600">

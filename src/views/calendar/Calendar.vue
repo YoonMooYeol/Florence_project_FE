@@ -1,7 +1,7 @@
 <!-- eslint-disable no-unused-vars -->
 <!-- eslint-disable import/no-duplicates -->
 <script setup>
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import { useCalendarStore } from '@/store/calendar'
 import { useCalendarConfig } from '@/composables/useCalendarConfig'
@@ -476,6 +476,23 @@ const handleDateSelect = ({ year, month }) => {
     loadMonthEvents()
   }
 }
+
+// 추가: LLM 요약 및 태교일기 데이터 변경 시 캘린더를 재렌더링하여 날짜 옆 표시를 실시간 업데이트
+watch(() => calendarStore.llmSummaries, () => {
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.render()
+    console.log('LLM 요약 변경 감지 - 캘린더 재렌더링')
+  }
+}, { deep: true })
+
+watch(() => calendarStore.babyDiaries, () => {
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.render()
+    console.log('태교일기 변경 감지 - 캘린더 재렌더링')
+  }
+}, { deep: true })
 
 </script>
 
