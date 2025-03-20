@@ -779,12 +779,12 @@ onMounted(async () => {
               <h4 class="text-sm font-medium text-gray-600">
                 태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
               </h4>
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 gap-4">
                 <div
                   v-for="photo in babyDiary.photos"
                   :key="photo.id"
                   class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
-                  style="aspect-ratio: 1/1; height: auto;"
+                  style="aspect-ratio: 16/9; height: 180px;"
                 >
                   <img
                     :src="getThumbnailUrl(photo.image)"
@@ -857,7 +857,7 @@ onMounted(async () => {
                 <div
                   v-if="canUploadMorePhotos"
                   class="relative border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-point hover:bg-gray-50 transition-all"
-                  style="aspect-ratio: 1/1; height: auto;"
+                  style="aspect-ratio: 16/9; height: 180px;"
                   @click="fileInput.click()"
                 >
                   <div class="text-center text-gray-500">
