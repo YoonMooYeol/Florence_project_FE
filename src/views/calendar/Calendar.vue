@@ -1,7 +1,7 @@
 <!-- eslint-disable no-unused-vars -->
 <!-- eslint-disable import/no-duplicates -->
 <script setup>
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import { useCalendarStore } from '@/store/calendar'
 import { useCalendarConfig } from '@/composables/useCalendarConfig'
@@ -267,56 +267,57 @@ const loadMonthEvents = async () => {
 
 // 컴포넌트 마운트 시 현재 날짜 정보 초기화
 onMounted(async () => {
-  logger.info(CONTEXT, '캘린더 컴포넌트 마운트됨')
-
+  logger.info(CONTEXT, '캘린더 컴포넌트 마운트')
+  
   try {
-    // 현재 날짜로 초기화
-    const today = new Date()
-    currentYear.value = today.getFullYear()
-    currentMonth.value = today.getMonth() + 1
-
-    // 캘린더 API를 통해 날짜 설정
-    if (calendarRef.value) {
-      const calendarApi = calendarRef.value.getApi()
-      calendarApi.gotoDate(today)
-      calendarApi.render()
-    }
-
-    logger.debug(CONTEXT, '현재 날짜 정보 업데이트됨')
-
     // 임신 정보 초기화
-    logger.info(CONTEXT, '임신 정보 초기화 시작')
-    const result = await calendarStore.initPregnancyInfo()
-    logger.info(CONTEXT, '임신 정보 초기화 결과:', result)
+    await calendarStore.initPregnancyInfo()
 
-    // 임신 정보가 없으면 사용자 정보 입력 화면으로 리다이렉트
-    if (!result || !calendarStore.pregnancyId) {
-      logger.warn(CONTEXT, '임신 정보가 없습니다. 사용자 정보 입력 화면으로 리다이렉트합니다.')
-      
-      // 사용자에게 알림 메시지 표시
-      alert('임신 정보가 필요합니다. 임신 정보 등록 페이지로 이동합니다.')
-      
-      // 사용자 정보 입력 화면으로 리다이렉트
-      window.location.href = '/pregnancy/register'
-      return
+    // 이전에 저장된 임신 ID가 있으면 설정
+    const storedPregnancyId = localStorage.getItem('pregnancyId')
+    if (storedPregnancyId) {
+      calendarStore.setPregnancyId(storedPregnancyId)
     }
-    
-    // 임신 ID를 localStorage와 sessionStorage에 저장
-    const pregnancyId = calendarStore.pregnancyId
-    savePregnancyId(pregnancyId)
-    
-    logger.info(CONTEXT, `임신 ID(${pregnancyId})를 저장했습니다.`)
 
-    // 이벤트 로드 (태교일기 포함)
-    await loadMonthEvents()
-    logger.info(CONTEXT, '월별 이벤트 로드됨')
+    // 임신 정보 초기화 성공 로깅
+    if (calendarStore.pregnancyId.value) {
+      logger.info(CONTEXT, '임신 정보 초기화 성공:', calendarStore.pregnancyId.value)
+      savePregnancyId(calendarStore.pregnancyId.value)
+    } else {
+      logger.warn(CONTEXT, '임신 정보가 없습니다')
+    }
 
-    // LLM 요약 삭제 이벤트 리스너 추가
-    document.addEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
-    logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 등록됨')
+    // 메인 캘린더 데이터 로드
+    await loadMonthEvents() 
+
+    // 저장된 모달 상태가 있는지 확인하고 있으면 모달 다시 열기
+    const savedModalState = sessionStorage.getItem('modalState')
+    if (savedModalState) {
+      const modalState = JSON.parse(savedModalState)
+      if (modalState.open && modalState.date) {
+        logger.info(CONTEXT, '저장된 모달 상태 복원:', modalState)
+        
+        // 날짜 설정
+        calendarStore.setSelectedDate(modalState.date)
+        
+        // 모달 열기
+        modalManager.openDayEventsModal(modalState.date)
+        
+        // 활성 탭 설정 (태교일기 탭인 경우)
+        if (modalState.activeTab === 'baby') {
+          // 다음 틱에서 activeTab 설정 (DOM이 업데이트된 후)
+          setTimeout(() => {
+            document.querySelector('[data-tab="baby"]')?.click()
+          }, 100)
+        }
+        
+        // 사용 후 삭제
+        sessionStorage.removeItem('modalState')
+      }
+    }
   } catch (error) {
-    console.error('캘린더 초기화 중 오류:', error)
-    handleError(error, `${CONTEXT}.onMounted`)
+    logger.error(CONTEXT, '캘린더 마운트 중 오류 발생:', error)
+    handleError(error, CONTEXT)
   }
 })
 
@@ -358,9 +359,16 @@ const handleLLMSummaryDeleted = (event) => {
 
 // 컴포넌트 언마운트 시 이벤트 리스너 제거
 onUnmounted(() => {
-  document.removeEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
-  logger.debug(CONTEXT, 'LLM 요약 삭제 이벤트 리스너 제거됨')
-  logger.info(CONTEXT, '캘린더 컴포넌트 언마운트됨')
+  try {
+    document.removeEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
+    
+    // 모달 상태 정리
+    sessionStorage.removeItem('modalState')
+    
+    logger.info(CONTEXT, '캘린더 컴포넌트 언마운트: 이벤트 리스너 및 상태 정리 완료')
+  } catch (error) {
+    logger.error(CONTEXT, '캘린더 언마운트 중 오류 발생:', error)
+  }
 })
 
 // FAB 메뉴 클릭 핸들러
@@ -477,6 +485,23 @@ const handleDateSelect = ({ year, month }) => {
   }
 }
 
+// 추가: LLM 요약 및 태교일기 데이터 변경 시 캘린더를 재렌더링하여 날짜 옆 표시를 실시간 업데이트
+watch(() => calendarStore.llmSummaries, () => {
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.render()
+    console.log('LLM 요약 변경 감지 - 캘린더 재렌더링')
+  }
+}, { deep: true })
+
+watch(() => calendarStore.babyDiaries, () => {
+  if (calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.render()
+    console.log('태교일기 변경 감지 - 캘린더 재렌더링')
+  }
+}, { deep: true })
+
 </script>
 
 <template>
@@ -578,7 +603,7 @@ const handleDateSelect = ({ year, month }) => {
     />
 
     <!-- FAB 메뉴 -->
-    <div class="fab-container">
+    <!-- <div class="fab-container">
       <button
         class="fab-button"
         :disabled="popupActive"
@@ -647,7 +672,7 @@ const handleDateSelect = ({ year, month }) => {
           {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
         </button>
       </div>
-    </div>
+    </div> -->
 
     <!-- 일정 등록 모달 -->
     <EventModal

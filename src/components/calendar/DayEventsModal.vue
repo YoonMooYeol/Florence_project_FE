@@ -419,11 +419,15 @@ const uploadPhotoToDiary = async (diaryId) => {
     }
     selectedFile.value = null
 
-    // 사진 목록 새로고침
-    await calendarStore.fetchBabyDiaryPhotos(diaryId)
-
-    // // 페이지 새로고침 - 썸네일 문제 해결을 위해
-    // window.location.reload()
+    // 현재 모달 상태 및 날짜 저장
+    sessionStorage.setItem('modalState', JSON.stringify({
+      open: true,
+      date: props.date,
+      activeTab: activeTab.value
+    }))
+    
+    // 페이지 새로고침
+    window.location.reload()
   } catch (error) {
     console.error('사진 업로드 실패:', error.response || error)
 
@@ -485,15 +489,19 @@ const updatePhoto = async (photoId, file) => {
     // 스토어 함수 사용하여 사진 업데이트
     await calendarStore.updateBabyDiaryPhoto(props.babyDiary.id, photoId, file)
 
-    // 사진 목록 새로고침
-    await calendarStore.fetchBabyDiaryPhotos(props.babyDiary.id)
-
     // 입력 필드 초기화
     if (updateFileInput.value) {
       updateFileInput.value.value = ''
     }
-
-    // 페이지 새로고침 - 썸네일 문제 해결을 위해
+    
+    // 현재 모달 상태 및 날짜 저장
+    sessionStorage.setItem('modalState', JSON.stringify({
+      open: true,
+      date: props.date,
+      activeTab: activeTab.value
+    }))
+    
+    // 페이지 새로고침
     window.location.reload()
   } catch (error) {
     console.error('사진 업데이트 실패:', error)
@@ -528,12 +536,17 @@ const deletePhoto = async (photoId) => {
   try {
     // 스토어 함수 사용하여 사진 삭제
     await calendarStore.deleteBabyDiaryPhoto(props.babyDiary.id, photoId)
-    // 성공 메시지는 사용자 경험을 고려하여 꼭 필요한 경우만 표시
-    // alert('사진이 삭제되었습니다.')
-
-    // 페이지 새로고침 - 썸네일 문제 해결을 위해
+    
+    // 현재 모달 상태 및 날짜 저장
+    sessionStorage.setItem('modalState', JSON.stringify({
+      open: true,
+      date: props.date,
+      activeTab: activeTab.value
+    }))
+    
+    // 페이지 새로고침
     window.location.reload()
-    } catch (error) {
+  } catch (error) {
     console.error('사진 삭제 실패:', error)
     let errorMessage = '사진 삭제에 실패했습니다.'
 
@@ -574,7 +587,7 @@ const viewLLMSummary = (summary) => {
 const getThumbnailUrl = (imageUrl) => {
   // 이미지 URL이 없으면 기본 이미지 경로 반환
   if (!imageUrl) return '/images/photo_placeholder.png'
-
+  
   // 이미 캐시 방지 파라미터가 있는지 확인
   if (imageUrl.includes('_cache=')) {
     return imageUrl
@@ -589,6 +602,11 @@ const getThumbnailUrl = (imageUrl) => {
   if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/media')) {
     fullUrl = window.location.origin + imageUrl
   }
+  
+  // 썸네일 경로가 포함된 경우 원본 이미지 경로로 변환
+  if (fullUrl.includes('_thumbnail')) {
+    fullUrl = fullUrl.replace('_thumbnail', '')
+  }
 
   // URL에 이미 쿼리 파라미터가 있는지 확인
   const separator = fullUrl.includes('?') ? '&' : '?'
@@ -598,51 +616,19 @@ const getThumbnailUrl = (imageUrl) => {
 }
 
 // 이미지 로드 오류 처리 함수 개선
-const handleImageError = (event, photo) => {
-  console.warn('이미지 로드 오류:', photo.id)
-
-  // event.target이 null인지 확인
-  if (!event || !event.target) {
-    console.error('이미지 엘리먼트를 찾을 수 없습니다')
-    return
+function handleImageError(event) {
+  // fallback 이미지 URL (실제 사용 중인 기본 이미지 경로로 수정하세요)
+  const fallback = '/assets/default-diary-thumbnail.png';
+  // 만약 이미 fallback 이미지가 설정되어 있다면 중복 처리하지 않음
+  if (event.target.src === fallback) {
+    console.log('이미 기본 이미지로 설정되어 있습니다.');
+    return;
   }
-
-  try {
-    // 이미지가 로드되지 않은 경우 기본 이미지로 대체
-    const imgElement = event.target
-
-    // 이미 기본 이미지로 설정된 경우 추가 시도 방지
-    if (imgElement.src.includes('photo_placeholder.png')) {
-      console.log('이미 기본 이미지로 설정되어 있습니다')
-      return
-    }
-
-    // 기본 이미지 설정
-    imgElement.src = '/images/photo_placeholder.png'
-
-    // 이미지를 다시 로드하는 시도 (3초 지연)
-    setTimeout(() => {
-      if (photo && photo.image_thumbnail) {
-        const newUrl = getThumbnailUrl(photo.image_thumbnail)
-        console.log('이미지 다시 로드 시도:', newUrl)
-
-        // 새로운 이미지 객체를 생성하여 미리 로드
-        const preloadImg = new Image()
-        preloadImg.onload = function () {
-          console.log('이미지 미리 로드 성공')
-          imgElement.src = newUrl
-        }
-        preloadImg.onerror = function () {
-          console.log('이미지 미리 로드 실패, 원본 이미지 시도')
-          // 썸네일 실패 시 원본 이미지 시도
-          imgElement.src = getThumbnailUrl(photo.image)
-        }
-        preloadImg.src = newUrl
-      }
-    }, 3000)
-  } catch (e) {
-    console.error('이미지 오류 처리 실패:', e)
-  }
+  console.warn('이미지 로드 오류 발생:', event.target.src);
+  // fallback 이미지 적용
+  event.target.src = fallback;
+  // onerror 핸들러 제거하여 반복 호출 방지
+  event.target.onerror = null;
 }
 
 // 이미지 로드 성공 처리 함수
@@ -785,13 +771,6 @@ onMounted(async () => {
             v-if="babyDiary"
             class="space-y-6"
           >
-            <!-- 일기 내용 -->
-            <div class="bg-white p-4 rounded-lg shadow">
-              <p class="text-dark-gray whitespace-pre-line">
-                {{ babyDiary.content }}
-              </p>
-            </div>
-
             <!-- 사진 갤러리 -->
             <div
               v-if="babyDiary.photos && babyDiary.photos.length > 0"
@@ -800,20 +779,19 @@ onMounted(async () => {
               <h4 class="text-sm font-medium text-gray-600">
                 태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
               </h4>
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 gap-4">
                 <div
                   v-for="photo in babyDiary.photos"
                   :key="photo.id"
                   class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
-                  style="aspect-ratio: 1/1; height: auto;"
+                  style="aspect-ratio: 16/9; height: 180px;"
                 >
                   <img
-                    :src="photo.image_thumbnail || getThumbnailUrl(photo.image)"
+                    :src="getThumbnailUrl(photo.image)"
                     :alt="'태교일기 사진'"
                     class="w-full h-full object-cover"
                     loading="eager"
-                    onerror="this.onerror=null; if(this && this.src != '/images/photo_placeholder.png') this.src='/images/photo_placeholder.png';"
-                    @error="handleImageError($event, photo)"
+                    @error="handleImageError($event)"
                     @load="handleImageLoad($event, photo)"
                   >
 
@@ -879,13 +857,13 @@ onMounted(async () => {
                 <div
                   v-if="canUploadMorePhotos"
                   class="relative border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-point hover:bg-gray-50 transition-all"
-                  style="aspect-ratio: 1/1; height: auto;"
+                  style="aspect-ratio: 16/9; height: 180px;"
                   @click="fileInput.click()"
                 >
-                  <div class="flex flex-col items-center justify-center">
+                  <div class="text-center text-gray-500">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      class="h-12 w-12 text-gray-400"
+                      class="h-8 w-8 mx-auto mb-1"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -897,138 +875,43 @@ onMounted(async () => {
                         d="M12 4v16m8-8H4"
                       />
                     </svg>
-                    <span class="text-sm text-gray-500 mt-2">사진 추가</span>
+                    <p class="text-xs">
+                      사진 추가
+                    </p>
                   </div>
-                  <input
-                    ref="fileInput"
-                    type="file"
-                    accept="image/*"
-                    class="hidden"
-                    :disabled="isUploading || !canUploadMorePhotos"
-                    @change="handleFileSelect"
-                  >
                 </div>
               </div>
             </div>
 
-            <!-- 사진이 없을 때 표시되는 영역 -->
-            <div
-              v-else
-              class="space-y-3"
-            >
-              <h4 class="text-sm font-medium text-gray-600">
-                태교일기 사진 (0/{{ MAX_PHOTOS }})
-              </h4>
-              <div
-                class="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-point hover:bg-gray-50 transition-all"
-                @click="fileInput.click()"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-16 w-16 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                <p class="mt-4 text-gray-500 text-center">
-                  사진을 추가하려면 클릭하세요
-                </p>
-                <input
-                  ref="fileInput"
-                  type="file"
-                  accept="image/*"
-                  class="hidden"
-                  :disabled="isUploading"
-                  @change="handleFileSelect"
-                >
-              </div>
+            <!-- 일기 내용 -->
+            <div class="bg-white p-4 rounded-lg shadow">
+              <p class="text-dark-gray whitespace-pre-line">
+                {{ babyDiary.content }}
+              </p>
             </div>
-
-            <!-- 숨겨진 파일 입력 요소 -->
-            <input
-              ref="updateFileInput"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handleUpdateFileSelect"
-            >
-
-            <!-- 업로드 중인 상태 표시 -->
-            <div
-              v-if="isUploading"
-              class="mt-2 p-2 bg-blue-50 text-blue-700 rounded-lg text-sm flex items-center"
-            >
-              <svg
-                class="animate-spin h-4 w-4 mr-2"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              <span>사진 업로드 중...</span>
-            </div>
-
-            <!-- 태교일기 수정 및 삭제 버튼 -->
-            <div class="flex space-x-2 mt-4">
+            
+            <!-- 일기 작성/수정 버튼 -->
+            <div class="flex space-x-2">
               <button
-                class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm flex items-center justify-center space-x-1"
-                @click="openDiaryModal('edit')"
+                v-if="!babyDiary.content"
+                class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
+                @click="openDiaryModal('create')"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-                <span>수정</span>
+                일기 작성
               </button>
               <button
-                class="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm flex items-center justify-center space-x-1"
-                @click="deleteDiary"
+                v-if="babyDiary.content"
+                class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
+                @click="openDiaryModal('edit')"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-                <span>삭제</span>
+                일기 수정
+              </button>
+              <button
+                v-if="canUploadMorePhotos"
+                class="flex-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
+                @click="fileInput.click()"
+              >
+                사진 추가
               </button>
             </div>
           </div>
@@ -1096,6 +979,22 @@ onMounted(async () => {
       </div>
     </div>
   </div>
+  
+  <!-- 숨겨진 파일 입력 필드들 -->
+  <input
+    ref="fileInput"
+    type="file"
+    class="hidden"
+    accept=".jpg,.jpeg,.png,.gif"
+    @change="handleFileSelect"
+  >
+  <input
+    ref="updateFileInput"
+    type="file"
+    class="hidden"
+    accept=".jpg,.jpeg,.png,.gif"
+    @change="handleUpdateFileSelect"
+  >
 </template>
 
 <style scoped>
