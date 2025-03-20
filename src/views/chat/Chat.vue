@@ -14,7 +14,7 @@ import api from '@/utils/axios'
 const CONTEXT = 'Chat'
 const path = mdiBabyFaceOutline
 
-const API_BASE_URL = 'http://Nooridal-env-2.eba-qvbntdra.ap-northeast-2.elasticbeanstalk.com/v1/'
+const API_BASE_URL = 'https://nooridal.com/v1/'
 
 // API 클라이언트 설정
 const apiClient = axios.create({
