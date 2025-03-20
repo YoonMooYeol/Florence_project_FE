@@ -9,7 +9,7 @@ import { handleError } from '@/utils/errorHandler'
 const CONTEXT = 'LlmChat'
 
 // 백엔드 서버 URL 설정
-const API_BASE_URL = 'http://127.0.0.1:8000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 // API 클라이언트 설정
 const apiClient = axios.create({
@@ -97,10 +97,10 @@ const getTokenFromStorage = () => {
 const getUserInfo = async () => {
   try {
     // 사용자 기본 정보 조회
-    const userResponse = await apiClient.get('/v1/accounts/users/me/')
+    const userResponse = await apiClient.get('/accounts/users/me/')
 
     // 임신 정보 조회
-    const pregnancyResponse = await apiClient.get('/v1/accounts/pregnancies/')
+    const pregnancyResponse = await apiClient.get('/accounts/pregnancies/')
 
     // 임신 주차 정보와 태명 추출
     let pregnancyWeek = 0
@@ -128,7 +128,7 @@ const getUserInfo = async () => {
 // 임신 정보 확인하기
 const checkPregnancyInfo = async () => {
   try {
-    const response = await apiClient.get('/v1/accounts/pregnancies/')
+    const response = await apiClient.get('/accounts/pregnancies/')
     return response.data && response.data.length > 0
   } catch (error) {
     logger.error(CONTEXT, '임신 정보 조회 오류:', error)
@@ -148,7 +148,7 @@ const getChatRooms = async () => {
       throw new Error('유저 정보가 없습니다')
     }
 
-    const response = await apiClient.get(`/v1/llm/chat/rooms/?user_id=${userId}`)
+    const response = await apiClient.get(`/llm/chat/rooms/?user_id=${userId}`)
     chatRooms.value = response.data
 
     // 오늘 생성된 채팅방이 있는지 확인
@@ -209,7 +209,7 @@ const createChatRoom = async () => {
     }
 
     // 임신 정보의 첫 번째 항목 ID 사용
-    const pregnancyInfo = await apiClient.get('/v1/accounts/pregnancies/')
+    const pregnancyInfo = await apiClient.get('/accounts/pregnancies/')
     const pregnancyId = pregnancyInfo.data && pregnancyInfo.data.length > 0
       ? pregnancyInfo.data[0].pregnancy_id
       : null
@@ -218,7 +218,7 @@ const createChatRoom = async () => {
       throw new Error('사용자 정보 또는 임신 정보가 없습니다')
     }
 
-    const response = await apiClient.post('/v1/llm/chat/rooms/', {
+    const response = await apiClient.post('/llm/chat/rooms/', {
       user_id: userId,
       pregnancy_id: pregnancyId
     })
@@ -260,7 +260,7 @@ const loadChatRoom = async (chatId, forceReset = true) => {
   errorMessage.value = ''
 
   try {
-    const response = await apiClient.get(`/v1/llm/chat/rooms/${chatId}/?include_messages=true`)
+    const response = await apiClient.get(`/llm/chat/rooms/${chatId}/?include_messages=true`)
     currentChat.value = response.data
 
     // forceReset가 true인 경우에만 메시지 목록을 초기화
@@ -423,7 +423,7 @@ const sendMessage = async () => {
     const babyName = userInfo.value?.baby_name || '아기'
 
     // Florence 에이전트 API 호출 (서버에서 자동으로 메시지 저장됨)
-    const response = await apiClient.post('/v1/llm/florence/', {
+    const response = await apiClient.post('/llm/florence/', {
       user_id: userId,
       query_text: userMessage,
       pregnancy_week: pregnancyInfo,
@@ -604,7 +604,7 @@ onMounted(async () => {
       if (selectedChatId.value) {
         try {
           const currentMessages = messages.value.length
-          const response = await apiClient.get(`/v1/llm/chat/rooms/${selectedChatId.value}/?include_messages=true`)
+          const response = await apiClient.get(`/llm/chat/rooms/${selectedChatId.value}/?include_messages=true`)
 
           // 새 메시지가 있는지 확인
           if (response.data.all_messages &&
