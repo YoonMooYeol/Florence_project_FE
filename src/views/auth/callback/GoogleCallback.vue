@@ -55,7 +55,7 @@ onMounted(() => {
       }, true)
 
       // 토큰 설정 후 API 인증 헤더 직접 설정 (중요)
-      const apiBaseUrl = 'http://127.0.0.1:8000/v1'
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
       // 원래 axios 인스턴스에 직접 헤더 설정
       axios.defaults.headers.common.Authorization = `Bearer ${token}`
       // 임시 API 호출로 토큰 검증

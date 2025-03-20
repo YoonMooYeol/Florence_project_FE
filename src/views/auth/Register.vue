@@ -220,7 +220,7 @@ const validateForm = () => {
 
 // 회원가입 API 호출 함수
 const registerApi = async (userData) => {
-  const response = await axios.post('http://127.0.0.1:8000/v1/accounts/register/', userData)
+  const response = await api.post('/accounts/register/', userData)
   return response.data
 }
 
@@ -412,6 +412,7 @@ const sendVerificationCode = async () => {
   isSendingCode.value = true
   try {
     await api.post('/accounts/send_register/', { email: formData.email })
+    console.log(api)
     verificationPopupVisible.value = true
     alert('인증번호가 전송되었습니다. 이메일을 확인해주세요.')
   } catch (error) {

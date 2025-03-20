@@ -6,7 +6,7 @@ export const socketStatus = ref('disconnected')
 export const isConnected = ref(false)
 
 // 백엔드 서버 URL 설정
-const API_BASE_URL = 'http://127.0.0.1:8000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 // 소켓 인스턴스 생성
 const socket = io(API_BASE_URL, {

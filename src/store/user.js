@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import api from '@/utils/axios'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -14,7 +14,7 @@ export const useUserStore = defineStore('user', {
       this.error = null
 
       try {
-        const response = await axios.post('http://127.0.0.1:8000/v1/accounts/register/', userData)
+        const response = await api.post('/accounts/register/', userData)
         this.user = response.data
         return response.data
       } catch (error) {

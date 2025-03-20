@@ -9,12 +9,12 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import SvgIcon from '@jamescoyle/vue-icon'
 import { mdiBabyFaceOutline } from '@mdi/js'
+import api from '@/utils/axios'
 
 const CONTEXT = 'Chat'
 const path = mdiBabyFaceOutline
 
-// 백엔드 서버 URL 설정
-const API_BASE_URL = 'http://127.0.0.1:8000'
+const API_BASE_URL = 'http://Nooridal-env-2.eba-qvbntdra.ap-northeast-2.elasticbeanstalk.com/v1/'
 
 // API 클라이언트 설정
 const apiClient = axios.create({
@@ -121,7 +121,7 @@ onMounted(async () => {
 const getUserInfo = async () => {
   try {
     // 올바른 API 엔드포인트로 수정
-    const response = await apiClient.get('/v1/accounts/users/me/')
+    const response = await apiClient.get('/accounts/users/me/')
     userId.value = response.data.user_id
     logger.info(CONTEXT, '사용자 정보 로드 완료:', userId.value)
   } catch (error) {
@@ -135,7 +135,7 @@ const getUserInfo = async () => {
 // 임신 정보 가져오기
 const getPregnancyInfo = async () => {
   try {
-    const response = await apiClient.get('/v1/accounts/pregnancies/')
+    const response = await apiClient.get('/accounts/pregnancies/')
     // 임신 정보가 하나 이상 있는지 확인
     if (response.data && response.data.length > 0) {
       hasPregnancyInfo.value = true
@@ -206,7 +206,7 @@ async function submitStreamAnswer() {
 
   try {
     // 3) SSE로 백엔드 호출 (fetch + ReadableStream)
-    const response = await fetch(`${API_BASE_URL}/v1/llm/agent/stream/`, {
+    const response = await fetch(`${API_BASE_URL}llm/agent/stream/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

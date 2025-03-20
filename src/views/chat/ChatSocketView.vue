@@ -1,8 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
-import socket, { connectSocket, isConnected } from '@/utils/socket'
 import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import * as chatService from '@/services/chatService'
@@ -22,15 +21,8 @@ const isSubmitting = ref(false)
 const errorMessage = ref('')
 const showNewChatDialog = ref(false)
 const lastTypingTime = ref(0)
-const typingTimerLength = 3000 // 타이핑 타이머 길이(ms)
 const lastSubmitTime = ref(0)
 const debounceTime = 1000 // 1초 디바운스
-
-// 컴퓨티드 프로퍼티
-const isSocketConnected = computed(() => isConnected.value)
-const hasUnreadMessages = computed(() => {
-  return Object.values(chatService.unreadMessages.value).some(count => count > 0)
-})
 
 // 메시지 전송 핸들러
 const handleSendMessage = async () => {
@@ -118,7 +110,7 @@ const getUserInfo = async () => {
       'Authorization': `Bearer ${token}`
     }
     
-    const response = await fetch('http://127.0.0.1:8000/v1/users/profile/', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/profile/`, {
       method: 'GET',
       headers,
       credentials: 'include'
@@ -150,7 +142,7 @@ const checkPregnancyInfo = async () => {
       'Authorization': `Bearer ${token}`
     }
     
-    const response = await fetch('http://127.0.0.1:8000/v1/users/pregnancy-info/', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/pregnancy-info/`, {
       method: 'GET',
       headers,
       credentials: 'include'

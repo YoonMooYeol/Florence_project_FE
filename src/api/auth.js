@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // 기본 URL 설정 (환경에 맞게 수정 가능)
-const BASE_URL = 'http://127.0.0.1:8000/v1/';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 /**
  * issueToken 함수는 유저의 로그인 인증을 위해 토큰을 발급받습니다.
