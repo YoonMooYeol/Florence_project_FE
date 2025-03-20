@@ -243,6 +243,16 @@ watch(() => lastPeriodDate.value, () => {
     calculateFromLastPeriod()
   }
 })
+
+// 임신 주차 변경 시 출산예정일 자동 계산
+watch(() => pregnancyInfo.value.currentWeek, (newWeek) => {
+  if (newWeek && !unknownInfo.value.pregnancyDate) {
+    const today = new Date()
+    const dueDate = new Date(today)
+    dueDate.setDate(dueDate.getDate() + (40 - newWeek) * 7) // 40주에서 현재 주차를 뺀 만큼의 주를 더함
+    pregnancyInfo.value.dueDate = dueDate.toISOString().split('T')[0]
+  }
+})
 </script>
 
 <template>
