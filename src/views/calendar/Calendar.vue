@@ -603,7 +603,7 @@ watch(() => calendarStore.babyDiaries, () => {
     />
 
     <!-- FAB 메뉴 -->
-    <div class="fab-container">
+    <!-- <div class="fab-container">
       <button
         class="fab-button"
         :disabled="popupActive"
@@ -672,7 +672,7 @@ watch(() => calendarStore.babyDiaries, () => {
           {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
         </button>
       </div>
-    </div>
+    </div> -->
 
     <!-- 일정 등록 모달 -->
     <EventModal
