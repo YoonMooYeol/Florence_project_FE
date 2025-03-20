@@ -160,8 +160,6 @@ const goToPregnancyEdit = () => {
   }
 }
 
-
-
 // 로그아웃 함수
 const handleLogout = async () => {
   try {
@@ -245,7 +243,8 @@ const handleLogout = async () => {
         <!-- 임신 정보 섹션 -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-4">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold text-dark-gray">
+            <!-- 임신 정보가 있을 때만 표시 -->
+            <h2 v-if="userInfo.isPregnant" class="text-lg font-bold text-dark-gray">
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
           </div>
@@ -287,11 +286,13 @@ const handleLogout = async () => {
           </div>
           <div
             v-else
-            class="text-center"
+            class="text-center relative"
           >
-            <p class="text-gray-500 mb-4">
-              아직 임신 정보가 등록되지 않았습니다
-            </p>
+            <!-- 말풍선 툴팁 추가 -->
+            <div class="absolute -top-14 right-0 w-[200px] bg-point-yellow text-dark-gray p-2 rounded-lg shadow-md before:content-[''] before:absolute before:top-full before:right-4 before:border-8 before:border-transparent before:border-t-point-yellow">
+              <p class="text-sm font-medium">정보 등록 후 채팅 가능 😍</p>
+            </div>
+            
             <button
               class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
               @click="router.push('/pregnancy-info-register')"
