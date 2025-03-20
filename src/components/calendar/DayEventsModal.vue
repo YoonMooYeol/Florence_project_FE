@@ -419,10 +419,14 @@ const uploadPhotoToDiary = async (diaryId) => {
     }
     selectedFile.value = null
 
-    // 사진 목록 새로고침
-    await calendarStore.fetchBabyDiaryPhotos(diaryId)
-
-    // 페이지 새로고침 - 원본 이미지를 확실하게 로드하기 위해
+    // 현재 모달 상태 및 날짜 저장
+    sessionStorage.setItem('modalState', JSON.stringify({
+      open: true,
+      date: props.date,
+      activeTab: activeTab.value
+    }))
+    
+    // 페이지 새로고침
     window.location.reload()
   } catch (error) {
     console.error('사진 업로드 실패:', error.response || error)
@@ -485,15 +489,19 @@ const updatePhoto = async (photoId, file) => {
     // 스토어 함수 사용하여 사진 업데이트
     await calendarStore.updateBabyDiaryPhoto(props.babyDiary.id, photoId, file)
 
-    // 사진 목록 새로고침
-    await calendarStore.fetchBabyDiaryPhotos(props.babyDiary.id)
-
     // 입력 필드 초기화
     if (updateFileInput.value) {
       updateFileInput.value.value = ''
     }
-
-    // 페이지 새로고침 - 썸네일 문제 해결을 위해
+    
+    // 현재 모달 상태 및 날짜 저장
+    sessionStorage.setItem('modalState', JSON.stringify({
+      open: true,
+      date: props.date,
+      activeTab: activeTab.value
+    }))
+    
+    // 페이지 새로고침
     window.location.reload()
   } catch (error) {
     console.error('사진 업데이트 실패:', error)
@@ -528,12 +536,17 @@ const deletePhoto = async (photoId) => {
   try {
     // 스토어 함수 사용하여 사진 삭제
     await calendarStore.deleteBabyDiaryPhoto(props.babyDiary.id, photoId)
-    // 성공 메시지는 사용자 경험을 고려하여 꼭 필요한 경우만 표시
-    // alert('사진이 삭제되었습니다.')
-
-    // // 페이지 새로고침 - 썸네일 문제 해결을 위해
-    // window.location.reload()
-    } catch (error) {
+    
+    // 현재 모달 상태 및 날짜 저장
+    sessionStorage.setItem('modalState', JSON.stringify({
+      open: true,
+      date: props.date,
+      activeTab: activeTab.value
+    }))
+    
+    // 페이지 새로고침
+    window.location.reload()
+  } catch (error) {
     console.error('사진 삭제 실패:', error)
     let errorMessage = '사진 삭제에 실패했습니다.'
 
