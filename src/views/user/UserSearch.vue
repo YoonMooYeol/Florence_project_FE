@@ -449,7 +449,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
               처리중
             </span>
             <span v-else>
-              {{ searchResult.is_following ? '언팔로우' : '팔로우' }}
+              {{ searchResult.is_following ? '팔로잉' : '팔로우' }}
             </span>
           </button>
         </div>

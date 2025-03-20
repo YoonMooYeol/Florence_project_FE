@@ -572,6 +572,13 @@ const openDiaryModal = (mode = 'create') => {
     // 생성 모드일 경우 내용 초기화
     diaryContent.value = ''
   }
+  
+  // 모달이 열린 후 textarea 높이 조절
+  setTimeout(() => {
+    if (diaryTextarea.value) {
+      autoResizeTextarea(diaryTextarea.value)
+    }
+  }, 100)
 }
 
 const closeDiaryModal = () => {
@@ -582,6 +589,28 @@ const closeDiaryModal = () => {
 const viewLLMSummary = (summary) => {
   emit('view-llm-summary', summary)
 }
+
+// textarea 자동 높이 조절 관련
+const diaryTextarea = ref(null)
+
+// textarea 자동 높이 조절 함수
+const autoResizeTextarea = (element) => {
+  if (!element) return
+  
+  // 기본 높이로 초기화 (스크롤 높이를 정확히 계산하기 위함)
+  element.style.height = 'auto'
+  
+  // 스크롤 높이로 설정 (내용에 맞게 확장)
+  const newHeight = Math.max(100, element.scrollHeight) // 최소 높이 100px
+  element.style.height = `${newHeight}px`
+}
+
+// diaryContent가 변경될 때마다 높이 조절
+watch(diaryContent, () => {
+  if (diaryTextarea.value) {
+    autoResizeTextarea(diaryTextarea.value)
+  }
+})
 
 // 썸네일 URL로 변환하는 함수 개선
 const getThumbnailUrl = (imageUrl) => {
@@ -854,7 +883,7 @@ onMounted(async () => {
                 </div>
 
                 <!-- 사진 추가 버튼 (MAX_PHOTOS보다 적을 때만 표시) -->
-                <div
+                <!-- <div
                   v-if="canUploadMorePhotos"
                   class="relative border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-point hover:bg-gray-50 transition-all"
                   style="aspect-ratio: 16/9; height: 180px;"
@@ -879,13 +908,13 @@ onMounted(async () => {
                       사진 추가
                     </p>
                   </div>
-                </div>
+                </div> -->
               </div>
             </div>
 
             <!-- 일기 내용 -->
             <div class="bg-white p-4 rounded-lg shadow">
-              <p class="text-dark-gray whitespace-pre-line">
+              <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
                 {{ babyDiary.content }}
               </p>
             </div>
@@ -951,8 +980,9 @@ onMounted(async () => {
         </h3>
             <textarea
               v-model="diaryContent"
-          class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point resize-none h-64"
+          class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
               placeholder="아기와의 소중한 하루를 기록해보세요...♥︎"
+              ref="diaryTextarea"
             />
             <div class="flex justify-end space-x-2 mt-4">
               <button
