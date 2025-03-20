@@ -433,9 +433,6 @@ watch(() => lastPeriodDate.value, () => {
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               :disabled="unknownInfo.pregnancyDate"
             >
-            <p class="text-xs text-gray-500 mt-1">
-              임신 주차를 선택하면 자동으로 계산됩니다. 필요 시 수정 가능합니다.
-            </p>
           </div>
 
           <!-- 임신 주차/출산예정일 모름 체크박스 -->
@@ -463,7 +460,7 @@ watch(() => lastPeriodDate.value, () => {
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
             >
             <p class="text-xs text-gray-500 mt-1">
-              마지막 생리 시작일을 입력하시면 임신 주차와 출산예정일이 자동으로 계산됩니다.
+              마지막 생리 시작일을 입력하시면 임신 주차와 출산예정일이 자동으로 계산됩니다. 정확하지 않으니 반드시 의사와 상담하세요.
             </p>
           </div>
 

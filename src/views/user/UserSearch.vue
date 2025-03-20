@@ -494,7 +494,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
                 </div>
               </div>
 
-              <!-- 팔로잉 탭에서의 언팔로우 버튼 -->
+              <!-- 팔로잉 탭에서의 팔로잉/언팔로우 버튼 -->
               <button
                 v-if="activeTab === 'following'"
                 class="px-4 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 focus:outline-none"
@@ -528,7 +528,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
                   처리중
                 </span>
                 <span v-else>
-                  언팔로우
+                  팔로잉
                 </span>
               </button>
 
@@ -567,7 +567,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
                   처리중
                 </span>
                 <span v-else>
-                  {{ user.is_following ? '언팔로우' : '팔로우' }}
+                  {{ user.is_following ? '팔로잉' : '팔로우' }}
                 </span>
               </button>
             </div>
