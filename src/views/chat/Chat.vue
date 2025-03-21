@@ -448,7 +448,7 @@ const parseMarkdown = (text) => {
                 :fill="'#353535'"
               />
             </div>
-            <div>
+            <div class="flex items-end">
               <div
                 class="bg-white p-3 rounded-lg shadow-sm markdown-content"
                 :class="{
@@ -485,7 +485,7 @@ const parseMarkdown = (text) => {
                   </template>
                 </template>
               </div>
-              <div class="text-xs text-gray-500 mt-1 ml-1">
+              <div class="text-xs text-gray-500 ml-1 mb-1">
                 {{ message.time }}
               </div>
             </div>
@@ -495,11 +495,13 @@ const parseMarkdown = (text) => {
             v-else
             class="flex flex-col items-end max-w-[80%]"
           >
-            <div class="bg-base-yellow p-3 rounded-lg shadow-sm">
-              <div v-html="message.parsedContent || parseMarkdown(message.content)"></div>
-            </div>
-            <div class="text-xs text-gray-500 mt-1 mr-1">
-              {{ message.time }}
+            <div class="flex items-end">
+              <div class="text-xs text-gray-500 mr-1 mb-1">
+                {{ message.time }}
+              </div>
+              <div class="bg-base-yellow p-3 rounded-lg shadow-sm">
+                <div v-html="message.parsedContent || parseMarkdown(message.content)"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -559,17 +561,17 @@ const parseMarkdown = (text) => {
 }
 
 .chat-messages {
-  height: calc(100vh - 170px); /* 헤더 높이 고려하여 조정 */
-  padding-bottom: 120px; /* 하단 입력창 가려지지 않도록 패딩 증가 */
+  height: calc(100vh - 170px);
+  padding-bottom: 80px; /* 하단 패딩 감소 */
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* iOS 스크롤 개선 */
-  scroll-behavior: smooth; /* 부드러운 스크롤 효과 */
-  margin-top: 50px; /* 헤더 높이만큼 여백 축소 */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  margin-top: 50px;
 }
 
 textarea {
   max-height: 100px;
-  min-height: 40px;
+  min-height: 20px;
   -webkit-appearance: none; /* iOS 입력 필드 스타일 개선 */
   appearance: none;
   font-size: 16px; /* iOS에서 자동 확대 방지 */
@@ -579,8 +581,8 @@ textarea {
 @media (max-width: 768px) {
   .chat-messages {
     height: calc(100vh - 160px);
-    margin-top: 50px; /* 모바일에서 헤더 높이 조정 */
-    padding-bottom: 120px; /* 모바일에서도 충분한 하단 패딩 */
+    margin-top: 40px;
+    padding-bottom: 50px; /* 모바일에서도 하단 패딩 감소 */
   }
 }
 
