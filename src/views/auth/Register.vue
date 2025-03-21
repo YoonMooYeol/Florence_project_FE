@@ -418,7 +418,6 @@ const sendVerificationCode = async () => {
   } catch (error) {
     console.error('인증번호 전송 실패', error)
     alert('인증번호 전송에 실패했습니다.')
-  } finally {
     isSendingCode.value = false
   }
 }
@@ -434,6 +433,8 @@ const verifyCode = async () => {
     verificationStatus.value = 'verified'
     verificationPopupVisible.value = false
     isEmailVerified.value = true
+    isSendingCode.value = false
+    verificationCode.value = ''  // 인증번호 입력 필드 초기화
     alert('이메일 인증이 완료되었습니다.')
   } catch (error) {
     console.error('인증번호 확인 실패', error)
@@ -444,8 +445,14 @@ const verifyCode = async () => {
 }
 
 // 인증 팝업 취소 함수
-const cancelVerification = () => {
+const handleVerificationCancel = () => {
   verificationPopupVisible.value = false
+  verificationCode.value = ''
+  isSendingCode.value = false
+  isVerifyingCode.value = false
+  verificationStatus.value = ''
+  // 인증 상태 초기화
+  isEmailVerified.value = false
 }
 </script>
 
@@ -584,9 +591,9 @@ const cancelVerification = () => {
               id="email"
               v-model="formData.email"
               type="email"
-              :disabled="isEmailVerified"
+              :disabled="isEmailVerified && !isSendingCode"
               @input="clearFieldError('email')"
-              :class="{'bg-gray-200': isEmailVerified}"
+              :class="{'bg-gray-200': isEmailVerified && !isSendingCode}"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               placeholder="이메일을 입력하세요"
             >
@@ -801,7 +808,7 @@ const cancelVerification = () => {
         <button @click="verifyCode" :disabled="isVerifyingCode" class="flex-1 py-2 bg-yellow-200 text-dark-gray font-bold border border-yellow-300 rounded-[10px] hover:bg-yellow-300 focus:outline-none">
           확인
         </button>
-        <button @click="cancelVerification" class="flex-1 py-2 bg-gray-200 text-dark-gray font-bold border border-gray-300 rounded-[10px] hover:bg-gray-300 focus:outline-none">
+        <button @click="handleVerificationCancel" class="flex-1 py-2 bg-gray-200 text-dark-gray font-bold border border-gray-300 rounded-[10px] hover:bg-gray-300 focus:outline-none">
           취소
         </button>
       </div>
