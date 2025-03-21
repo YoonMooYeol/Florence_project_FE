@@ -4,7 +4,7 @@ import { clearAuthData as clearAuth } from './auth'
 
 // axios 인스턴스 생성
 const api = axios.create({
-  baseURL: 'https://nooridal.com/v1/',
+  baseURL: 'http://127.0.0.1:8000/v1/',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
