@@ -486,103 +486,53 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
           </div>
           
           <!-- 메시지 목록 -->
-          <template v-for="(message, index) in chatService.selectedConversation.value.messages" :key="message.id">
-            <!-- 날짜 구분선 (날짜가 바뀌는 경우) -->
-            <div
-              v-if="index === 0 || new Date(message.created_at).toDateString() !== new Date(chatService.selectedConversation.value.messages[index-1].created_at).toDateString()"
-              class="flex justify-center my-4"
-            >
-              <div class="px-4 py-1 bg-gray-200 rounded-full text-xs text-gray-700">
-                {{ new Date(message.created_at).toLocaleDateString() }}
-              </div>
-            </div>
-            
-            <!-- 메시지 아이템 -->
-            <div
-              class="flex"
-              :class="message.sender === 'user' || message.role === 'user' ? 'justify-end' : 'justify-start'"
-            >
-              <!-- AI 메시지 -->
-              <div
-                v-if="message.sender === 'assistant' || message.role === 'assistant'"
-                class="flex max-w-[80%]"
-              >
-                <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
-                <div>
-                  <div
-                    class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
-                    :class="{
-                      'typing-message': message.isTyping
-                    }"
-                  >
-                    {{ message.content || message.response }}
-                    <span
-                      v-if="message.isTyping"
-                      class="typing-indicator"
-                    >
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                    </span>
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1 ml-1 flex items-center">
-                    <span>{{ typeof message.created_at === 'string' ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : message.created_at }}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 사용자 메시지 -->
-              <div
-                v-else-if="message.sender === 'user' || message.role === 'user'"
-                class="flex flex-col items-end max-w-[80%]"
-              >
-                <div 
-                  class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap"
-                  :class="{ 'opacity-70': message.isPending }"
+          <div
+            v-for="message in chatService.selectedConversation?.messages || []"
+            :key="message.id"
+            class="flex items-end mb-4"
+            :class="message.sender === 'user' ? 'justify-end' : 'justify-start'"
+          >
+            <!-- AI 메시지 -->
+            <template v-if="message.sender !== 'user'">
+              <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
+              <div class="flex items-end">
+                <div
+                  class="max-w-[80%] sm:max-w-[70%] rounded-lg p-3 sm:p-4 bg-white text-gray-900"
                 >
-                  {{ message.content || message.query }}
-                  <span
-                    v-if="message.isPending"
-                    class="ml-2 inline-block"
-                  >
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                  </span>
+                  <div class="text-sm sm:text-base whitespace-pre-wrap">{{ message.content }}</div>
                 </div>
-                <div class="text-xs text-gray-500 mt-1 mr-1 flex items-center">
-                  <span>{{ typeof message.created_at === 'string' ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : message.created_at }}</span>
-                  
-                  <!-- 읽음 표시 -->
-                  <svg
-                    v-if="message.isRead"
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4 ml-1 text-blue-500"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
-                  </svg>
+                <div class="text-xs text-gray-500 ml-2">
+                  {{ message.created_at }}
                 </div>
               </div>
-            </div>
-          </template>
+            </template>
+
+            <!-- 사용자 메시지 -->
+            <template v-else>
+              <div class="flex items-end">
+                <div class="text-xs text-gray-500 mr-2">
+                  {{ message.created_at }}
+                </div>
+                <div
+                  class="max-w-[80%] sm:max-w-[70%] rounded-lg p-3 sm:p-4 bg-point-yellow text-dark-gray"
+                >
+                  <div class="text-sm sm:text-base whitespace-pre-wrap">{{ message.content }}</div>
+                </div>
+              </div>
+            </template>
+          </div>
           
           <!-- 타이핑 상태 표시 -->
           <div
             v-if="chatService.typingUsers.value[chatService.selectedConversation.value?.id]"
-            class="flex justify-start"
+            class="flex items-end mb-4"
           >
-            <div class="flex max-w-[80%]">
-              <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
-              <div>
-                <div class="bg-gray-100 p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-                  <span class="typing-indicator">
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                  </span>
-                </div>
+            <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
+            <div class="bg-gray-100 p-3 rounded-lg shadow-sm">
+              <div class="flex space-x-1">
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
               </div>
             </div>
           </div>

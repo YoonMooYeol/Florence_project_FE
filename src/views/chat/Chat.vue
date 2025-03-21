@@ -436,7 +436,7 @@ const parseMarkdown = (text) => {
                 :fill="'#353535'"
               />
             </div>
-            <div>
+            <div class="flex items-end">
               <div
                 class="bg-white p-3 rounded-lg shadow-sm markdown-content"
                 :class="{
@@ -468,7 +468,7 @@ const parseMarkdown = (text) => {
                   </span>
                 </template>
               </div>
-              <div class="text-xs text-gray-500 mt-1 ml-1">
+              <div class="text-xs text-gray-500 ml-2">
                 {{ message.time }}
               </div>
             </div>
@@ -478,11 +478,13 @@ const parseMarkdown = (text) => {
             v-else
             class="flex flex-col items-end max-w-[80%]"
           >
-            <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-              {{ message.content }}
-            </div>
-            <div class="text-xs text-gray-500 mt-1 mr-1">
-              {{ message.time }}
+            <div class="flex items-end">
+              <div class="text-xs text-gray-500 mr-2">
+                {{ message.time }}
+              </div>
+              <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
+                {{ message.content }}
+              </div>
             </div>
           </div>
         </div>

@@ -823,7 +823,7 @@ const closeSummary = () => {
                     <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8 5a1 1 0 100-2 1 1 0 000 2zm-2-7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5z" />
                   </svg>
                 </div>
-                <div class="assistant-message">
+                <div class="assistant-message flex items-end">
                   <div
                     class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
                     :class="{
@@ -840,7 +840,7 @@ const closeSummary = () => {
                       <span class="typing-dot" />
                     </span>
                   </div>
-                  <div class="text-xs text-gray-500 mt-1 ml-1">
+                  <div class="text-xs text-gray-500 ml-2">
                     {{ message.created_at }}
                   </div>
                 </div>
@@ -851,11 +851,13 @@ const closeSummary = () => {
                 v-else-if="message.role === 'user'"
                 class="flex flex-col items-end max-w-[85%] md:max-w-[75%]"
               >
-                <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-                  {{ message.content }}
-                </div>
-                <div class="text-xs text-gray-500 mt-1 mr-1">
-                  {{ message.created_at }}
+                <div class="flex items-end">
+                  <div class="text-xs text-gray-500 mr-2">
+                    {{ message.created_at }}
+                  </div>
+                  <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
+                    {{ message.content }}
+                  </div>
                 </div>
               </div>
 
