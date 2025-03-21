@@ -221,7 +221,7 @@ const initiateGoogleLogin = () => {
     }
 
     // 향후 통합된 콜백 URL로 변경할 수 있지만, 현재는 호환성을 위해 원래 URL 유지
-    const REDIRECT_URI_RAW = 'https://nooridal.com/v1/accounts/google/callback'
+    const REDIRECT_URI_RAW = 'https://nooridal.com/v1/accounts/google/callback/'
     const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
 
     // 범위 설정 (이메일, 프로필 정보)
