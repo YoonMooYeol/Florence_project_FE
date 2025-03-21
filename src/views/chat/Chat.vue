@@ -107,6 +107,7 @@ onMounted(async () => {
       id: Date.now(),
       sender: 'bot',
       content: `안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`,
+      parsedContent: parseMarkdown(`안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`),
       time: getCurrentTime()
     })
 
@@ -187,6 +188,7 @@ async function submitStreamAnswer() {
     id: Date.now(),
     sender: 'user',
     content: currentAnswer,
+    parsedContent: parseMarkdown(currentAnswer), // 사용자 메시지도 마크다운 파싱 적용
     time: getCurrentTime()
   }
   messages.value.push(userMessage)
@@ -198,6 +200,7 @@ async function submitStreamAnswer() {
     id: loadingMessageId,
     sender: 'bot',
     content: '',
+    parsedContent: '', // 마크다운 파싱된 HTML 저장 필드 추가
     isLoading: true,
     isTyping: true,
     time: getCurrentTime()
@@ -306,6 +309,15 @@ function updateBotMessage(msgId, newContent) {
   const botMsg = messages.value.find(m => m.id === msgId)
   if (botMsg) {
     botMsg.content = newContent
+    
+    // 실시간 마크다운 파싱 적용
+    try {
+      botMsg.parsedContent = parseMarkdown(newContent)
+    } catch (error) {
+      console.error('Markdown parsing error:', error)
+      botMsg.parsedContent = newContent // 오류 시 원본 텍스트 사용
+    }
+    
     // 메시지 업데이트 후 스크롤을 아래로 내림
     scrollToBottom()
   }
@@ -447,25 +459,30 @@ const parseMarkdown = (text) => {
                 <!-- 마크다운 렌더링 -->
                 <div
                   v-if="!message.isLoading"
-                  v-html="parseMarkdown(message.content)"
+                  v-html="message.parsedContent || parseMarkdown(message.content)"
                 />
                 <!-- 로딩 표시는 기존대로 유지 -->
                 <template v-else>
-                  {{ message.content }}
-                  <span
-                    v-if="message.isLoading && !message.isTyping"
-                    class="loading-dots"
-                  >
-                    <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
-                  </span>
-                  <span
-                    v-if="message.isTyping"
-                    class="typing-indicator"
-                  >
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                  </span>
+                  <!-- 타이핑 중인 경우에도 마크다운 렌더링 -->
+                  <div v-if="message.isTyping && message.content" v-html="message.parsedContent || parseMarkdown(message.content)"></div>
+                  <!-- 로딩만 있을 때 -->
+                  <template v-else>
+                    {{ message.content }}
+                    <span
+                      v-if="message.isLoading && !message.isTyping"
+                      class="loading-dots"
+                    >
+                      <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+                    </span>
+                    <span
+                      v-if="message.isTyping && !message.content"
+                      class="typing-indicator"
+                    >
+                      <span class="typing-dot" />
+                      <span class="typing-dot" />
+                      <span class="typing-dot" />
+                    </span>
+                  </template>
                 </template>
               </div>
               <div class="text-xs text-gray-500 mt-1 ml-1">
@@ -479,7 +496,7 @@ const parseMarkdown = (text) => {
             class="flex flex-col items-end max-w-[80%]"
           >
             <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-              {{ message.content }}
+              <div v-html="message.parsedContent || parseMarkdown(message.content)"></div>
             </div>
             <div class="text-xs text-gray-500 mt-1 mr-1">
               {{ message.time }}
@@ -753,5 +770,42 @@ textarea {
 :deep(.markdown-content img) {
   max-width: 100%;
   height: auto;
+}
+
+/* 사용자 메시지의 마크다운 스타일링 */
+.bg-base-yellow :deep(a) {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.bg-base-yellow :deep(code) {
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+}
+
+.bg-base-yellow :deep(pre) {
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  overflow-x: auto;
+}
+
+/* 타이핑 중인 메시지에 커서 효과 추가 */
+.typing-message :deep(p:last-child::after) {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 15px;
+  background-color: #666;
+  animation: cursor-blink 0.8s infinite;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 </style>
