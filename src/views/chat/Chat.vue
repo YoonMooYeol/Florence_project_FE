@@ -495,7 +495,7 @@ const parseMarkdown = (text) => {
             v-else
             class="flex flex-col items-end max-w-[80%]"
           >
-            <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
+            <div class="bg-base-yellow p-3 rounded-lg shadow-sm">
               <div v-html="message.parsedContent || parseMarkdown(message.content)"></div>
             </div>
             <div class="text-xs text-gray-500 mt-1 mr-1">
