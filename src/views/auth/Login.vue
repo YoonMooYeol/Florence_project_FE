@@ -243,6 +243,10 @@ const initiateGoogleLogin = () => {
 
 // 페이지 이동 함수들
 const goToRegister = () => {
+  // 유효성 검사 메시지 초기화
+  errors.email = ''
+  errors.password = ''
+  errors.form = ''
   router.push('/register')
 }
 
