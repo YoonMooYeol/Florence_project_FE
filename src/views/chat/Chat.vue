@@ -426,7 +426,7 @@ const parseMarkdown = (text) => {
     <!-- 대화 메시지 영역 -->
     <div
       ref="chatContainer"
-      class="flex-1 p-4 overflow-y-auto chat-messages pb-24 mt-16"
+      class="flex-2 p-4 overflow-y-auto chat-messages"
     >
       <div class="flex flex-col space-y-4">
         <div
