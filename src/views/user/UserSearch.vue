@@ -232,14 +232,14 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
 <template>
   <div class="min-h-screen bg-ivory">
     <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md flex items-center justify-between">
+    <div class="bg-white p-3 sm:p-4 shadow-md flex items-center justify-between">
       <button
-        class="text-dark-gray"
+        class="text-dark-gray p-2 -m-2"
         @click="goBack"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
+          class="h-5 w-5 sm:h-6 sm:w-6"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -252,149 +252,67 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
           />
         </svg>
       </button>
-      <h1 class="text-xl font-bold text-center text-dark-gray flex-1">
-        사용자 검색
-      </h1>
-      <div class="w-6" /> <!-- 균형을 위한 빈 공간 -->
+      <h1 class="text-lg sm:text-xl font-bold text-dark-gray flex-1 text-center">사용자 검색</h1>
+      <div class="w-5 sm:w-6"></div>
     </div>
 
-    <!-- 탭 네비게이션 -->
-    <div class="tabs flex justify-around border-b mb-1">
-      <button
-        type="button"
-        class="py-2 px-4 font-bold"
-        :class="{ 'border-b-2 border-yellow-500 font-extrabold text-yellow-700': activeTab === 'search' }"
-        @click.prevent="changeTab('search')"
-      >
-        검색
-      </button>
-      <button
-        type="button"
-        class="py-2 px-4 font-bold"
-        :class="{ 'border-b-2 border-yellow-500 font-extrabold text-yellow-700': activeTab === 'following' }"
-        @click.prevent="changeTab('following')"
-      >
-        팔로잉
-      </button>
-      <button
-        type="button"
-        class="py-2 px-4 font-bold"
-        :class="{ 'border-b-2 border-yellow-500 font-extrabold text-yellow-700': activeTab === 'followers' }"
-        @click.prevent="changeTab('followers')"
-      >
-        팔로워
-      </button>
-    </div>
-
-    <!-- 검색 영역 - 검색 탭에서만 표시 -->
-    <div
-      v-if="activeTab === 'search'"
-      class="p-4"
-    >
-      <div class="flex">
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-          placeholder="이메일로 검색"
-          @keyup.enter="searchUserByEmail"
-        >
-        <button
-          class="px-4 py-2 bg-point-yellow text-dark-gray rounded-r-md hover:bg-yellow-500 focus:outline-none"
-          @click="searchUserByEmail"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+    <!-- 검색 섹션 -->
+    <div class="p-3 sm:p-4">
+      <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+        <div class="flex space-x-2">
+          <input
+            type="text"
+            v-model="searchQuery"
+            placeholder="이메일로 검색"
+            class="flex-1 px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            @keyup.enter="searchUserByEmail"
+          />
+          <button
+            @click="searchUserByEmail"
+            class="px-4 py-2.5 text-base sm:text-sm text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold"
           >
-            <path
-              fill-rule="evenodd"
-              d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-              clip-rule="evenodd"
-            />
-          </svg>
+            검색
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 탭 메뉴 -->
+    <div class="bg-white border-b border-gray-200">
+      <div class="flex">
+        <button
+          v-for="tab in ['search', 'following', 'followers']"
+          :key="tab"
+          @click="changeTab(tab)"
+          :class="[
+            'flex-1 py-3 text-sm sm:text-base font-medium text-center border-b-2 transition-colors duration-200',
+            activeTab === tab
+              ? 'border-point-yellow text-point-yellow'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          ]"
+        >
+          {{ tab === 'search' ? '검색' : tab === 'following' ? '팔로잉' : '팔로워' }}
         </button>
       </div>
     </div>
 
-    <!-- 로딩 표시 -->
-    <div
-      v-if="isLoading"
-      class="p-4 text-center"
-    >
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
-      <p class="mt-2 text-dark-gray">
-        정보를 불러오는 중...
-      </p>
-    </div>
-
-    <!-- 에러 메시지 표시 -->
-    <div
-      v-if="errorMessage"
-      class="p-4 mb-4 text-center text-red-700 bg-red-100"
-    >
-      {{ errorMessage }}
-    </div>
-
-    <!-- 사용자 상세 정보 -->
-    <div
-      v-if="selectedUser && !isLoading"
-      class="p-4"
-    >
-      <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-        <div class="flex items-center mb-6">
-          <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-10 w-10 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-          <div>
-            <h2 class="text-lg font-bold text-dark-gray">
-              {{ selectedUser.username || '아이디 없음' }}
-            </h2>
-          </div>
-        </div>
-
-        <div class="space-y-4">
-          <div class="flex justify-between items-center">
-            <span class="text-gray-600">닉네임</span>
-            <span class="font-medium">{{ selectedUser.name || '정보 없음' }}</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-gray-600">성별</span>
-            <span class="font-medium">{{ selectedUser.gender !== undefined ? (selectedUser.gender === 'M' ? '남성' : '여성') : '정보 없음' }}</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-gray-600">임신 여부</span>
-            <span class="font-medium">{{ selectedUser.is_pregnant !== undefined ? (selectedUser.is_pregnant ? '임신중' : '임신 예정') : '정보 없음' }}</span>
-          </div>
-        </div>
+    <!-- 검색 결과 또는 사용자 목록 -->
+    <div class="p-3 sm:p-4">
+      <div v-if="isLoading" class="flex justify-center items-center py-8">
+        <div class="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-point-yellow"></div>
       </div>
-    </div>
 
-    <!-- 검색 결과 - 검색 탭에서만 표시 -->
-    <div
-      v-if="activeTab === 'search' && searchResult && !isLoading && !selectedUser"
-      class="p-4"
-    >
-      <div class="bg-white rounded-lg shadow-md p-4">
+      <div v-else-if="errorMessage" class="text-red-500 text-center py-4">
+        {{ errorMessage }}
+      </div>
+
+      <div v-else-if="activeTab === 'search' && searchResult" class="bg-white rounded-lg shadow-md p-4 sm:p-6">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
-            <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+            <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gray-200 rounded-full flex items-center justify-center mr-3">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-7 w-7 text-gray-500"
+                class="h-6 w-6 sm:h-8 sm:w-8 text-gray-500"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -406,191 +324,84 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
               </svg>
             </div>
             <div>
-              <h3 class="font-medium text-dark-gray">
+              <h3 class="text-base sm:text-lg font-medium text-dark-gray">
                 {{ searchResult.name || '이름 없음' }}
               </h3>
-              <p class="text-sm text-gray-500 mt-1">
-                {{ searchQuery }}
+              <p class="text-sm text-gray-500">
+                {{ searchResult.email }}
               </p>
             </div>
           </div>
           <button
-            class="px-4 py-1 rounded-full text-sm font-medium focus:outline-none"
-            :class="searchResult.is_following
-              ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              : 'bg-point-yellow text-dark-gray hover:bg-yellow-400'"
+            @click="toggleFollow(searchResult.user_id, searchResult.is_following)"
             :disabled="isFollowLoading"
-            @click="searchResult && searchResult.user_id ? toggleFollow(searchResult.user_id, searchResult.is_following) : errorMessage = '사용자 ID를 찾을 수 없습니다'"
+            :class="[
+              'px-4 py-2 text-sm sm:text-base rounded-md font-medium transition-colors duration-200',
+              searchResult.is_following
+                ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                : 'bg-point-yellow text-dark-gray hover:bg-base-yellow'
+            ]"
           >
-            <span
-              v-if="isFollowLoading"
-              class="flex items-center"
-            >
-              <svg
-                class="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              처리중
-            </span>
-            <span v-else>
-              {{ searchResult.is_following ? '팔로잉' : '팔로우' }}
-            </span>
+            {{ searchResult.is_following ? '언팔로우' : '팔로우' }}
           </button>
         </div>
       </div>
-    </div>
 
-    <!-- 팔로잉/팔로워 목록 -->
-    <div
-      v-if="(activeTab === 'following' || activeTab === 'followers') && !isLoading && users.length > 0"
-      class="p-4"
-    >
-      <div class="bg-white rounded-lg shadow-md">
-        <ul class="divide-y divide-gray-100">
-          <li
-            v-for="user in users"
-            :key="user.id || user.following?.user_id || user.follower?.user_id"
-            class="p-4"
-          >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-6 w-6 text-gray-500"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="font-medium text-dark-gray">
-                    {{ activeTab === 'following' ? (user.following_detail?.name || '이름 없음') : (user.follower_detail?.name || '이름 없음') }}
-                  </h3>
-                  <p class="text-sm text-gray-500">
-                    {{ activeTab === 'following' ? user.following_detail?.email : user.follower_detail?.email }}
-                  </p>
-                </div>
+      <div v-else-if="users.length > 0" class="space-y-3">
+        <div
+          v-for="user in users"
+          :key="user.user_id"
+          class="bg-white rounded-lg shadow-md p-4 sm:p-6"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-6 w-6 sm:h-8 sm:w-8 text-gray-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
               </div>
-
-              <!-- 팔로잉 탭에서의 팔로잉/언팔로우 버튼 -->
-              <button
-                v-if="activeTab === 'following'"
-                class="px-4 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 focus:outline-none"
-                :disabled="isFollowLoading"
-                @click="user.following_detail && user.following_detail.user_id ? toggleFollow(user.following_detail.user_id, true) : errorMessage = '사용자 ID를 찾을 수 없습니다'"
-              >
-                <span
-                  v-if="isFollowLoading"
-                  class="flex items-center"
-                >
-                  <svg
-                    class="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    />
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  처리중
-                </span>
-                <span v-else>
-                  팔로잉
-                </span>
-              </button>
-
-              <!-- 팔로워 탭에서의 팔로우/언팔로우 버튼 -->
-              <button
-                v-if="activeTab === 'followers'"
-                class="px-4 py-1 rounded-full text-sm font-medium focus:outline-none"
-                :class="user.is_following ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-point-yellow text-dark-gray hover:bg-yellow-400'"
-                :disabled="isFollowLoading"
-                @click="user.follower_detail && user.follower_detail.user_id ? toggleFollow(user.follower_detail.user_id, user.is_following) : errorMessage = '사용자 ID를 찾을 수 없습니다'"
-              >
-                <span
-                  v-if="isFollowLoading"
-                  class="flex items-center"
-                >
-                  <svg
-                    class="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    />
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  처리중
-                </span>
-                <span v-else>
-                  {{ user.is_following ? '팔로잉' : '팔로우' }}
-                </span>
-              </button>
+              <div>
+                <h3 class="text-base sm:text-lg font-medium text-dark-gray">
+                  {{ user.name || '이름 없음' }}
+                </h3>
+                <p class="text-sm text-gray-500">
+                  {{ user.email }}
+                </p>
+              </div>
             </div>
-          </li>
-        </ul>
+            <button
+              v-if="activeTab === 'followers'"
+              @click="toggleFollow(user.user_id, user.is_following)"
+              :disabled="isFollowLoading"
+              :class="[
+                'px-4 py-2 text-sm sm:text-base rounded-md font-medium transition-colors duration-200',
+                user.is_following
+                  ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-point-yellow text-dark-gray hover:bg-base-yellow'
+              ]"
+            >
+              {{ user.is_following ? '언팔로우' : '팔로우' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="text-center py-8 text-gray-500">
+        {{ activeTab === 'search' ? '검색 결과가 없습니다.' : '목록이 비어있습니다.' }}
       </div>
     </div>
 
-    <!-- 검색 결과나 팔로잉/팔로워가 없을 때 -->
-    <div
-      v-if="((activeTab === 'following' || activeTab === 'followers') && !isLoading && users.length === 0) ||
-        (activeTab === 'search' && !searchResult && !selectedUser && !isLoading)"
-      class="p-4 text-center bg-white rounded-lg shadow-md"
-    >
-      <p class="text-gray-500 py-8">
-        {{ activeTab === 'search' ? '이메일로 사용자를 검색해 보세요.' :
-          activeTab === 'following' ? '팔로우하는 사용자가 없습니다.' :
-          '팔로워가 없습니다.' }}
-      </p>
-    </div>
-
-    <!-- 하단 풋바 -->
-    <BottomNavBar active-tab="search" />
+    <!-- 하단 네비게이션 바 -->
+    <BottomNavBar />
   </div>
 </template>
 
@@ -606,5 +417,12 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
 }
 .text-dark-gray {
   color: #353535;
+}
+
+/* iOS에서 자동 확대 방지 */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input {
+    font-size: 16px;
+  }
 }
 </style>

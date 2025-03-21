@@ -248,14 +248,14 @@ watch(() => lastPeriodDate.value, () => {
 <template>
   <div class="min-h-screen bg-ivory">
     <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md flex items-center justify-between">
+    <div class="bg-white p-3 sm:p-4 shadow-md flex items-center justify-between">
       <button
-        class="text-dark-gray"
+        class="text-dark-gray p-2 -m-2"
         @click="goBack"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
+          class="h-5 w-5 sm:h-6 sm:w-6"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -268,19 +268,19 @@ watch(() => lastPeriodDate.value, () => {
           />
         </svg>
       </button>
-      <h1 class="text-xl font-bold text-center text-dark-gray flex-1">
+      <h1 class="text-lg sm:text-xl font-bold text-center text-dark-gray flex-1">
         임신 정보 {{ isEditMode ? '수정' : '보기' }}
       </h1>
-      <div class="w-6" /> <!-- 균형을 위한 빈 공간 -->
+      <div class="w-5 sm:w-6"></div>
     </div>
 
     <!-- 로딩 표시 -->
     <div
       v-if="isLoading"
-      class="p-4 text-center"
+      class="p-3 sm:p-4 text-center"
     >
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
-      <p class="mt-2 text-dark-gray">
+      <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-t-2 border-b-2 border-point-yellow" />
+      <p class="mt-2 text-sm sm:text-base text-dark-gray">
         정보를 불러오는 중...
       </p>
     </div>
@@ -288,7 +288,7 @@ watch(() => lastPeriodDate.value, () => {
     <!-- 에러 메시지 표시 -->
     <div
       v-if="errorMessage"
-      class="p-4 mb-4 text-center text-red-700 bg-red-100"
+      class="p-3 sm:p-4 mb-3 sm:mb-4 text-center text-sm sm:text-base text-red-700 bg-red-100"
     >
       {{ errorMessage }}
     </div>
@@ -296,53 +296,53 @@ watch(() => lastPeriodDate.value, () => {
     <!-- 임신 정보 폼 -->
     <div
       v-if="!isLoading"
-      class="p-4"
+      class="p-3 sm:p-4"
     >
       <!-- 임신정보가 있고 수정 모드가 아닐 때 보기 모드로 표시 -->
-      <div v-if="pregnancyInfo.isPregnant && !isEditMode" class="bg-white rounded-lg shadow-md p-6 mb-4">
-        <div class="mb-6 text-center">
-          <div class="w-20 h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-4">
+      <div v-if="pregnancyInfo.isPregnant && !isEditMode" class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-3 sm:mb-4">
+        <div class="mb-4 sm:mb-6 text-center">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
             <svg-icon
               type="mdi"
               :path="path"
-              :size="52"
-              class="text-dark-gray"
+              :size="40"
+              class="text-dark-gray sm:text-[52px]"
             ></svg-icon>
           </div>
-          <h2 class="text-lg font-bold text-dark-gray">
+          <h2 class="text-base sm:text-lg font-bold text-dark-gray">
             임신 정보
           </h2>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-3 sm:space-y-4">
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">태명</span>
-            <span class="font-medium">{{ pregnancyInfo.babyName }}</span>
+            <span class="text-sm sm:text-base text-gray-600">태명</span>
+            <span class="text-sm sm:text-base font-medium">{{ pregnancyInfo.babyName }}</span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">현재 임신 주차</span>
-            <span class="font-medium">{{ pregnancyInfo.currentWeek }}주차</span>
+            <span class="text-sm sm:text-base text-gray-600">현재 임신 주차</span>
+            <span class="text-sm sm:text-base font-medium">{{ pregnancyInfo.currentWeek }}주차</span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">출산 예정일</span>
-            <span class="font-medium">{{ pregnancyInfo.dueDate }}</span>
+            <span class="text-sm sm:text-base text-gray-600">출산 예정일</span>
+            <span class="text-sm sm:text-base font-medium">{{ pregnancyInfo.dueDate }}</span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">출산까지 남은 일수</span>
-            <span class="font-medium">{{ getDaysUntilDueDate() }}일</span>
+            <span class="text-sm sm:text-base text-gray-600">출산까지 남은 일수</span>
+            <span class="text-sm sm:text-base font-medium">{{ getDaysUntilDueDate() }}일</span>
           </div>
           <div v-if="pregnancyInfo.highRisk" class="flex items-center text-red-500">
             <svg-icon
               type="mdi"
               :path="path"
-              :size="20"
-              class="mr-1"
+              :size="16"
+              class="mr-1 sm:text-[20px]"
             ></svg-icon>
-            <span class="text-sm">고위험 임신</span>
+            <span class="text-xs sm:text-sm">고위험 임신</span>
           </div>
           <div class="mt-4">
             <button
-              class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold"
+              class="w-full px-4 py-2.5 sm:py-3 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold"
               @click="enableEditMode"
             >
               수정하기
@@ -352,20 +352,20 @@ watch(() => lastPeriodDate.value, () => {
       </div>
 
       <!-- 수정 모드이거나 임신정보가 없는 경우 편집 폼 표시 -->
-      <div v-if="isEditMode || !pregnancyInfo.isPregnant" class="bg-white rounded-lg shadow-md p-6 mb-4">
-        <div class="mb-6 text-center">
-          <div class="w-20 h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-4">
+      <div v-if="isEditMode || !pregnancyInfo.isPregnant" class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-3 sm:mb-4">
+        <div class="mb-4 sm:mb-6 text-center">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
             <svg-icon
               type="mdi"
               :path="path"
-              :size="52"
-              class="text-dark-gray"
+              :size="40"
+              class="text-dark-gray sm:text-[52px]"
             ></svg-icon>
           </div>
-          <h2 class="text-lg font-bold text-dark-gray">
+          <h2 class="text-base sm:text-lg font-bold text-dark-gray">
             임신 정보를 입력해주세요
           </h2>
-          <p class="text-sm text-gray-500 mt-1">
+          <p class="text-xs sm:text-sm text-gray-500 mt-1">
             누리달에서 맞춤 서비스를 제공해 드립니다
           </p>
         </div>
@@ -376,38 +376,38 @@ watch(() => lastPeriodDate.value, () => {
           <div class="mb-1">
             <label
               for="babyName"
-              class="block mb-2 text-sm font-medium text-dark-gray"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
             >태명</label>
             <input
               id="babyName"
               v-model="pregnancyInfo.babyName"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               placeholder="태명을 입력해주세요"
               :disabled="unknownInfo.babyName"
             >
           </div>
-          <div class="mb-4">
+          <div class="mb-3 sm:mb-4">
             <label class="flex items-center mt-2">
               <input
                 v-model="unknownInfo.babyName"
                 type="checkbox"
-                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
               >
-              <span class="ml-2 text-sm text-gray-500">태명이 없습니다</span>
+              <span class="ml-2 text-xs sm:text-sm text-gray-500">태명이 없습니다</span>
             </label>
           </div>
 
           <!-- 현재 임신 주차 -->
-          <div class="mb-4">
+          <div class="mb-3 sm:mb-4">
             <label
               for="currentWeek"
-              class="block mb-2 text-sm font-medium text-dark-gray"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
             >현재 임신 주차</label>
             <select
               id="currentWeek"
               v-model="pregnancyInfo.currentWeek"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               :disabled="unknownInfo.pregnancyDate"
             >
               <option
@@ -421,43 +421,43 @@ watch(() => lastPeriodDate.value, () => {
           </div>
 
           <!-- 출산 예정일 -->
-          <div class="mb-4">
+          <div class="mb-3 sm:mb-4">
             <label
               for="dueDate"
-              class="block mb-2 text-sm font-medium text-dark-gray"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
             >출산 예정일</label>
             <input
               id="dueDate"
               v-model="pregnancyInfo.dueDate"
               type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               :disabled="unknownInfo.pregnancyDate"
             >
           </div>
 
           <!-- 임신 주차/출산예정일 모름 체크박스 -->
-          <div class="mb-4">
+          <div class="mb-3 sm:mb-4">
             <label class="flex items-center mt-2">
               <input
                 v-model="unknownInfo.pregnancyDate"
                 type="checkbox"
-                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
               >
-              <span class="ml-2 text-sm text-gray-500">현재 임신 주차/출산예정일을 모릅니다</span>
+              <span class="ml-2 text-xs sm:text-sm text-gray-500">현재 임신 주차/출산예정일을 모릅니다</span>
             </label>
           </div>
 
           <!-- 마지막 생리 시작일 (체크박스 선택 시에만 표시) -->
-          <div v-if="unknownInfo.pregnancyDate" class="mb-4">
+          <div v-if="unknownInfo.pregnancyDate" class="mb-3 sm:mb-4">
             <label
               for="lastPeriodDate"
-              class="block mb-2 text-sm font-medium text-dark-gray"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
             >마지막 생리 시작일</label>
             <input
               id="lastPeriodDate"
               v-model="lastPeriodDate"
               type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
             >
             <p class="text-xs text-gray-500 mt-1">
               마지막 생리 시작일을 입력하시면 임신 주차와 출산예정일이 자동으로 계산됩니다. 정확하지 않으니 반드시 의사와 상담하세요.
@@ -465,14 +465,14 @@ watch(() => lastPeriodDate.value, () => {
           </div>
 
           <!-- 고위험 임신 여부 -->
-          <div class="mb-6">
+          <div class="mb-4 sm:mb-6">
             <label class="flex items-center">
               <input
                 v-model="pregnancyInfo.highRisk"
                 type="checkbox"
-                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
               >
-              <span class="ml-2 text-sm text-dark-gray">고위험 임신입니다</span>
+              <span class="ml-2 text-xs sm:text-sm text-dark-gray">고위험 임신입니다</span>
             </label>
           </div>
         </div>
@@ -481,7 +481,7 @@ watch(() => lastPeriodDate.value, () => {
       <!-- 버튼 영역 -->
       <div v-if="isEditMode" class="flex flex-col">
         <button
-          class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+          class="w-full px-4 py-2.5 sm:py-3 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
           :disabled="isSubmitting"
           @click="savePregnancyInfo"
         >
@@ -505,5 +505,12 @@ watch(() => lastPeriodDate.value, () => {
 }
 .text-dark-gray {
   color: #353535;
+}
+
+/* iOS에서 자동 확대 방지 */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input, select {
+    font-size: 16px;
+  }
 }
 </style>

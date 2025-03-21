@@ -184,8 +184,8 @@ const handleLogout = async () => {
 <template>
   <div class="min-h-screen bg-ivory">
     <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md">
-      <h1 class="text-xl font-bold text-center text-dark-gray">
+    <div class="bg-white p-3 sm:p-4 shadow-md">
+      <h1 class="text-lg sm:text-xl font-bold text-center text-dark-gray">
         마이페이지
       </h1>
     </div>
@@ -193,10 +193,10 @@ const handleLogout = async () => {
     <!-- 로딩 표시 -->
     <div
       v-if="isLoading"
-      class="p-4 text-center"
+      class="p-3 sm:p-4 text-center"
     >
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
-      <p class="mt-2 text-dark-gray">
+      <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-t-2 border-b-2 border-point-yellow" />
+      <p class="mt-2 text-sm sm:text-base text-dark-gray">
         정보를 불러오는 중...
       </p>
     </div>
@@ -204,7 +204,7 @@ const handleLogout = async () => {
     <!-- 에러 메시지 표시 -->
     <div
       v-if="errorMessage"
-      class="p-4 mb-4 text-center text-red-700 bg-red-100"
+      class="p-3 sm:p-4 mb-3 sm:mb-4 text-center text-sm sm:text-base text-red-700 bg-red-100"
     >
       {{ errorMessage }}
     </div>
@@ -212,14 +212,14 @@ const handleLogout = async () => {
     <!-- 사용자 정보 섹션 -->
     <div
       v-if="!isLoading"
-      class="p-4 mt-4 pb-20"
+      class="p-3 sm:p-4 mt-3 sm:mt-4 pb-20"
     >
-      <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-        <div class="flex items-center mb-4">
-          <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
+      <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-3 sm:mb-4">
+        <div class="flex items-center mb-3 sm:mb-4">
+          <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center mr-3 sm:mr-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="h-10 w-10 text-gray-500"
+              class="h-8 w-8 sm:h-10 sm:w-10 text-gray-500"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -231,177 +231,85 @@ const handleLogout = async () => {
             </svg>
           </div>
           <div>
-            <h2 class="text-lg font-bold text-dark-gray">
+            <h2 class="text-base sm:text-lg font-bold text-dark-gray">
               {{ userInfo.name }}
             </h2>
-            <p class="text-sm text-gray-500">
+            <p class="text-xs sm:text-sm text-gray-500">
               {{ userInfo.email }}
             </p>
           </div>
         </div>
 
         <!-- 임신 정보 섹션 -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-          <div class="flex justify-between items-center mb-4">
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-3 sm:mb-4">
+          <div class="flex justify-between items-center mb-3 sm:mb-4">
             <!-- 임신 정보가 있을 때만 표시 -->
-            <h2 v-if="userInfo.isPregnant" class="text-lg font-bold text-dark-gray">
+            <h2 v-if="userInfo.isPregnant" class="text-base sm:text-lg font-bold text-dark-gray">
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
           </div>
 
-          <div
-            v-if="userInfo.isPregnant"
-            class="space-y-4"
-          >
+          <!-- 임신 정보가 있을 때만 표시 -->
+          <div v-if="userInfo.isPregnant" class="space-y-3 sm:space-y-4">
             <div class="flex justify-between items-center">
-              <span class="text-gray-600">출산 예정일</span>
-              <span class="font-medium">{{ userInfo.dueDate }}</span>
+              <span class="text-sm sm:text-base text-gray-600">출산 예정일</span>
+              <span class="text-sm sm:text-base font-medium text-dark-gray">{{ formatDate(userInfo.dueDate) }}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600">현재 임신 주차</span>
-              <span class="font-medium">{{ userInfo.pregnancyWeek }}주차</span>
+              <span class="text-sm sm:text-base text-gray-600">현재 임신 주차</span>
+              <span class="text-sm sm:text-base font-medium text-dark-gray">{{ userInfo.pregnancyWeek }}주</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600">출산까지 남은 일수</span>
-              <span class="font-medium">{{ getDaysUntilDueDate() }}일</span>
-            </div>
-            <div
-              v-if="userInfo.highRisk"
-              class="flex items-center text-red-500"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 mr-1"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-              <span class="text-sm">고위험 임신</span>
+              <span class="text-sm sm:text-base text-gray-600">출산까지 남은 일수</span>
+              <span class="text-sm sm:text-base font-medium text-dark-gray">{{ getDaysUntilDueDate() }}일</span>
             </div>
           </div>
-          <div
-            v-else
-            class="text-center relative"
-          >
-            <!-- 말풍선 툴팁 추가 -->
-            <div class="absolute -top-14 right-0 w-[200px] bg-point-yellow text-dark-gray p-2 rounded-lg shadow-md before:content-[''] before:absolute before:top-full before:right-4 before:border-8 before:border-transparent before:border-t-point-yellow">
-              <p class="text-sm font-medium">정보 등록 후 채팅 가능 😍</p>
-            </div>
-            
+
+          <!-- 임신 정보가 없을 때 표시 -->
+          <div v-else class="text-center py-4">
+            <p class="text-sm sm:text-base text-gray-600 mb-3">
+              아직 등록된 임신 정보가 없습니다.
+            </p>
             <button
-              class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
-              @click="router.push('/pregnancy-info-register')"
+              class="px-4 py-2 text-sm sm:text-base bg-point-yellow text-dark-gray rounded-lg hover:bg-yellow-400 transition-colors focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+              @click="goToPregnancyEdit"
             >
               임신 정보 등록하기
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- 메뉴 섹션 -->
-      <div class="bg-white rounded-lg shadow-md overflow-hidden mb-4">
-        <div class="divide-y divide-gray-100">
-          <button
-            class="w-full p-4 text-left flex items-center"
-            @click="router.push('/user-info-edit')"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-3 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
+        <!-- 계정 관리 섹션 -->
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 class="text-base sm:text-lg font-bold text-dark-gray mb-3 sm:mb-4">
+            계정 관리
+          </h2>
+          <div class="space-y-3 sm:space-y-4">
+            <button
+              class="w-full px-4 py-2.5 text-sm sm:text-base text-dark-gray bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+              @click="router.push('/user-info-edit')"
             >
-              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-              <path
-                fill-rule="evenodd"
-                d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <span class="text-dark-gray">내 정보 관리</span>
-          </button>
-
-          <button
-            class="w-full p-4 text-left flex items-center"
-            @click="goToPregnancyEdit"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-3 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
+              개인정보 수정
+            </button>
+            <button
+              class="w-full px-4 py-2.5 text-sm sm:text-base text-dark-gray bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+              @click="router.push('/password-change')"
             >
-              <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
-            </svg>
-            <span class="text-dark-gray">임신 정보 관리</span>
-          </button>
-
-          <button class="w-full p-4 text-left flex items-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-3 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
+              비밀번호 변경
+            </button>
+            <button
+              class="w-full px-4 py-2.5 text-sm sm:text-base text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50"
+              @click="handleLogout"
             >
-              <path
-                fill-rule="evenodd"
-                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <span class="text-dark-gray">공지사항</span>
-          </button>
-
-          <button class="w-full p-4 text-left flex items-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-3 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <span class="text-dark-gray">자주 묻는 질문</span>
-          </button>
-
-          <button class="w-full p-4 text-left flex items-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-3 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <span class="text-dark-gray">앱 정보</span>
-          </button>
+              로그아웃
+            </button>
+          </div>
         </div>
       </div>
-
-      <!-- 로그아웃 버튼 -->
-      <button
-        class="w-full p-4 bg-white rounded-lg shadow-md text-center text-red-500 font-medium"
-        @click="handleLogout"
-      >
-        로그아웃
-      </button>
     </div>
 
     <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="profile" />
+    <BottomNavBar />
   </div>
 </template>
 
@@ -409,13 +317,18 @@ const handleLogout = async () => {
 .bg-ivory {
   background-color: #FFFAE0;
 }
-.bg-base-yellow {
-  background-color: #FFED90;
-}
-.bg-point-yellow {
-  background-color: #FFD600;
-}
 .text-dark-gray {
   color: #353535;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  .space-y-3 {
+    margin-top: 0.75rem;
+  }
+
+  .space-y-3 > * + * {
+    margin-top: 0.75rem;
+  }
 }
 </style>

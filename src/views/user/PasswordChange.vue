@@ -2,34 +2,54 @@
 <template>
   <div class="min-h-screen bg-ivory">
     <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md flex items-center justify-between">
-      <button @click="goBack" class="text-dark-gray">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white p-3 sm:p-4 shadow-md flex items-center justify-between">
+      <button @click="goBack" class="text-dark-gray p-2 -m-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
-      <h1 class="text-xl font-bold text-dark-gray flex-1 text-center">비밀번호 변경</h1>
-      <div class="w-6"></div>
+      <h1 class="text-lg sm:text-xl font-bold text-dark-gray flex-1 text-center">비밀번호 변경</h1>
+      <div class="w-5 sm:w-6"></div>
     </div>
 
     <!-- 본문 -->
-    <div class="p-4">
-      <div class="bg-white rounded-lg shadow-md p-6">
-        <div class="space-y-4">
+    <div class="p-3 sm:p-4">
+      <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+        <div class="space-y-3 sm:space-y-4">
           <div>
-            <label class="block mb-2 text-sm font-medium text-dark-gray">기존 비밀번호</label>
-            <input type="password" v-model="passwordChange.currentPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="기존 비밀번호를 입력해주세요" />
+            <label class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray">기존 비밀번호</label>
+            <input 
+              type="password" 
+              v-model="passwordChange.currentPassword" 
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" 
+              placeholder="기존 비밀번호를 입력해주세요" 
+            />
           </div>
           <div>
-            <label class="block mb-2 text-sm font-medium text-dark-gray">새 비밀번호</label>
-            <input type="password" v-model="passwordChange.newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="새 비밀번호를 입력해주세요" />
+            <label class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray">새 비밀번호</label>
+            <input 
+              type="password" 
+              v-model="passwordChange.newPassword" 
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" 
+              placeholder="새 비밀번호를 입력해주세요" 
+            />
           </div>
           <div>
-            <label class="block mb-2 text-sm font-medium text-dark-gray">새 비밀번호 확인</label>
-            <input type="password" v-model="passwordChange.confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="새 비밀번호를 다시 입력해주세요" />
+            <label class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray">새 비밀번호 확인</label>
+            <input 
+              type="password" 
+              v-model="passwordChange.confirmPassword" 
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow" 
+              placeholder="새 비밀번호를 다시 입력해주세요" 
+            />
           </div>
           <div class="flex space-x-2">
-            <button @click="handlePasswordChange" class="flex-1 px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold">변경하기</button>
+            <button 
+              @click="handlePasswordChange" 
+              class="flex-1 px-4 py-3 text-base sm:text-sm text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold"
+            >
+              변경하기
+            </button>
           </div>
         </div>
       </div>
@@ -110,5 +130,12 @@ const goBack = () => {
 }
 .text-dark-gray {
   color: #353535;
+}
+
+/* iOS에서 자동 확대 방지 */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input {
+    font-size: 16px;
+  }
 }
 </style> 

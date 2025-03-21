@@ -2,11 +2,11 @@
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
     <div class="w-full max-w-md">
       <!-- 헤더 -->
-      <div class="mb-8 text-center">
-        <h1 class="text-3xl font-bold text-dark-gray">
+      <div class="mb-6 text-center">
+        <h1 class="text-2xl sm:text-3xl font-bold text-dark-gray">
           누리달
         </h1>
-        <p class="mt-2 text-dark-gray">
+        <p class="mt-2 text-sm sm:text-base text-dark-gray">
           새 비밀번호 설정
         </p>
       </div>
@@ -14,53 +14,53 @@
       <!-- 폼 에러 메시지 -->
       <div
         v-if="errors.form"
-        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-[20px]"
+        class="p-3 mb-4 text-sm text-center text-red-700 bg-red-100 rounded-[15px]"
       >
         {{ errors.form }}
       </div>
 
       <!-- 비밀번호 재설정 폼 -->
       <form
-        class="p-9 bg-white rounded-[10px] shadow-md"
+        class="p-5 sm:p-6 bg-white rounded-[10px] shadow-md"
         @submit.prevent="handleSubmit"
       >
         <!-- 새 비밀번호 입력 -->
         <div class="mb-4">
           <label
             for="newPassword"
-            class="block mb-2 text-xl font-medium text-dark-gray"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
           >새 비밀번호</label>
           <input
             id="newPassword"
             v-model="formData.newPassword"
             type="password"
-            class="w-full px-4 py-3 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="새 비밀번호를 입력하세요"
           >
           <p
             v-if="errors.newPassword"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.newPassword }}
           </p>
         </div>
 
         <!-- 새 비밀번호 확인 -->
-        <div class="mb-6">
+        <div class="mb-5">
           <label
             for="confirmPassword"
-            class="block mb-2 text-xl font-medium text-dark-gray"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
           >새 비밀번호 확인</label>
           <input
             id="confirmPassword"
             v-model="formData.confirmPassword"
             type="password"
-            class="w-full px-4 py-3 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="새 비밀번호를 다시 입력하세요"
           >
           <p
             v-if="errors.confirmPassword"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.confirmPassword }}
           </p>
@@ -70,7 +70,7 @@
         <div class="flex flex-col">
           <button
             type="submit"
-            class="w-full px-4 py-3 mb-4 text-center text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+            class="w-full px-4 py-2.5 mb-3 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-[15px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             :disabled="isSubmitting"
           >
             <span v-if="isSubmitting">처리 중...</span>
@@ -79,7 +79,7 @@
 
           <button
             type="button"
-            class="w-full px-4 py-3 text-dark-gray border border-gray-300 rounded-[20px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+            class="w-full px-4 py-2.5 text-sm sm:text-base text-dark-gray border border-gray-300 rounded-[15px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
             @click="goToLogin"
           >
             로그인으로 돌아가기
@@ -187,5 +187,16 @@ const goToLogin = () => {
 <style scoped>
 .bg-ivory {
   background-color: #FFFAE0;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  input[type="password"] {
+    font-size: 16px; /* iOS에서 자동 확대 방지 */
+  }
+  
+  .max-w-md {
+    max-width: 100%;
+  }
 }
 </style> 

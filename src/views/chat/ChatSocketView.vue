@@ -6,7 +6,7 @@ import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import * as chatService from '@/services/chatService'
 import SvgIcon from '@jamescoyle/vue-icon'
-import { mdiSend } from '@mdi/js'
+import { mdiSend, mdiPlus } from '@mdi/js'
 import BabyIcon from '@/components/icons/BabyIcon.vue'
 
 const CONTEXT = 'ChatSocketView'
@@ -327,363 +327,127 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-ivory flex flex-col">
+  <div class="flex flex-col h-screen bg-gray-50">
     <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-20">
-      <h1 class="text-xl font-bold text-dark-gray">
-        실시간 대화
-      </h1>
-      <div class="flex items-center">
-        <!-- 소켓 연결 상태 표시 -->
-        <div
-          :class="[
-            'w-3 h-3 rounded-full mr-3',
-            isSocketConnected ? 'bg-green-500' : 'bg-red-500'
-          ]"
-          :title="isSocketConnected ? '연결됨' : '연결 끊김'"
-        />
-        
-        <!-- 새 대화 버튼 -->
+    <div class="flex items-center justify-between p-3 sm:p-4 bg-white border-b border-gray-200">
+      <div class="flex items-center space-x-2 sm:space-x-3">
         <button
-          class="p-1 rounded-full bg-point-yellow hover:bg-yellow-400 focus:outline-none"
           @click="showNewChatDialog = true"
+          class="p-1.5 sm:p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100"
         >
-          <BabyIcon :size="20" color="#353535" />
+          <svg-icon
+            type="mdi"
+            :path="mdiPlus"
+            :size="24"
+            class="text-gray-600"
+          ></svg-icon>
         </button>
+        <h1 class="text-lg sm:text-xl font-bold text-gray-900">채팅</h1>
+      </div>
+    </div>
+
+    <!-- 채팅 컨테이너 -->
+    <div
+      ref="chatContainer"
+      class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4"
+    >
+      <!-- 메시지 목록 -->
+      <div
+        v-for="message in chatService.selectedConversation?.messages || []"
+        :key="message.id"
+        class="flex"
+        :class="message.sender === 'user' ? 'justify-end' : 'justify-start'"
+      >
+        <div
+          class="max-w-[80%] sm:max-w-[70%] rounded-lg p-3 sm:p-4"
+          :class="message.sender === 'user' ? 'bg-point-yellow text-dark-gray' : 'bg-white text-gray-900'"
+        >
+          <div class="text-sm sm:text-base whitespace-pre-wrap">{{ message.content }}</div>
+          <div class="text-xs text-gray-500 mt-1">{{ message.created_at }}</div>
+        </div>
+      </div>
+
+      <!-- 타이핑 중 표시 -->
+      <div
+        v-if="chatService.isTyping"
+        class="flex justify-start"
+      >
+        <div class="bg-white rounded-lg p-3 sm:p-4">
+          <div class="flex space-x-1">
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 입력 영역 -->
+    <div class="p-3 sm:p-4 bg-white border-t border-gray-200">
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <textarea
+          v-model="userInput"
+          @keydown="handleKeyDown"
+          @input="updateTypingStatus"
+          placeholder="메시지를 입력하세요..."
+          class="flex-1 p-2.5 sm:p-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point-yellow resize-none"
+          rows="1"
+        ></textarea>
+        <button
+          @click="handleSendMessage"
+          :disabled="isSubmitting || !userInput.trim()"
+          class="p-2.5 sm:p-3 text-point-yellow hover:text-yellow-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+        >
+          <svg-icon
+            type="mdi"
+            :path="sendIconPath"
+            :size="24"
+          ></svg-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- 새 대화 다이얼로그 -->
+    <div
+      v-if="showNewChatDialog"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4"
+    >
+      <div class="bg-white rounded-lg p-4 sm:p-6 max-w-sm w-full">
+        <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4">새 대화 시작하기</h2>
+        <p class="text-sm sm:text-base text-gray-600 mb-6">
+          새로운 대화를 시작하시겠습니까?
+        </p>
+        <div class="flex justify-end space-x-3">
+          <button
+            @click="showNewChatDialog = false"
+            class="px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-700 hover:text-gray-900"
+          >
+            취소
+          </button>
+          <button
+            @click="createNewConversation"
+            class="px-4 sm:px-6 py-2 bg-point-yellow text-sm sm:text-base text-dark-gray font-bold rounded-md hover:bg-yellow-400"
+          >
+            시작하기
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- 에러 메시지 -->
     <div
       v-if="errorMessage"
-      class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-2 mt-16"
+      class="fixed bottom-20 left-0 right-0 mx-auto w-full max-w-md p-3 sm:p-4 bg-red-100 text-red-700 rounded-lg shadow-lg"
     >
-      <p>{{ errorMessage }}</p>
-    </div>
-
-    <!-- 로딩 표시 -->
-    <div
-      v-if="chatService.isLoading.value"
-      class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50"
-    >
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-white mb-4" />
-    </div>
-
-    <!-- 메인 컨텐츠 영역 -->
-    <div class="flex flex-1 mt-16 mb-16">
-      <!-- 대화 목록 - 데스크탑 -->
-      <div class="w-1/3 bg-white border-r border-gray-200 overflow-y-auto hidden md:block">
-        <div class="p-4">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="font-bold text-dark-gray">
-              대화 목록
-            </h2>
-            <button
-              class="p-1 rounded-full bg-point-yellow hover:bg-yellow-400 focus:outline-none"
-              @click="createNewConversation"
-            >
-              <BabyIcon :size="20" color="#353535" />
-            </button>
-          </div>
-          
-          <div class="space-y-2">
-            <div
-              v-for="conversation in chatService.conversations.value"
-              :key="conversation.id"
-              class="p-3 rounded-lg cursor-pointer relative"
-              :class="chatService.selectedConversation.value?.id === conversation.id ? 'bg-base-yellow' : 'bg-gray-100 hover:bg-gray-200'"
-              @click="selectConversation(conversation.id)"
-            >
-              <div class="font-medium text-dark-gray truncate">
-                {{ conversation.name || '대화 ' + conversation.id.slice(0, 8) }}
-              </div>
-              <div class="text-xs text-gray-500 mt-1 flex items-center">
-                <span>{{ new Date(conversation.updated_at).toLocaleDateString() }}</span>
-                
-                <!-- 타이핑 표시 -->
-                <span
-                  v-if="chatService.typingUsers.value[conversation.id]"
-                  class="ml-2 text-gray-600 italic"
-                >
-                  입력 중...
-                </span>
-                
-                <!-- 읽지 않은 메시지 수 -->
-                <span
-                  v-if="chatService.unreadMessages.value[conversation.id]"
-                  class="ml-auto bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
-                >
-                  {{ chatService.unreadMessages.value[conversation.id] }}
-                </span>
-              </div>
-              
-              <!-- 최근 대화 내용 미리보기 -->
-              <div
-                v-if="conversation.query"
-                class="text-xs text-gray-600 mt-1 truncate"
-              >
-                {{ conversation.query }}
-              </div>
-            </div>
-            
-            <!-- 대화 없음 메시지 -->
-            <div
-              v-if="chatService.conversations.value.length === 0"
-              class="p-4 text-center text-gray-500"
-            >
-              대화가 없습니다. 새 대화를 시작해보세요.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 대화 내용 영역 -->
-      <div class="flex-1 flex flex-col">
-        <!-- 모바일 대화 선택기 -->
-        <div class="bg-white p-2 border-b border-gray-200 md:hidden flex items-center">
-          <select
-            v-model="chatService.selectedConversation.value.id"
-            class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            @change="selectConversation($event.target.value)"
-          >
-            <option
-              v-for="conversation in chatService.conversations.value"
-              :key="conversation.id"
-              :value="conversation.id"
-            >
-              {{ conversation.name || '대화 ' + conversation.id.slice(0, 8) }}
-              {{ chatService.unreadMessages.value[conversation.id] ? `(${chatService.unreadMessages.value[conversation.id]})` : '' }}
-            </option>
-          </select>
-          
-          <button
-            class="p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none"
-            @click="createNewConversation"
-          >
-            <BabyIcon :size="20" color="#353535" />
-          </button>
-        </div>
-
-        <!-- 채팅 메시지 영역 -->
-        <div
-          v-if="chatService.selectedConversation.value"
-          ref="chatContainer"
-          class="flex-1 p-4 overflow-y-auto chat-messages pb-24"
-        >
-          <div class="flex flex-col space-y-4">
-            <div class="flex">
-              <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
-              
-              <div>
-                <div class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-                  안녕하세요! 플로렌스 AI 상담사입니다. 임신 및 출산에 관한 질문이 있으시면 언제든지 물어보세요.
-                </div>
-                <div class="text-xs text-gray-500 mt-1 ml-1">
-                  {{ getCurrentTime() }}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 메시지 목록 -->
-          <template v-for="(message, index) in chatService.selectedConversation.value.messages" :key="message.id">
-            <!-- 날짜 구분선 (날짜가 바뀌는 경우) -->
-            <div
-              v-if="index === 0 || new Date(message.created_at).toDateString() !== new Date(chatService.selectedConversation.value.messages[index-1].created_at).toDateString()"
-              class="flex justify-center my-4"
-            >
-              <div class="px-4 py-1 bg-gray-200 rounded-full text-xs text-gray-700">
-                {{ new Date(message.created_at).toLocaleDateString() }}
-              </div>
-            </div>
-            
-            <!-- 메시지 아이템 -->
-            <div
-              class="flex"
-              :class="message.sender === 'user' || message.role === 'user' ? 'justify-end' : 'justify-start'"
-            >
-              <!-- AI 메시지 -->
-              <div
-                v-if="message.sender === 'assistant' || message.role === 'assistant'"
-                class="flex max-w-[80%]"
-              >
-                <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
-                <div>
-                  <div
-                    class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
-                    :class="{
-                      'typing-message': message.isTyping
-                    }"
-                  >
-                    {{ message.content || message.response }}
-                    <span
-                      v-if="message.isTyping"
-                      class="typing-indicator"
-                    >
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                    </span>
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1 ml-1 flex items-center">
-                    <span>{{ typeof message.created_at === 'string' ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : message.created_at }}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 사용자 메시지 -->
-              <div
-                v-else-if="message.sender === 'user' || message.role === 'user'"
-                class="flex flex-col items-end max-w-[80%]"
-              >
-                <div 
-                  class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap"
-                  :class="{ 'opacity-70': message.isPending }"
-                >
-                  {{ message.content || message.query }}
-                  <span
-                    v-if="message.isPending"
-                    class="ml-2 inline-block"
-                  >
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                  </span>
-                </div>
-                <div class="text-xs text-gray-500 mt-1 mr-1 flex items-center">
-                  <span>{{ typeof message.created_at === 'string' ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : message.created_at }}</span>
-                  
-                  <!-- 읽음 표시 -->
-                  <svg
-                    v-if="message.isRead"
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4 ml-1 text-blue-500"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </template>
-          
-          <!-- 타이핑 상태 표시 -->
-          <div
-            v-if="chatService.typingUsers.value[chatService.selectedConversation.value?.id]"
-            class="flex justify-start"
-          >
-            <div class="flex max-w-[80%]">
-              <BabyIcon :size="32" color="#FFD600" class="mr-2 flex-shrink-0" />
-              <div>
-                <div class="bg-gray-100 p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-                  <span class="typing-indicator">
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 대화 선택 안내 (대화가 선택되지 않은 경우) -->
-        <div
-          v-if="!chatService.selectedConversation.value"
-          class="flex-1 flex flex-col items-center justify-center p-4"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-16 w-16 text-gray-400 mb-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
-          </svg>
-          <p class="text-gray-600 text-center mb-4">
-            대화를 선택하거나 새 대화를 시작하세요.
-          </p>
-          <button
-            class="px-4 py-2 bg-point-yellow text-dark-gray rounded-md hover:bg-yellow-400 focus:outline-none"
-            @click="createNewConversation"
-          >
-            새 대화 시작하기
-          </button>
-        </div>
-
-        <!-- 메시지 입력 영역 -->
-        <div
-          v-if="chatService.selectedConversation.value"
-          class="bg-white p-3 border-t border-gray-200 fixed bottom-16 left-0 right-0 z-10"
-        >
-          <div class="flex items-center">
-            <textarea
-              v-model="userInput"
-              placeholder="메시지를 입력하세요"
-              class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-point-yellow resize-none"
-              rows="1"
-              @keydown="handleKeyDown"
-            />
-            <button
-              class="p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="isSubmitting || !userInput.trim()"
-              @click="handleSendMessage"
-            >
-              <SvgIcon type="mdi" :path="sendIconPath" size="24" :fill="true" color="#353535"></SvgIcon>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 새 대화 생성 다이얼로그 -->
-    <div
-      v-if="showNewChatDialog"
-      class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50"
-    >
-      <div class="bg-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
-        <h3 class="text-lg font-bold text-dark-gray mb-4">
-          새 대화 생성
-        </h3>
-        <p class="mb-6 text-gray-600">
-          새 대화를 시작하시겠습니까? 새로운 대화에서는 이전 대화 내용이 포함되지 않습니다.
-        </p>
-        <div class="flex justify-end space-x-3">
-          <button
-            class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none"
-            @click="showNewChatDialog = false"
-          >
-            취소
-          </button>
-          <button
-            class="px-4 py-2 bg-point-yellow text-dark-gray rounded-md hover:bg-yellow-400 focus:outline-none"
-            @click="createNewConversation"
-          >
-            생성
-          </button>
-        </div>
-      </div>
+      {{ errorMessage }}
     </div>
 
     <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="chat" />
-  </div> 
+    <BottomNavBar />
+  </div>
 </template>
 
 <style scoped>
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.bg-base-yellow {
-  background-color: #FFED90;
-}
 .bg-point-yellow {
   background-color: #FFD600;
 }
@@ -691,77 +455,33 @@ watch(() => chatService.selectedConversation.value?.id, (newId, oldId) => {
   color: #353535;
 }
 
-.chat-messages {
-  height: calc(100vh - 170px); /* 헤더 높이 고려하여 조정 */
-  padding-bottom: 120px; /* 하단 입력창 가려지지 않도록 패딩 증가 */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* iOS 스크롤 개선 */
-  scroll-behavior: smooth; /* 부드러운 스크롤 효과 */
-}
-
-textarea {
-  max-height: 100px;
-  min-height: 40px;
-  -webkit-appearance: none; /* iOS 입력 필드 스타일 개선 */
-  appearance: none;
-  font-size: 16px; /* iOS에서 자동 확대 방지 */
-}
-
-/* 모바일 환경 최적화 */
-@media (max-width: 768px) {
-  .chat-messages {
-    height: calc(100vh - 160px);
-    padding-bottom: 120px; /* 모바일에서도 충분한 하단 패딩 */
+/* iOS에서 자동 확대 방지 */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input, textarea {
+    font-size: 16px;
   }
 }
 
-/* 타이핑 메시지 스타일 */
-.typing-message {
-  background-color: #f8f9fa !important;
-  border-left: 3px solid #FFD600;
+/* 스크롤바 스타일링 */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E0 #EDF2F7;
 }
 
-/* 타이핑 인디케이터 */
-.typing-indicator {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 5px;
-}
-
-.typing-dot {
+.overflow-y-auto::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
-  margin: 0 2px;
-  background-color: #666;
-  border-radius: 50%;
-  opacity: 0;
-  animation: typingAnimation 1.4s infinite ease-in-out;
 }
 
-.typing-dot:nth-child(1) {
-  animation-delay: 0s;
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #EDF2F7;
 }
 
-.typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: #CBD5E0;
+  border-radius: 3px;
 }
 
-.typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes typingAnimation {
-  0% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: #A0AEC0;
 }
 </style>

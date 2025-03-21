@@ -90,25 +90,29 @@ const resetForm = () => {
 </script>
 
 <template>
-  <div
-    v-if="show"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-  >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
-      <div class="bg-point px-6 py-4 flex justify-between items-center">
-        <h3 class="text-lg font-bold text-dark-gray">
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+    <!-- 배경 오버레이 -->
+    <div
+      class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+      @click="emit('close')"
+    />
+
+    <!-- 모달 컨테이너 -->
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl">
+      <!-- 모달 헤더 -->
+      <div class="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200">
+        <h2 class="text-base sm:text-lg font-semibold text-dark-gray">
           일정 등록
-        </h3>
+        </h2>
         <button
-          class="text-dark-gray hover:text-gray-700"
+          class="p-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-point-yellow rounded-lg"
           @click="emit('close')"
         >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
+            class="w-5 h-5 sm:w-6 sm:h-6"
             fill="none"
-            viewBox="0 0 24 24"
             stroke="currentColor"
+            viewBox="0 0 24 24"
           >
             <path
               stroke-linecap="round"
@@ -120,101 +124,146 @@ const resetForm = () => {
         </button>
       </div>
 
-      <div class="p-6 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            날짜
-          </label>
-          <input
-            type="date"
-            v-model="eventData.start"
-            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-          />
-        </div>
+      <!-- 모달 컨텐츠 -->
+      <div class="modal-content p-3 sm:p-4 max-h-[60vh] overflow-y-auto">
+        <div class="space-y-3 sm:space-y-4">
+          <!-- 날짜 선택 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              날짜
+            </label>
+            <input
+              type="date"
+              v-model="eventData.start"
+              class="w-full px-3 py-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            />
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            제목
-          </label>
-          <input
-            type="text"
-            v-model="eventData.title"
-            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-            placeholder="일정 제목을 입력하세요"
-          />
-        </div>
+          <!-- 제목 입력 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              제목
+            </label>
+            <input
+              type="text"
+              v-model="eventData.title"
+              class="w-full px-3 py-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="일정 제목을 입력하세요"
+            />
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            설명
-          </label>
-          <textarea
-            v-model="eventData.description"
-            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point resize-none h-32"
-            placeholder="일정에 대한 설명을 입력하세요"
-          />
-        </div>
+          <!-- 설명 입력 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              설명
+            </label>
+            <textarea
+              v-model="eventData.description"
+              class="w-full px-3 py-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point-yellow resize-none h-24"
+              placeholder="일정에 대한 설명을 입력하세요"
+            />
+          </div>
 
-        <div class="flex items-center">
-          <input
-            type="checkbox"
-            v-model="eventData.allDay"
-            class="h-4 w-4 text-point focus:ring-point border-gray-300 rounded"
-          />
-          <label class="ml-2 text-sm text-gray-700">
-            종일 일정
-          </label>
-        </div>
-
-        <div class="space-y-2">
+          <!-- 종일 일정 체크박스 -->
           <div class="flex items-center">
             <input
               type="checkbox"
-              v-model="isRecurring"
-              class="h-4 w-4 text-point focus:ring-point border-gray-300 rounded"
+              v-model="eventData.allDay"
+              class="w-5 h-5 sm:w-4 sm:h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
             />
-            <label class="ml-2 text-sm text-gray-700">
-              반복 일정
+            <label class="ml-2 text-base sm:text-sm text-gray-700">
+              종일 일정
             </label>
           </div>
 
-          <div v-if="isRecurring" class="mt-2">
-            <select
-              v-model="recurrenceType"
-              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-            >
-              <option value="daily">매일</option>
-              <option value="weekly">매주</option>
-              <option value="monthly">매월</option>
-              <option value="yearly">매년</option>
-            </select>
+          <!-- 반복 일정 설정 -->
+          <div class="space-y-2">
+            <div class="flex items-center">
+              <input
+                type="checkbox"
+                v-model="isRecurring"
+                class="w-5 h-5 sm:w-4 sm:h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+              />
+              <label class="ml-2 text-base sm:text-sm text-gray-700">
+                반복 일정
+              </label>
+            </div>
+
+            <div v-if="isRecurring">
+              <select
+                v-model="recurrenceType"
+                class="w-full px-3 py-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              >
+                <option value="daily">매일</option>
+                <option value="weekly">매주</option>
+                <option value="monthly">매월</option>
+                <option value="yearly">매년</option>
+              </select>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="flex justify-end space-x-2 mt-6">
-          <button
-            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            @click="emit('close')"
-          >
-            취소
-          </button>
-          <button
-            class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-            @click="handleSave"
-          >
-            저장하기
-          </button>
-        </div>
+      <!-- 모달 푸터 -->
+      <div class="flex justify-end space-x-2 p-3 sm:p-4 border-t border-gray-200">
+        <button
+          class="px-4 py-2.5 text-base sm:text-sm font-medium text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+          @click="emit('close')"
+        >
+          취소
+        </button>
+        <button
+          class="px-4 py-2.5 text-base sm:text-sm font-medium text-dark-gray bg-point-yellow rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+          @click="handleSave"
+        >
+          저장하기
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.bg-point {
-  background-color: #FFD600;
+/* 스크롤바 스타일링 */
+.modal-content {
+  scrollbar-width: thin;
+  scrollbar-color: #FFD600 #F3F4F6;
 }
-.text-dark-gray {
-  color: #353535;
+
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background-color: #FFD600;
+  border-radius: 3px;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  .max-w-md {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  input[type="text"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px; /* iOS에서 자동 확대 방지 */
+  }
+
+  .space-y-3 {
+    margin-top: 0.75rem;
+  }
+
+  .space-y-3 > * + * {
+    margin-top: 0.75rem;
+  }
 }
 </style> 

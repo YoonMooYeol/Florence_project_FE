@@ -221,11 +221,11 @@ const goToLogin = () => {
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
     <div class="w-full max-w-md">
       <!-- 헤더 -->
-      <div class="mb-8 text-center">
-        <h1 class="text-3xl font-bold text-dark-gray">
+      <div class="mb-6 text-center">
+        <h1 class="text-2xl sm:text-3xl font-bold text-dark-gray">
           누리달
         </h1>
-        <p class="mt-2 text-dark-gray">
+        <p class="mt-2 text-sm sm:text-base text-dark-gray">
           비밀번호 찾기
         </p>
       </div>
@@ -233,89 +233,86 @@ const goToLogin = () => {
       <!-- 폼 에러 메시지 -->
       <div
         v-if="errors.form"
-        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-[20px]"
+        class="p-3 mb-4 text-sm text-center text-red-700 bg-red-100 rounded-[15px]"
       >
         {{ errors.form }}
       </div>
 
       <!-- 비밀번호 찾기 폼 -->
       <form
-        class="p-9 bg-white rounded-[10px] shadow-md"
+        class="p-5 sm:p-6 bg-white rounded-[10px] shadow-md"
         @submit.prevent="handleSubmit"
       >
         <!-- 이메일 입력 -->
-        <div class="mb-2">
+        <div class="mb-4">
           <label
             for="email"
-            class="block mb-2 text-xl font-medium text-dark-gray"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
           >이메일</label>
           <input
             id="email"
             v-model="formData.email"
             type="email"
-            class="w-full px-4 py-3 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="가입한 이메일을 입력하세요"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            placeholder="이메일을 입력하세요"
+            :disabled="isCodeSent"
           >
-
           <p
             v-if="errors.email"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.email }}
           </p>
         </div>
 
-        <!-- 인증번호 입력 (인증요청 후 표시) -->
-        <div
-          v-if="isCodeSent"
-          class="mb-2"
-        >
+        <!-- 인증번호 입력 (인증번호가 발송된 경우에만 표시) -->
+        <div v-if="isCodeSent" class="mb-5">
           <label
             for="verificationCode"
-            class="block mb-2 text-xl font-medium text-dark-gray"
-          >인증번호를 입력하세요</label>
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
+          >인증번호</label>
           <input
             id="verificationCode"
             v-model="formData.verificationCode"
             type="text"
-            class="w-full px-4 py-3 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="인증번호"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            placeholder="인증번호를 입력하세요"
           >
           <p
             v-if="errors.verificationCode"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.verificationCode }}
           </p>
         </div>
 
         <!-- 버튼 섹션 -->
-        <div class="flex flex-col mt-4">
-          <!-- 인증 요청 버튼 -->
+        <div class="flex flex-col">
+          <!-- 인증번호 발송/확인 버튼 -->
           <button
-            v-if="!isCodeSent"
             type="submit"
-            class="w-full px-4 py-3 mb-4 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+            v-if="!isCodeSent"
+            class="w-full px-4 py-2.5 mb-3 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-[15px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             :disabled="isSubmitting"
           >
             <span v-if="isSubmitting">처리 중...</span>
-            <span v-else>인증요청</span>
+            <span v-else>인증번호 발송</span>
           </button>
 
-          <!-- 확인 버튼 (인증번호 입력 후 표시) -->
+          <!-- 인증번호 확인 버튼 -->
           <button
-            v-if="isCodeSent"
             type="button"
-            class="w-full px-4 py-3 mb-4 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold"
+            v-if="isCodeSent"
+            class="w-full px-4 py-2.5 mb-3 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-[15px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
             @click="verifyCodeAndProceed"
           >
-            확인
+            인증번호 확인
           </button>
 
           <!-- 로그인으로 돌아가기 버튼 -->
           <button
             type="button"
-            class="w-full px-4 py-3 text-dark-gray border border-gray-300 rounded-[20px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+            class="w-full px-4 py-2.5 text-sm sm:text-base text-dark-gray border border-gray-300 rounded-[15px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
             @click="goToLogin"
           >
             로그인으로 돌아가기
@@ -325,3 +322,21 @@ const goToLogin = () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.bg-ivory {
+  background-color: #FFFAE0;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  input[type="email"],
+  input[type="text"] {
+    font-size: 16px; /* iOS에서 자동 확대 방지 */
+  }
+  
+  .max-w-md {
+    max-width: 100%;
+  }
+}
+</style>

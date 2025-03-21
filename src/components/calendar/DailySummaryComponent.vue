@@ -2,15 +2,15 @@
   <div class="daily-summary-container">
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p class="text-center text-gray-500">요약 정보를 불러오는 중...</p>
+      <p class="text-center text-gray-500 text-sm sm:text-base">요약 정보를 불러오는 중...</p>
     </div>
     
     <div v-else-if="error" class="error-state">
-      <p class="text-center text-red-500">{{ error }}</p>
+      <p class="text-center text-red-500 text-sm sm:text-base">{{ error }}</p>
     </div>
     
     <div v-else-if="!summary" class="empty-state">
-      <p class="text-center text-gray-500">
+      <p class="text-center text-gray-500 text-sm sm:text-base">
         {{ selectedDate }} 날짜에 대한 요약 정보가 없습니다.
       </p>
       <button 
@@ -32,7 +32,7 @@
       </div>
       
       <div class="summary-body">
-        <p>{{ summary.summary_text }}</p>
+        <p class="text-sm sm:text-base">{{ summary.summary_text }}</p>
       </div>
     </div>
   </div>
@@ -157,16 +157,17 @@ onMounted(() => {
 
 <style scoped>
 .daily-summary-container {
-  padding: 16px;
+  padding: 12px;
   background-color: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin: 8px;
 }
 
 .loading-state, .empty-state, .error-state {
-  padding: 20px;
+  padding: 16px;
   text-align: center;
-  min-height: 120px;
+  min-height: 100px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -177,10 +178,10 @@ onMounted(() => {
   border: 3px solid #f3f3f3;
   border-top: 3px solid #ffd600;
   border-radius: 50%;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   animation: spin 1s linear infinite;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 @keyframes spin {
@@ -193,11 +194,14 @@ onMounted(() => {
   color: #353535;
   border: none;
   border-radius: 8px;
-  padding: 8px 16px;
+  padding: 10px 20px;
   margin-top: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
+  font-size: 14px;
+  min-width: 120px;
+  touch-action: manipulation;
 }
 
 .generate-btn:hover:not(:disabled) {
@@ -219,7 +223,7 @@ onMounted(() => {
 .date-title {
   font-weight: 600;
   color: #353535;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .action-buttons {
@@ -232,10 +236,11 @@ onMounted(() => {
   color: #353535;
   border: none;
   border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 0.9rem;
+  padding: 8px 16px;
+  font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s;
+  touch-action: manipulation;
 }
 
 .view-btn:hover {
@@ -246,9 +251,23 @@ onMounted(() => {
   background-color: #fffef0;
   border-radius: 8px;
   padding: 12px;
-  font-size: 0.95rem;
   line-height: 1.5;
-  color: #333;
-  border-left: 3px solid #ffd600;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  .daily-summary-container {
+    padding: 10px;
+    margin: 4px;
+  }
+
+  .generate-btn, .view-btn {
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+
+  .date-title {
+    font-size: 0.95rem;
+  }
 }
 </style> 

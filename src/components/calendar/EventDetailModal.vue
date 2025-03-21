@@ -123,19 +123,19 @@ const formatEventDate = (event) => {
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
   >
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
       <!-- 모달 헤더 -->
-      <div class="bg-point px-6 py-4 flex justify-between items-center">
-        <h3 class="text-lg font-bold text-dark-gray">일정 상세</h3>
+      <div class="bg-point px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+        <h3 class="text-base sm:text-lg font-bold text-dark-gray">일정 상세</h3>
         <button
-          class="text-dark-gray hover:text-gray-700"
+          class="p-2 text-dark-gray hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-point-yellow rounded-lg"
           @click="closeModal"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
+            class="h-5 w-5 sm:h-6 sm:w-6"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -151,28 +151,28 @@ const formatEventDate = (event) => {
       </div>
 
       <!-- 모달 내용 -->
-      <div class="p-6 space-y-4">
+      <div class="p-4 sm:p-6 space-y-3 sm:space-y-4">
         <div>
-          <h4 class="font-medium text-gray-700">{{ event.title }}</h4>
-          <p class="text-sm text-gray-500">
+          <h4 class="text-base sm:text-lg font-medium text-gray-700">{{ event.title }}</h4>
+          <p class="text-sm sm:text-base text-gray-500 mt-1">
             {{ formatEventDate(event) }}
           </p>
-          <p v-if="event.description" class="mt-2 text-gray-600">
+          <p v-if="event.description" class="mt-2 text-sm sm:text-base text-gray-600">
             {{ event.description }}
           </p>
         </div>
 
         <!-- 반복 일정인 경우 삭제 옵션 -->
-        <div v-if="event.recurring && event.recurring !== 'none'" class="space-y-4">
+        <div v-if="event.recurring && event.recurring !== 'none'" class="space-y-3 sm:space-y-4">
           <div class="flex items-center space-x-2">
             <input
               type="radio"
               id="deleteAll"
               v-model="deleteOption"
               value="all"
-              class="text-point focus:ring-point"
+              class="w-5 h-5 sm:w-4 sm:h-4 text-point focus:ring-point"
             />
-            <label for="deleteAll" class="text-sm text-gray-700">모든 반복 일정 삭제</label>
+            <label for="deleteAll" class="text-sm sm:text-base text-gray-700">모든 반복 일정 삭제</label>
           </div>
           <div class="flex items-center space-x-2">
             <input
@@ -180,18 +180,18 @@ const formatEventDate = (event) => {
               id="deleteUntil"
               v-model="deleteOption"
               value="until"
-              class="text-point focus:ring-point"
+              class="w-5 h-5 sm:w-4 sm:h-4 text-point focus:ring-point"
             />
-            <label for="deleteUntil" class="text-sm text-gray-700">특정 날짜까지만 유지</label>
+            <label for="deleteUntil" class="text-sm sm:text-base text-gray-700">특정 날짜까지만 유지</label>
           </div>
           
           <!-- 날짜 선택 (deleteUntil 선택 시에만 표시) -->
           <div v-if="deleteOption === 'until'" class="mt-2">
-            <label class="block text-sm text-gray-700 mb-1">유지할 마지막 날짜 선택</label>
+            <label class="block text-sm sm:text-base text-gray-700 mb-1">유지할 마지막 날짜 선택</label>
             <input
               type="date"
               v-model="untilDate"
-              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+              class="w-full p-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
               :min="event && event.start && typeof event.start === 'string' && event.start.includes('T') ? event.start.split('T')[0] : event.start"
             />
           </div>
@@ -199,15 +199,15 @@ const formatEventDate = (event) => {
       </div>
 
       <!-- 모달 푸터 -->
-      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-2">
+      <div class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-2">
         <button
-          class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          class="px-4 py-2.5 text-sm sm:text-base bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
           @click="handleDelete"
         >
           삭제
         </button>
         <button
-          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+          class="px-4 py-2.5 text-sm sm:text-base bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
           @click="closeModal"
         >
           닫기
@@ -229,5 +229,12 @@ const formatEventDate = (event) => {
 }
 .text-point {
   color: #FFD600;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  input[type="date"] {
+    font-size: 16px; /* iOS에서 자동 확대 방지 */
+  }
 }
 </style>

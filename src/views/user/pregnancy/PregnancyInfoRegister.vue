@@ -168,34 +168,34 @@ const skipForNow = () => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
+  <div class="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 bg-ivory">
     <div class="w-full max-w-md">
       <!-- 헤더 -->
       <div class="mb-1 text-center">
-        <h1 class="text-xl font-bold text-center text-dark-gray">
+        <h1 class="text-lg sm:text-xl font-bold text-center text-dark-gray">
           임신 정보 등록
         </h1>
       </div>
     </div>
 
     <!-- 임신 정보 폼 -->
-    <div class="p-4 w-full max-w-md">
-      <div class="bg-white rounded-[10px] shadow-md p-8 mb-4">
-        <div class="flex justify-center mb-8">
-          <div class="w-20 h-20 rounded-full bg-base-yellow flex items-center justify-center">
+    <div class="p-3 sm:p-4 w-full max-w-md">
+      <div class="bg-white rounded-[10px] shadow-md p-4 sm:p-8 mb-3 sm:mb-4">
+        <div class="flex justify-center mb-4 sm:mb-8">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-yellow flex items-center justify-center">
             <svg-icon
               type="mdi"
               :path="path"
-              :size="52"
-              class="text-dark-gray"
+              :size="40"
+              class="text-dark-gray sm:text-[52px]"
             ></svg-icon>
           </div>
         </div>
-        <div class="mb-6 text-center">
-          <h2 class="text-lg font-bold text-dark-gray">
+        <div class="mb-4 sm:mb-6 text-center">
+          <h2 class="text-base sm:text-lg font-bold text-dark-gray">
             임신 정보를 입력해주세요
           </h2>
-          <p class="text-sm text-gray-500 mt-1">
+          <p class="text-xs sm:text-sm text-gray-500 mt-1">
             누리달에서 맞춤 서비스를 제공해 드립니다
           </p>
         </div>
@@ -203,13 +203,13 @@ const skipForNow = () => {
         <!-- 에러 메시지 표시 -->
         <div
           v-if="errorMessage"
-          class="p-3 mb-4 text-center text-red-700 bg-red-100 rounded-md"
+          class="p-2.5 sm:p-3 mb-3 sm:mb-4 text-center text-sm sm:text-base text-red-700 bg-red-100 rounded-md"
         >
           {{ errorMessage }}
         </div>
 
         <!-- 단계 표시 -->
-        <div class="flex justify-between mb-6">
+        <div class="flex justify-between mb-4 sm:mb-6">
           <div 
             v-for="step in 4" 
             :key="step" 
@@ -217,7 +217,7 @@ const skipForNow = () => {
             :class="{ 'text-point-yellow font-bold': step === currentStep, 'text-gray-400': step !== currentStep }"
           >
             <div 
-              class="w-8 h-8 rounded-full flex items-center justify-center mb-1"
+              class="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mb-1"
               :class="step === currentStep ? 'bg-point-yellow text-dark-gray' : (step < currentStep ? 'bg-green-500 text-white' : 'bg-gray-200')"
             >
               {{ step }}
@@ -230,21 +230,21 @@ const skipForNow = () => {
 
         <!-- 단계 1: 임신 여부 -->
         <div v-if="currentStep === 1">
-          <div class="mb-6">
-            <label class="flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-colors"
+          <div class="mb-4 sm:mb-6">
+            <label class="flex items-center justify-center p-2.5 sm:p-3 border rounded-lg cursor-pointer transition-colors"
                   :class="pregnancyInfo.isPregnant ? 'bg-base-yellow border-point-yellow' : 'bg-white border-gray-300 hover:bg-gray-100'">
               <input
                 v-model="pregnancyInfo.isPregnant"
                 type="checkbox"
-                class="w-5 h-5 text-point-yellow border-gray-300 rounded focus:ring-point-yellow mr-3"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-point-yellow border-gray-300 rounded focus:ring-point-yellow mr-2 sm:mr-3"
               >
-              <span class="text-dark-gray font-medium">임신 중입니다</span>
+              <span class="text-sm sm:text-base text-dark-gray font-medium">임신 중입니다</span>
             </label>
           </div>
           
-          <div class="flex justify-end mt-8">
+          <div class="flex justify-end mt-6 sm:mt-8">
             <button
-              class="px-6 py-2 bg-point-yellow rounded-md text-dark-gray font-bold shadow-sm hover:bg-yellow-400"
+              class="px-4 sm:px-6 py-2 bg-point-yellow rounded-md text-sm sm:text-base text-dark-gray font-bold shadow-sm hover:bg-yellow-400"
               :disabled="!isStep1Complete()"
               :class="{ 'opacity-50 cursor-not-allowed': !isStep1Complete() }"
               @click="goToNextStep"
@@ -256,39 +256,39 @@ const skipForNow = () => {
 
         <!-- 단계 2: 태명 입력 -->
         <div v-if="currentStep === 2">
-          <div class="mb-6">
+          <div class="mb-4 sm:mb-6">
             <label
               for="babyName"
-              class="block mb-2 text-sm font-medium text-dark-gray"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
             >태명</label>
             <input
               id="babyName"
               v-model="pregnancyInfo.babyName"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               placeholder="태명을 입력해주세요"
               :disabled="unknownInfo.babyName"
             >
             
-            <label class="flex items-center mt-3">
+            <label class="flex items-center mt-2 sm:mt-3">
               <input
                 v-model="unknownInfo.babyName"
                 type="checkbox"
-                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
               >
-              <span class="ml-2 text-sm text-gray-500">태명이 없습니다</span>
+              <span class="ml-2 text-xs sm:text-sm text-gray-500">태명이 없습니다</span>
             </label>
           </div>
           
-          <div class="flex justify-between mt-8">
+          <div class="flex justify-between mt-6 sm:mt-8">
             <button
-              class="px-6 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium shadow-sm hover:bg-gray-100"
+              class="px-4 sm:px-6 py-2 bg-white border border-gray-300 rounded-md text-sm sm:text-base text-gray-700 font-medium shadow-sm hover:bg-gray-100"
               @click="goToPrevStep"
             >
               이전
             </button>
             <button
-              class="px-6 py-2 bg-point-yellow rounded-md text-dark-gray font-bold shadow-sm hover:bg-yellow-400"
+              class="px-4 sm:px-6 py-2 bg-point-yellow rounded-md text-sm sm:text-base text-dark-gray font-bold shadow-sm hover:bg-yellow-400"
               :disabled="!isStep2Complete()"
               :class="{ 'opacity-50 cursor-not-allowed': !isStep2Complete() }"
               @click="goToNextStep"
@@ -300,17 +300,17 @@ const skipForNow = () => {
 
         <!-- 단계 3: 임신 주차 및 출산 예정일 -->
         <div v-if="currentStep === 3">
-          <div class="mb-6" v-if="!unknownInfo.weekAndDueDate">
+          <div class="mb-4 sm:mb-6" v-if="!unknownInfo.weekAndDueDate">
             <!-- 현재 임신 주차 -->
-            <div class="mb-4">
+            <div class="mb-3 sm:mb-4">
               <label
                 for="currentWeek"
-                class="block mb-2 text-sm font-medium text-dark-gray"
+                class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
               >현재 임신 주차</label>
               <select
                 id="currentWeek"
                 v-model="pregnancyInfo.currentWeek"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+                class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               >
                 <option
                   v-for="week in weekOptions"
@@ -323,16 +323,16 @@ const skipForNow = () => {
             </div>
 
             <!-- 출산 예정일 -->
-            <div class="mb-4">
+            <div class="mb-3 sm:mb-4">
               <label
                 for="dueDate"
-                class="block mb-2 text-sm font-medium text-dark-gray"
+                class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
               >출산 예정일</label>
               <input
                 id="dueDate"
                 v-model="pregnancyInfo.dueDate"
                 type="date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+                class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               >
               <p class="text-xs text-gray-500 mt-1">
                 임신 주차를 선택하면 자동으로 계산됩니다. 필요 시 수정 가능합니다.
@@ -341,52 +341,52 @@ const skipForNow = () => {
           </div>
 
           <!-- 임신 주차와 출산 예정일을 모를 경우 -->
-          <div class="mb-4">
-            <label class="flex items-center mb-3">
+          <div class="mb-3 sm:mb-4">
+            <label class="flex items-center mb-2 sm:mb-3">
               <input
                 v-model="unknownInfo.weekAndDueDate"
                 type="checkbox"
-                class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
               >
-              <span class="ml-2 text-sm text-gray-700">현재 임신 주차와 출산 예정일을 모릅니다</span>
+              <span class="ml-2 text-xs sm:text-sm text-gray-700">현재 임신 주차와 출산 예정일을 모릅니다</span>
             </label>
             
-            <div v-if="unknownInfo.weekAndDueDate" class="pl-6 mt-2 border-l-2 border-point-yellow">
+            <div v-if="unknownInfo.weekAndDueDate" class="pl-4 sm:pl-6 mt-2 border-l-2 border-point-yellow">
               <label
                 for="lastPeriodDate"
-                class="block mb-2 text-sm font-medium text-dark-gray"
+                class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
               >마지막 생리 시작일</label>
               <input
                 id="lastPeriodDate"
                 v-model="pregnancyInfo.lastPeriodDate"
                 type="date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+                class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
               >
               <p class="text-xs text-gray-500 mt-1">
                 마지막 생리 시작일을 기준으로 임신 주차와 출산 예정일을 계산합니다.
               </p>
               
-              <div v-if="pregnancyInfo.lastPeriodDate" class="mt-4 p-3 bg-gray-100 rounded-md">
-                <p class="text-sm text-dark-gray">계산된 결과:</p>
-                <p class="text-sm text-dark-gray">
+              <div v-if="pregnancyInfo.lastPeriodDate" class="mt-3 sm:mt-4 p-2.5 sm:p-3 bg-gray-100 rounded-md">
+                <p class="text-xs sm:text-sm text-dark-gray">계산된 결과:</p>
+                <p class="text-xs sm:text-sm text-dark-gray">
                   <span class="font-medium">임신 주차:</span> {{ pregnancyInfo.currentWeek }}주차
                 </p>
-                <p class="text-sm text-dark-gray">
+                <p class="text-xs sm:text-sm text-dark-gray">
                   <span class="font-medium">출산 예정일:</span> {{ pregnancyInfo.dueDate }}
                 </p>
               </div>
             </div>
           </div>
           
-          <div class="flex justify-between mt-8">
+          <div class="flex justify-between mt-6 sm:mt-8">
             <button
-              class="px-6 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium shadow-sm hover:bg-gray-100"
+              class="px-4 sm:px-6 py-2 bg-white border border-gray-300 rounded-md text-sm sm:text-base text-gray-700 font-medium shadow-sm hover:bg-gray-100"
               @click="goToPrevStep"
             >
               이전
             </button>
             <button
-              class="px-6 py-2 bg-point-yellow rounded-md text-dark-gray font-bold shadow-sm hover:bg-yellow-400"
+              class="px-4 sm:px-6 py-2 bg-point-yellow rounded-md text-sm sm:text-base text-dark-gray font-bold shadow-sm hover:bg-yellow-400"
               :disabled="!isStep3Complete()"
               :class="{ 'opacity-50 cursor-not-allowed': !isStep3Complete() }"
               @click="goToNextStep"
@@ -398,30 +398,30 @@ const skipForNow = () => {
 
         <!-- 단계 4: 고위험 임신 여부 -->
         <div v-if="currentStep === 4">
-          <div class="mb-6">
-            <label class="flex items-center justify-center p-4 border rounded-lg cursor-pointer transition-colors"
+          <div class="mb-4 sm:mb-6">
+            <label class="flex items-center justify-center p-3 sm:p-4 border rounded-lg cursor-pointer transition-colors"
                   :class="pregnancyInfo.highRisk ? 'bg-red-100 border-red-300' : 'bg-white border-gray-300 hover:bg-gray-100'">
               <input
                 v-model="pregnancyInfo.highRisk"
                 type="checkbox"
-                class="w-5 h-5 text-red-500 border-gray-300 rounded focus:ring-red-500 mr-3"
+                class="w-4 h-4 sm:w-5 sm:h-5 text-red-500 border-gray-300 rounded focus:ring-red-500 mr-2 sm:mr-3"
               >
-              <span class="text-dark-gray font-medium">고위험 임신입니다</span>
+              <span class="text-sm sm:text-base text-dark-gray font-medium">고위험 임신입니다</span>
             </label>
             <p class="text-xs text-gray-500 mt-2 text-center">
               고위험 임신인 경우 체크해 주세요. 맞춤형 정보를 제공해 드립니다.
             </p>
           </div>
           
-          <div class="flex justify-between mt-8">
+          <div class="flex justify-between mt-6 sm:mt-8">
             <button
-              class="px-6 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium shadow-sm hover:bg-gray-100"
+              class="px-4 sm:px-6 py-2 bg-white border border-gray-300 rounded-md text-sm sm:text-base text-gray-700 font-medium shadow-sm hover:bg-gray-100"
               @click="goToPrevStep"
             >
               이전
             </button>
             <button
-              class="px-6 py-2 bg-point-yellow rounded-md text-dark-gray font-bold shadow-sm hover:bg-yellow-400"
+              class="px-4 sm:px-6 py-2 bg-point-yellow rounded-md text-sm sm:text-base text-dark-gray font-bold shadow-sm hover:bg-yellow-400"
               :disabled="isSubmitting"
               @click="savePregnancyInfo"
             >
@@ -433,9 +433,9 @@ const skipForNow = () => {
       </div>
 
       <!-- 건너뛰기 버튼 -->
-      <div class="text-center mt-4">
+      <div class="text-center mt-3 sm:mt-4">
         <button
-          class="text-gray-500 hover:text-gray-700 font-medium"
+          class="text-sm sm:text-base text-gray-500 hover:text-gray-700 font-medium"
           :disabled="isSubmitting"
           @click="skipForNow"
         >
@@ -458,5 +458,12 @@ const skipForNow = () => {
 }
 .text-dark-gray {
   color: #353535;
+}
+
+/* iOS에서 자동 확대 방지 */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input, select {
+    font-size: 16px;
+  }
 }
 </style>

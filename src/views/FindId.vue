@@ -116,11 +116,11 @@ const goToLogin = () => {
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
     <div class="w-full max-w-md">
       <!-- 헤더 -->
-      <div class="mb-8 text-center">
-        <h1 class="text-3xl font-bold text-dark-gray">
+      <div class="mb-6 text-center">
+        <h1 class="text-2xl sm:text-3xl font-bold text-dark-gray">
           누리달
         </h1>
-        <p class="mt-2 text-dark-gray">
+        <p class="mt-2 text-sm sm:text-base text-dark-gray">
           아이디 찾기
         </p>
       </div>
@@ -128,7 +128,7 @@ const goToLogin = () => {
       <!-- 폼 에러 메시지 -->
       <div
         v-if="errors.form"
-        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-[20px]"
+        class="p-3 mb-4 text-sm text-center text-red-700 bg-red-100 rounded-[15px]"
       >
         {{ errors.form }}
       </div>
@@ -136,55 +136,55 @@ const goToLogin = () => {
       <!-- 찾은 아이디 표시 -->
       <div
         v-if="foundUsername"
-        class="p-4 mb-6 text-center bg-yellow-200 rounded-[20px]"
+        class="p-3 mb-4 text-center bg-yellow-200 rounded-[15px]"
       >
-        <p class="text-gray-700 font-bold">아이디</p>
-        <p class="mt-2 text-xl font-bold text-gray-900">{{ foundUsername }}</p>
+        <p class="text-sm text-gray-700 font-bold">아이디</p>
+        <p class="mt-1 text-lg sm:text-xl font-bold text-gray-900">{{ foundUsername }}</p>
       </div>
 
       <!-- 아이디 찾기 폼 -->
       <form
-        class="p-9 bg-white rounded-[10px] shadow-md"
+        class="p-5 sm:p-6 bg-white rounded-[10px] shadow-md"
         @submit.prevent="handleSubmit"
       >
         <!-- 닉네임 입력 -->
         <div class="mb-4">
           <label
             for="name"
-            class="block mb-2 text-xl font-medium text-dark-gray"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
           >닉네임</label>
           <input
             id="name"
             v-model="formData.name"
             type="text"
-            class="w-full px-4 py-3 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="닉네임을 입력하세요"
           >
           <p
             v-if="errors.name"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.name }}
           </p>
         </div>
 
         <!-- 전화번호 입력 -->
-        <div class="mb-6">
+        <div class="mb-5">
           <label
             for="phoneNumber"
-            class="block mb-2 text-xl font-medium text-dark-gray"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
           >전화번호</label>
           <input
             id="phoneNumber"
             v-model="formData.phoneNumber"
             type="tel"
-            class="w-full px-4 py-3 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="전화번호를 입력하세요 (예: 01012345678)"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            placeholder="전화번호를 입력하세요"
             @input="handlePhoneNumberInput"
           >
           <p
             v-if="errors.phoneNumber"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.phoneNumber }}
           </p>
@@ -195,7 +195,7 @@ const goToLogin = () => {
           <!-- 아이디 찾기 버튼 -->
           <button
             type="submit"
-            class="w-full px-4 py-3 mb-4 text-dark-gray bg-base-yellow rounded-[20px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+            class="w-full px-4 py-2.5 mb-3 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-[15px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
             :disabled="isSubmitting"
           >
             <span v-if="isSubmitting">처리 중...</span>
@@ -205,7 +205,7 @@ const goToLogin = () => {
           <!-- 로그인으로 돌아가기 버튼 -->
           <button
             type="button"
-            class="w-full px-4 py-3 text-dark-gray border border-gray-300 rounded-[20px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+            class="w-full px-4 py-2.5 text-sm sm:text-base text-dark-gray border border-gray-300 rounded-[15px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
             @click="goToLogin"
           >
             로그인으로 돌아가기
@@ -219,5 +219,17 @@ const goToLogin = () => {
 <style scoped>
 .bg-ivory {
   background-color: #FFFAE0;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="tel"] {
+    font-size: 16px; /* iOS에서 자동 확대 방지 */
+  }
+  
+  .max-w-md {
+    max-width: 100%;
+  }
 }
 </style>

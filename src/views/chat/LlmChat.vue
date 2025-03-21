@@ -697,216 +697,152 @@ const closeSummary = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-ivory flex flex-col">
-    <!-- 하단 네비게이션 바 -->
-    <BottomNavBar
-      active-tab="chat"
-      class="bottom-nav"
-    />
-
-    <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-20">
-      <div class="flex items-center">
-        <h1 class="text-xl font-bold text-dark-gray">
-          플로렌스
-        </h1>
-      </div>
-      <div class="flex items-center space-x-2">
-        <div
-          v-if="userInfo && userInfo.baby_name && userInfo.baby_name !== '아기'"
-          class="text-sm text-gray-600 bg-base-yellow px-3 py-1 rounded-full"
-        >
-          태명: {{ userInfo.baby_name }}
-        </div>
-        <div
-          v-if="userInfo && userInfo.pregnancy_week"
-          class="text-sm text-gray-600 bg-base-yellow px-3 py-1 rounded-full"
-        >
-          임신 {{ userInfo.pregnancy_week }}주차
-        </div>
-      </div>
-    </div>
-
-    <!-- 에러 메시지 -->
+  <div class="flex flex-col h-screen bg-gray-50">
+    <!-- 채팅방 목록 사이드바 (데스크톱) -->
     <div
-      v-if="errorMessage"
-      class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-2 mt-16"
+      class="hidden sm:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white border-r border-gray-200 overflow-y-auto"
     >
-      <p>{{ errorMessage }}</p>
-    </div>
-
-    <!-- 로딩 표시 -->
-    <div
-      v-if="isLoading"
-      class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50"
-    >
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-white mb-4" />
-    </div>
-
-    <!-- 메인 컨텐츠 영역 -->
-    <div class="flex flex-1 mt-16 relative">
-      <!-- 채팅방 목록 (데스크탑) -->
-      <div class="w-1/3 bg-white border-r border-gray-200 overflow-y-auto hidden md:block fixed top-16 bottom-0 left-0 z-10 md:w-1/4">
-        <div class="p-4">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="font-bold text-dark-gray">
-              채팅 목록
-            </h2>
+      <div class="p-4 border-b border-gray-200">
+        <button
+          class="w-full px-4 py-2 bg-point-yellow text-dark-gray rounded-xl hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow"
+          @click="createChatRoom"
+        >
+          새 채팅
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <div
+          v-for="room in chatRooms"
+          :key="room.chat_id"
+          class="p-3 cursor-pointer hover:bg-gray-50"
+          :class="{ 'bg-gray-100': selectedChatId === room.chat_id }"
+          @click="selectChatRoom(room.chat_id)"
+        >
+          <div class="text-sm font-medium text-gray-900 truncate">
+            {{ formatDate(room.created_at) }}
           </div>
+          <div class="text-xs text-gray-500 mt-1 truncate">
+            {{ room.last_message || '새로운 대화를 시작하세요' }}
+          </div>
+        </div>
+      </div>
+    </div>
 
-          <div class="space-y-2">
+    <!-- 메인 채팅 영역 -->
+    <div class="flex-1 sm:ml-64">
+      <!-- 모바일 헤더 -->
+      <div class="sm:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200">
+        <button
+          class="p-2 hover:bg-gray-100 rounded-lg"
+          @click="showChatList = true"
+        >
+          <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div class="text-lg font-semibold text-gray-900">
+          {{ formatDate(currentChat?.created_at) }}
+        </div>
+        <button
+          class="p-2 hover:bg-gray-100 rounded-lg"
+          @click="showSummary = true"
+        >
+          <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 채팅 메시지 영역 -->
+      <div
+        ref="chatContainer"
+        class="flex-1 overflow-y-auto p-4 space-y-4 pb-20 sm:pb-24"
+        @scroll="handleScroll"
+      >
+        <div
+          v-for="message in messages"
+          :key="message.id"
+          :class="[
+            'flex',
+            message.role === 'user' ? 'justify-end' : 'justify-start'
+          ]"
+        >
+          <div
+            :class="[
+              'max-w-[80%] sm:max-w-[70%] rounded-2xl p-3 break-words',
+              message.role === 'user'
+                ? 'bg-base-yellow text-dark-gray'
+                : 'bg-white shadow-sm border border-gray-200'
+            ]"
+          >
+            <div class="prose max-w-none text-sm sm:text-base">
+              {{ message.content }}
+            </div>
             <div
-              v-for="(room, index) in chatRooms"
-              :key="room.chat_id"
-              class="p-3 rounded-lg cursor-pointer"
-              :class="selectedChatId === room.chat_id ? 'bg-base-yellow' : 'bg-gray-100 hover:bg-gray-200'"
-              @click="selectChatRoom(room.chat_id)"
+              :class="[
+                'text-[10px] mt-1',
+                message.role === 'user' ? 'text-right text-gray-600' : 'text-left text-gray-500'
+              ]"
             >
-              <div class="font-medium text-dark-gray truncate">
-                {{ getChatRoomName(room, index) }}
-              </div>
-              <div class="text-xs text-gray-500 mt-1">
-                {{ new Date(room.updated_at).toLocaleDateString() }}
-              </div>
+              {{ message.created_at }}
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 채팅 내용 영역 -->
-      <div class="flex-1 flex flex-col md:pl-1/4 w-full">
-        <!-- 현재 채팅방 제목 (MD 이상 화면에서만 표시) -->
-        <div
-          v-if="selectedChatId && currentChat"
-          class="bg-white p-3 border-b border-gray-200 hidden md:flex items-center justify-between fixed top-16 left-1/4 right-0 z-10"
-        >
-          <h2 class="font-semibold text-dark-gray">
-            {{ currentChat.topic || '오늘의 대화' }}
-          </h2>
+      <!-- 입력 영역 -->
+      <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 pb-safe sm:left-64">
+        <div class="max-w-screen-md mx-auto flex space-x-2">
+          <textarea
+            v-model="userInput"
+            class="flex-1 resize-none rounded-xl border border-gray-300 p-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            :rows="1"
+            placeholder="메시지를 입력하세요..."
+            @keydown.enter.prevent="handleEnterKey"
+          />
+          <button
+            class="px-4 py-2 bg-point-yellow text-dark-gray rounded-xl hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow disabled:bg-gray-300 disabled:cursor-not-allowed"
+            :disabled="!userInput.trim() || isSubmitting"
+            @click="sendMessage"
+          >
+            전송
+          </button>
         </div>
+      </div>
+    </div>
 
-        <!-- 모바일 채팅방 제목 - 채팅방 선택 드롭다운 제거 -->
-        <div
-          v-if="selectedChatId"
-          class="bg-ivory py-2 px-3 border-b border-gray-200 flex md:hidden items-center justify-between fixed top-16 left-0 right-0 z-10"
-        >
-          <div class="text-sm font-medium text-gray-600">
-            {{ currentChat?.topic || '오늘의 대화' }}
-          </div>
+    <!-- 모바일 채팅방 목록 사이드바 -->
+    <div
+      v-if="showChatList"
+      class="fixed inset-0 z-50 sm:hidden"
+    >
+      <div
+        class="absolute inset-0 bg-black bg-opacity-50"
+        @click="showChatList = false"
+      />
+      <div class="absolute inset-y-0 left-0 w-3/4 max-w-sm bg-white">
+        <div class="p-4 border-b border-gray-200">
+          <button
+            class="w-full px-4 py-2 bg-point-yellow text-dark-gray rounded-xl hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            @click="createChatRoom"
+          >
+            새 채팅
+          </button>
         </div>
-
-        <!-- 채팅 메시지 영역 -->
-        <div
-          ref="chatContainer"
-          class="chat-messages-container"
-          @scroll="handleScroll"
-        >
-          <div class="flex flex-col space-y-4 p-4 pb-10">
-            <div
-              v-for="message in messages"
-              :key="message.id"
-              class="flex"
-              :class="message.role === 'user' ? 'justify-end' : (message.role === 'system' ? 'justify-center' : 'justify-start')"
-            >
-              <!-- AI 메시지 -->
-              <div
-                v-if="message.role === 'assistant'"
-                class="flex max-w-[85%] md:max-w-[75%]"
-              >
-                <div class="w-8 h-8 bg-point-yellow rounded-full flex items-center justify-center mr-2 flex-shrink-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 text-dark-gray"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm8 5a1 1 0 100-2 1 1 0 000 2zm-2-7.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm0 2a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5z" />
-                  </svg>
-                </div>
-                <div class="assistant-message">
-                  <div
-                    class="bg-white p-3 rounded-lg shadow-sm whitespace-pre-wrap"
-                    :class="{
-                      'typing-message': message.isTyping
-                    }"
-                  >
-                    {{ message.content }}
-                    <span
-                      v-if="message.isTyping"
-                      class="typing-indicator"
-                    >
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                      <span class="typing-dot" />
-                    </span>
-                  </div>
-                  <div class="text-xs text-gray-500 mt-1 ml-1">
-                    {{ message.created_at }}
-                  </div>
-                </div>
-              </div>
-
-              <!-- 사용자 메시지 -->
-              <div
-                v-else-if="message.role === 'user'"
-                class="flex flex-col items-end max-w-[85%] md:max-w-[75%]"
-              >
-                <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-                  {{ message.content }}
-                </div>
-                <div class="text-xs text-gray-500 mt-1 mr-1">
-                  {{ message.created_at }}
-                </div>
-              </div>
-
-              <!-- 시스템 메시지 (에러 등) -->
-              <div
-                v-else
-                class="max-w-[90%] mx-auto"
-              >
-                <div
-                  class="p-2 px-4 rounded-lg text-sm whitespace-pre-wrap text-center"
-                  :class="message.isError ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'"
-                >
-                  {{ message.content }}
-                </div>
-              </div>
+        <div class="overflow-y-auto h-full">
+          <div
+            v-for="room in chatRooms"
+            :key="room.chat_id"
+            class="p-3 cursor-pointer hover:bg-gray-50"
+            :class="{ 'bg-gray-100': selectedChatId === room.chat_id }"
+            @click="selectChatRoomMobile(room.chat_id)"
+          >
+            <div class="text-sm font-medium text-gray-900 truncate">
+              {{ formatDate(room.created_at) }}
             </div>
-            <!-- 하단 여백 -->
-            <div class="h-10" />
-          </div>
-        </div>
-
-        <!-- 메시지 입력 영역 -->
-        <div class="message-input-area">
-          <div class="input-container">
-            <textarea
-              v-model="userInput"
-              placeholder="메시지를 입력하세요"
-              class="chat-input flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-point-yellow resize-none"
-              rows="1"
-              @keydown="handleKeyDown"
-            />
-            <button
-              class="send-button p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-              :disabled="isSubmitting || !userInput.trim()"
-              @click="sendMessage"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
-              </svg>
-            </button>
+            <div class="text-xs text-gray-500 mt-1 truncate">
+              {{ room.last_message || '새로운 대화를 시작하세요' }}
+            </div>
           </div>
         </div>
       </div>
@@ -915,239 +851,113 @@ const closeSummary = () => {
     <!-- 채팅 요약 모달 -->
     <div
       v-if="showSummary"
-      class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center z-50"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
-      <div class="bg-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
-        <h3 class="text-lg font-bold text-dark-gray mb-4">
+      <div
+        class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+        @click="showSummary = false"
+      />
+      <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
+        <h3 class="text-lg font-semibold text-dark-gray mb-4">
           대화 요약
         </h3>
-        <div
-          v-if="chatSummary"
-          class="mb-6"
+        <div class="prose max-w-none text-sm sm:text-base">
+          {{ chatSummary || '아직 요약이 없습니다.' }}
+        </div>
+        <button
+          class="mt-4 w-full px-4 py-2 bg-base-yellow text-dark-gray rounded-xl hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow"
+          @click="showSummary = false"
         >
-          <div class="bg-gray-50 p-4 rounded-lg mb-4">
-            <p class="text-gray-800 font-medium mb-2">
-              주제
-            </p>
-            <p class="text-gray-700">
-              {{ chatSummary.topic }}
-            </p>
-          </div>
-          <div class="bg-gray-50 p-3 rounded-lg text-gray-600 text-sm">
-            <p>메시지 수: {{ chatSummary.message_count }}개</p>
-          </div>
-        </div>
-        <div class="flex justify-end">
-          <button
-            class="px-4 py-2 bg-point-yellow text-dark-gray rounded-md hover:bg-yellow-400 focus:outline-none"
-            @click="closeSummary"
-          >
-            확인
-          </button>
-        </div>
+          닫기
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.bg-base-yellow {
-  background-color: #FFED90;
-}
-.bg-point-yellow {
-  background-color: #FFD600;
-}
-.text-dark-gray {
-  color: #353535;
+/* 스크롤바 스타일링 */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
 }
 
-/* 채팅방 목록 레이아웃 */
-@media (min-width: 768px) {
-  .md\:pl-1\/4 {
-    padding-left: 25%;
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  textarea {
+    font-size: 16px; /* iOS에서 자동 확대 방지 */
   }
 
-  .md\:w-1\/4 {
-    width: 25%;
+  .prose {
+    font-size: 14px;
   }
 
-  .left-1\/4 {
-    left: 25%;
-  }
-}
-
-.chat-messages-container {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* iOS 스크롤 개선 */
-  scroll-behavior: smooth; /* 부드러운 스크롤 효과 */
-  position: fixed;
-  top: 64px; /* 헤더 높이 */
-  bottom: 112px; /* 입력 필드(56px) + 하단 네비게이션 바(56px) */
-  width: 100%;
-  left: 0;
-  right: 0;
-  z-index: 5; /* 채팅 메시지 영역의 z-index 조정 */
-  background-color: #FFFAE0; /* 배경색 추가 */
-}
-
-.message-input-area {
-  position: fixed;
-  bottom: 56px; /* 하단 네비게이션 바 높이만큼 띄우기 */
-  left: 0;
-  right: 0;
-  background-color: white;
-  padding: 8px 0;
-  border-top: 1px solid #e2e8f0;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
-  z-index: 20;
-  height: 56px; /* 높이 고정 */
-  display: flex;
-  justify-content: center; /* 중앙 정렬 */
-  align-items: center;
-}
-
-.input-container {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  max-width: 640px; /* 최대 너비 설정 */
-  padding: 0 16px; /* 좌우 패딩 */
-  margin: 0 auto; /* 중앙 정렬 */
-}
-
-.chat-input {
-  border-radius: 18px;
-  min-height: 40px;
-  max-height: 80px;
-  overflow-y: auto;
-  -webkit-appearance: none;
-  appearance: none;
-  line-height: 1.5;
-  outline: none;
-}
-
-.send-button {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 채팅 메시지 스타일 개선 */
-.assistant-message {
-  max-width: 100%;
-}
-
-/* 모바일 환경 최적화 */
-@media (max-width: 767px) {
-  .chat-messages-container {
-    top: 104px; /* 헤더 + 모바일 요약 버튼 높이 */
-    padding-top: 10px;
-    bottom: 112px; /* 입력 필드 + 하단 네비게이션 바 */
-  }
-
-  .input-container {
-    padding: 0 12px; /* 모바일에서는 좁은 패딩 */
+  /* 아이폰 하단 safe area 대응 */
+  .pb-safe {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
 }
 
-/* 데스크탑 레이아웃 조정 */
-@media (min-width: 768px) {
-  .chat-messages-container {
-    left: 25%; /* 채팅방 목록 너비만큼 오른쪽으로 이동 */
-    top: 104px; /* 헤더 + 채팅방 제목 높이 */
-    bottom: 112px; /* 입력 필드 + 하단 네비게이션 바 */
-  }
-
-  .message-input-area {
-    left: 25%; /* 채팅방 목록 너비만큼 오른쪽으로 이동 */
-  }
-
-  .input-container {
-    padding: 0; /* 데스크탑에서는 패딩 제거 */
-  }
+/* 마크다운 스타일링 */
+.prose {
+  line-height: 1.6;
 }
 
-textarea {
-  max-height: 100px;
-  min-height: 40px;
-  -webkit-appearance: none; /* iOS 입력 필드 스타일 개선 */
-  appearance: none;
-  font-size: 16px; /* iOS에서 자동 확대 방지 */
+.prose p {
+  margin-bottom: 0.5em;
 }
 
-/* 모바일 환경 최적화 */
-@media (max-width: 768px) {
-  .chat-messages {
-    padding-bottom: 260px; /* 모바일에서 더 큰 하단 패딩 */
-    height: calc(100vh - 170px);
-  }
-
-  .message-input-area {
-    bottom: 56px; /* 모바일에서의 하단 네비게이션 바 높이 */
-  }
+.prose p:last-child {
+  margin-bottom: 0;
 }
 
-/* 타이핑 메시지 스타일 */
-.typing-message {
-  background-color: #f8f9fa !important;
-  border-left: 3px solid #FFD600;
+.prose ul,
+.prose ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
 }
 
-/* 타이핑 인디케이터 */
-.typing-indicator {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 5px;
+.prose li {
+  margin-bottom: 0.25em;
 }
 
-.typing-dot {
-  width: 6px;
-  height: 6px;
-  margin: 0 2px;
-  background-color: #666;
-  border-radius: 50%;
-  opacity: 0;
-  animation: typingAnimation 1.4s infinite ease-in-out;
+.prose a {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
-.typing-dot:nth-child(1) {
-  animation-delay: 0s;
+.prose code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-size: 0.9em;
 }
 
-.typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
+.prose pre {
+  background-color: #f3f4f6;
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin: 0.5em 0;
 }
 
-.typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes typingAnimation {
-  0% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
-}
-
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 30; /* 가장 높은 z-index로 설정 */
-  height: 56px;
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
 }
 </style>

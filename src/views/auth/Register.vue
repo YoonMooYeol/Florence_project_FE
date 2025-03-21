@@ -459,103 +459,45 @@ const handleVerificationCancel = () => {
 <template>
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
     <div class="w-full max-w-md">
-      <!-- 성공 메시지 모달 -->
-      <div
-        v-if="showSuccessMessage"
-        class="fixed inset-0 flex items-center justify-center z-50"
-      >
-        <!-- 배경 오버레이 -->
-        <div class="absolute inset-0 bg-black bg-opacity-50" />
-
-        <!-- 모달 컨텐츠 -->
-        <div class="bg-white rounded-[20px] shadow-xl p-6 max-w-md w-full mx-4 z-10 relative">
-          <div class="flex justify-center mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-16 w-16 text-green-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">
-            회원가입이 완료되었습니다!
-          </h2>
-          <p class="text-center text-gray-600 mb-6">
-            아래 버튼을 클릭하여 {{ formData.is_pregnant ? '임신 정보를 등록' : '로그인 페이지로 이동' }}하세요.
-          </p>
-
-          <div
-            v-if="registeredUser"
-            class="bg-gray-50 p-4 rounded-md mb-6"
-          >
-            <p class="mb-2">
-              <strong>이름:</strong> {{ registeredUser.name }}
-            </p>
-            <p class="mb-2">
-              <strong>이메일:</strong> {{ registeredUser.email }}
-            </p>
-            <p><strong>전화번호:</strong> {{ registeredUser.phone_number }}</p>
-          </div>
-
-          <div class="text-center">
-            <button
-              class="px-6 py-2 bg-point-yellow text-dark-gray font-medium rounded-[20px] hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-colors"
-              @click="navigateAfterRegistration"
-            >
-              {{ formData.is_pregnant ? '임신 정보 등록하기' : '로그인 페이지로 이동' }}
-            </button>
-          </div>
-        </div>
+      <!-- 헤더 -->
+      <div class="mb-6 text-center">
+        <h1 class="text-2xl sm:text-3xl font-bold text-dark-gray">
+          누리달
+        </h1>
+        <p class="mt-2 text-sm sm:text-base text-dark-gray">
+          회원가입
+        </p>
       </div>
 
       <!-- 폼 에러 메시지 -->
       <div
         v-if="errors.form"
-        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-md"
+        class="p-3 mb-4 text-sm text-center text-red-700 bg-red-100 rounded-[15px]"
       >
         {{ errors.form }}
       </div>
 
       <!-- 회원가입 폼 -->
-
-      <div class="mb-3 text-center">
-        <h1 class="text-3xl font-bold text-dark-gray">
-          누리달
-        </h1>
-        <p class="mt-1 text-dark-gray">
-          회원가입
-        </p>
-      </div>
-
       <form
-        class="p-5 bg-white rounded-lg shadow-md"
+        class="p-5 sm:p-6 bg-white rounded-[10px] shadow-md"
         @submit.prevent="handleSubmit"
       >
-        <!-- 사용자명 입력 -->
+        <!-- 아이디 입력 -->
         <div class="mb-4">
           <label
             for="username"
-            class="block mb-2 text-sm font-medium text-dark-gray"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
           >아이디</label>
           <input
             id="username"
             v-model="formData.username"
             type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="아이디를 입력하세요"
-            @input="clearFieldError('username')"
           >
           <p
             v-if="errors.username"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.username }}
           </p>
@@ -565,19 +507,18 @@ const handleVerificationCancel = () => {
         <div class="mb-4">
           <label
             for="name"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >닉네임</label>
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
+          >이름</label>
           <input
             id="name"
             v-model="formData.name"
             type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="이름을 입력하세요"
-            @input="clearFieldError('name')"
           >
           <p
             v-if="errors.name"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.name }}
           </p>
@@ -585,57 +526,54 @@ const handleVerificationCancel = () => {
 
         <!-- 이메일 입력 -->
         <div class="mb-4">
-          <label for="email" class="block mb-2 text-sm font-medium text-dark-gray">이메일</label>
-          <div class="relative">
+          <label
+            for="email"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
+          >이메일</label>
+          <div class="flex space-x-2">
             <input
               id="email"
               v-model="formData.email"
               type="email"
-              :disabled="isEmailVerified && !isSendingCode"
-              @input="clearFieldError('email')"
-              :class="{'bg-gray-200': isEmailVerified && !isSendingCode}"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="flex-1 px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
               placeholder="이메일을 입력하세요"
+              :disabled="isEmailVerified"
             >
             <button
               type="button"
+              class="px-3 py-2 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-[15px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
               @click="handleEmailVerification"
-              :class="['absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-dark-gray rounded font-bold text-sm', isSendingCode ? 'bg-gray-300' : 'bg-yellow-300']"
-              :disabled="isSendingCode"
             >
-              {{ isSendingCode ? '인증중' : (isEmailVerified ? '재입력' : '인증요청') }}
+              {{ isEmailVerified ? '재입력' : '인증요청' }}
             </button>
           </div>
-          <p v-if="errors.email" class="mt-1 text-sm text-red-600">
+          <p
+            v-if="errors.email"
+            class="mt-1 text-xs sm:text-sm text-red-600"
+          >
             {{ errors.email }}
-          </p>
-          <p v-if="isEmailVerified" class="mt-1 text-sm text-green-600 font-bold">
-            ✓ 이메일 인증이 완료되었습니다
           </p>
         </div>
 
         <!-- 전화번호 입력 -->
         <div class="mb-4">
-          <label class="block mb-2 text-sm font-medium text-dark-gray">전화번호</label>
-          <div class="relative">
-            <input
-              id="phone_number"
-              v-model="formData.phone_number"
-              type="tel"
-              maxlength="13"
-              class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-              placeholder="010-0000-0000"
-              @input="handlePhoneInput"
-            >
-          </div>
+          <label
+            for="phone_number"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
+          >전화번호</label>
+          <input
+            id="phone_number"
+            v-model="formData.phone_number"
+            type="tel"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            placeholder="전화번호를 입력하세요"
+            @input="handlePhoneInput"
+          >
           <p
             v-if="errors.phone_number"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.phone_number }}
-          </p>
-          <p class="mt-1 text-xs text-gray-500">
-            휴대폰 번호는 '-'없이 숫자만 입력하셔도 됩니다
           </p>
         </div>
 
@@ -643,41 +581,39 @@ const handleVerificationCancel = () => {
         <div class="mb-4">
           <label
             for="password"
-            class="block mb-2 text-sm font-medium text-dark-gray"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
           >비밀번호</label>
           <input
             id="password"
             v-model="formData.password"
             type="password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 입력하세요"
-            @input="clearFieldError('password'); formData.password_confirm && clearFieldError('password_confirm')"
           >
           <p
             v-if="errors.password"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.password }}
           </p>
         </div>
 
-        <!-- 비밀번호 확인 입력 -->
+        <!-- 비밀번호 확인 -->
         <div class="mb-4">
           <label
             for="password_confirm"
-            class="block mb-2 text-sm font-medium text-dark-gray"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
           >비밀번호 확인</label>
           <input
             id="password_confirm"
             v-model="formData.password_confirm"
             type="password"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
             placeholder="비밀번호를 다시 입력하세요"
-            @input="clearFieldError('password_confirm')"
           >
           <p
             v-if="errors.password_confirm"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.password_confirm }}
           </p>
@@ -685,196 +621,159 @@ const handleVerificationCancel = () => {
 
         <!-- 성별 선택 -->
         <div class="mb-4">
-          <label class="block mb-2 text-sm font-medium text-dark-gray">성별</label>
+          <label class="block mb-1 text-base sm:text-lg font-medium text-dark-gray">성별</label>
           <div class="flex space-x-4">
             <label class="flex items-center">
               <input
-                v-model="formData.gender"
                 type="radio"
-                value="male"
+                v-model="formData.gender"
+                value="F"
                 class="w-4 h-4 text-point-yellow border-gray-300 focus:ring-point-yellow"
-                @change="clearFieldError('gender')"
               >
-              <span class="ml-2 text-dark-gray">남성</span>
+              <span class="ml-2 text-sm text-gray-700">여성</span>
             </label>
             <label class="flex items-center">
               <input
-                v-model="formData.gender"
                 type="radio"
-                value="female"
+                v-model="formData.gender"
+                value="M"
                 class="w-4 h-4 text-point-yellow border-gray-300 focus:ring-point-yellow"
-                @change="clearFieldError('gender')"
               >
-              <span class="ml-2 text-dark-gray">여성</span>
+              <span class="ml-2 text-sm text-gray-700">남성</span>
             </label>
           </div>
           <p
             v-if="errors.gender"
-            class="mt-1 text-sm text-red-600"
+            class="mt-1 text-xs sm:text-sm text-red-600"
           >
             {{ errors.gender }}
           </p>
         </div>
 
-        <!-- 임신 여부 (여성인 경우만 표시) -->
-        <div
-          v-if="formData.gender === 'female'"
-          class="mb-4"
-        >
+        <!-- 임신 여부 체크박스 -->
+        <div class="mb-4">
           <label class="flex items-center">
             <input
-              v-model="formData.is_pregnant"
               type="checkbox"
+              v-model="formData.is_pregnant"
               class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
             >
-            <span class="ml-2 text-dark-gray">임신 중</span>
+            <span class="ml-2 text-sm text-gray-700">임신 중이에요</span>
           </label>
         </div>
 
-        <div class="mb-6">
-          <!-- 주소 입력 -->
-          <div class="w-full mb-2">
-            <label
-              for="address"
-              class="block mb-2 text-sm font-medium text-dark-gray"
-            >주소</label>
-            <div class="flex">
-              <input
-                id="address"
-                v-model="formData.address"
-                type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-l-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow bg-gray-50"
-                placeholder="주소 검색 버튼을 눌러 주소를 입력하세요"
-                readonly
-              >
-              <!-- 주소 검색 버튼 -->
-              <button
-                type="button"
-                class="bg-base-yellow text-dark-gray py-2 px-3 rounded-r-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow font-bold whitespace-nowrap"
-                @click="openDaumPostcode"
-              >
-                주소 검색
-              </button>
-            </div>
-            <p
-              v-if="errors.address"
-              class="mt-1 text-sm text-red-600"
+        <!-- 주소 입력 -->
+        <div class="mb-4">
+          <label
+            for="address"
+            class="block mb-1 text-base sm:text-lg font-medium text-dark-gray"
+          >주소</label>
+          <div class="flex space-x-2">
+            <input
+              id="address"
+              v-model="formData.address"
+              type="text"
+              class="flex-1 px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              placeholder="주소를 입력하세요"
+              readonly
             >
-              {{ errors.address }}
-            </p>
+            <button
+              type="button"
+              class="px-3 py-2 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-[15px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+              @click="openDaumPostcode"
+            >
+              주소 검색
+            </button>
           </div>
+          <p
+            v-if="errors.address"
+            class="mt-1 text-xs sm:text-sm text-red-600"
+          >
+            {{ errors.address }}
+          </p>
         </div>
 
-        <!-- 지도 표시 -->
-        <div
-          id="map"
-          style="width:100px;height:300px;margin-top:10px;display:none"
-        />
-
         <!-- 버튼 섹션 -->
-        <div class="flex flex-col space-y-3">
-          <!-- 회원가입 버튼 -->
+        <div class="flex flex-col mt-6">
           <button
             type="submit"
-            class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-[10px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
-            :disabled="isSubmitting || !isEmailVerified"
+            class="w-full px-4 py-2.5 mb-3 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-[15px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+            :disabled="isSubmitting"
           >
             <span v-if="isSubmitting">처리 중...</span>
-            <span v-else-if="!isEmailVerified">이메일 인증 필요</span>
             <span v-else>회원가입</span>
           </button>
 
-          <!-- 로그인 링크 -->
-          <div class="text-center mt-4">
-            <a
-              href="#"
-              class="font-medium"
-              @click.prevent="goToLogin"
-            >
-              <span class="text-dark-gray">이미 계정이 있으신가요?</span> <span class="text-point-yellow hover:underline">로그인하기</span>
-            </a>
-          </div>
+          <button
+            type="button"
+            class="w-full px-4 py-2.5 text-sm sm:text-base text-dark-gray border border-gray-300 rounded-[15px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+            @click="goToLogin"
+          >
+            로그인으로 돌아가기
+          </button>
         </div>
       </form>
     </div>
-  </div>
 
-  <!-- 이메일 인증 UI 추가 시작 -->
-  <div v-if="verificationPopupVisible" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 998;">
-    <div class="email-verification-popup" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border: 1px solid #ccc; border-radius: 20px; width: 400px; max-width: 90%; z-index: 999;">
-      <p class="mb-4 text-lg font-bold text-center">이메일로 받은 인증번호를 입력하세요:</p>
-      <input v-model="verificationCode" type="text" placeholder="인증번호 입력" class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow mb-4" />
-      <div class="flex space-x-4">
-        <button @click="verifyCode" :disabled="isVerifyingCode" class="flex-1 py-2 bg-yellow-200 text-dark-gray font-bold border border-yellow-300 rounded-[10px] hover:bg-yellow-300 focus:outline-none">
-          확인
-        </button>
-        <button @click="handleVerificationCancel" class="flex-1 py-2 bg-gray-200 text-dark-gray font-bold border border-gray-300 rounded-[10px] hover:bg-gray-300 focus:outline-none">
-          취소
-        </button>
+    <!-- 이메일 인증 팝업 -->
+    <div
+      v-if="verificationPopupVisible"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
+      <div
+        class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+        @click="handleVerificationCancel"
+      />
+      <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
+        <h3 class="text-lg font-semibold text-dark-gray mb-4">
+          이메일 인증
+        </h3>
+        <p class="text-sm text-gray-600 mb-4">
+          입력하신 이메일로 인증번호가 발송되었습니다.<br>
+          받으신 인증번호를 입력해주세요.
+        </p>
+        <input
+          v-model="verificationCode"
+          type="text"
+          class="w-full px-3 py-2 text-base border border-gray-300 rounded-[15px] focus:outline-none focus:ring-2 focus:ring-point-yellow mb-4"
+          placeholder="인증번호를 입력하세요"
+        >
+        <div class="flex space-x-2">
+          <button
+            class="flex-1 px-4 py-2 text-sm text-dark-gray bg-base-yellow rounded-[15px] hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+            @click="verifyCode"
+            :disabled="isVerifyingCode"
+          >
+            {{ isVerifyingCode ? '확인 중...' : '확인' }}
+          </button>
+          <button
+            class="flex-1 px-4 py-2 text-sm text-dark-gray border border-gray-300 rounded-[15px] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+            @click="handleVerificationCancel"
+          >
+            취소
+          </button>
+        </div>
       </div>
     </div>
   </div>
-  <!-- 이메일 인증 UI 추가 끝 -->
 </template>
 
-<script>
-export default {
-  data () {
-    return {
-      formData: {
-        address: '' // 주소
-      }
-    }
-  },
+<style scoped>
+.bg-ivory {
+  background-color: #FFFAE0;
+}
 
-  mounted () {
-    // this.geocoder = new daum.maps.services.Geocoder() // 주소-좌표 변환 객체
-    // this.marker = new daum.maps.Marker() // 마커 객체 생성
-  },
-  methods: {
-    // Daum 주소 검색 및 지도 표시
-    openDaumPostcode () {
-      new daum.Postcode({
-        oncomplete: (data) => {
-          const addr = data.address // 최종 주소 변수
-
-          // 주소를 입력 필드에 넣기
-          this.formData.address = addr
-
-          // 주소로 상세 정보를 검색
-          // this.geocoder.addressSearch(data.address, (results, status) => {
-          //   if (status === daum.maps.services.Status.OK) {
-          //     const result = results[0] // 첫번째 결과의 값 사용
-
-          //     const coords = new daum.maps.LatLng(result.y, result.x) // 좌표
-          //     this.showMap(coords) // 지도 표시
-          //     this.placeMarker(coords) // 마커 표시
-          //   }
-          // })
-        }
-      }).open()
-    },
-
-    // 지도 표시
-    showMap (coords) {
-      const mapContainer = document.getElementById('map')
-      const mapOption = {
-        center: coords,
-        level: 5
-      }
-      // this.map = new daum.maps.Map(mapContainer, mapOption)
-      mapContainer.style.display = 'block'
-    },
-
-    // 마커 표시
-    placeMarker (coords) {
-      // this.marker.setPosition(coords)
-    },
-
-    // 필드 에러 초기화 함수
-    clearFieldError (field) {
-      // 필드에 대한 에러를 초기화하는 코드 (에러 메시지 처리 등)
-    }
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"] {
+    font-size: 16px; /* iOS에서 자동 확대 방지 */
+  }
+  
+  .max-w-md {
+    max-width: 100%;
   }
 }
-</script>
+</style>

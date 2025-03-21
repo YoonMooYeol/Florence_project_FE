@@ -395,7 +395,7 @@ const parseMarkdown = (text) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-ivory flex flex-col">
+  <div class="flex flex-col h-screen bg-gray-50">
     <!-- 헤더 -->
     <div class="bg-white p-4 shadow-md flex items-center justify-center fixed top-0 left-0 right-0 z-20">
       <h1 class="text-xl font-bold text-center text-dark-gray">
@@ -414,344 +414,177 @@ const parseMarkdown = (text) => {
     <!-- 대화 메시지 영역 -->
     <div
       ref="chatContainer"
-      class="flex-1 p-4 overflow-y-auto chat-messages pb-24 mt-16"
+      class="flex-1 overflow-y-auto p-4 space-y-4 pb-20 sm:pb-24"
     >
-      <div class="flex flex-col space-y-4">
+      <!-- 메시지 목록 -->
+      <div
+        v-for="message in messages"
+        :key="message.id"
+        :class="[
+          'flex',
+          message.sender === 'user' ? 'justify-end' : 'justify-start'
+        ]"
+      >
+        <!-- 봇 아이콘 (봇 메시지일 때만) -->
         <div
-          v-for="message in messages"
-          :key="message.id"
-          class="flex"
-          :class="message.sender === 'user' ? 'justify-end' : 'justify-start'"
+          v-if="message.sender === 'bot'"
+          class="flex-shrink-0 w-8 h-8 mr-2 rounded-full bg-point-yellow flex items-center justify-center"
         >
-          <!-- 봇 메시지 -->
+          <SvgIcon
+            type="mdi"
+            :path="path"
+            size="20"
+            class="text-dark-gray"
+          />
+        </div>
+
+        <!-- 메시지 버블 -->
+        <div
+          :class="[
+            'max-w-[80%] sm:max-w-[70%] rounded-2xl p-3 break-words',
+            message.sender === 'user'
+              ? 'bg-base-yellow text-dark-gray'
+              : 'bg-white shadow-sm border border-gray-200'
+          ]"
+        >
+          <!-- 로딩 중 표시 -->
           <div
-            v-if="message.sender === 'bot'"
-            class="flex flex-col max-w-[80%] mt-5"
+            v-if="message.isLoading"
+            class="flex items-center space-x-1"
           >
-            <div class="w-10 h-10 flex items-center justify-start mb-1">
-              <svg-icon
-                type="mdi"
-                :path="path"
-                :size="40"
-                :fill="'#353535'"
-              />
-            </div>
-            <div>
-              <div
-                class="bg-white p-3 rounded-lg shadow-sm markdown-content"
-                :class="{
-                  'loading-message': message.isLoading,
-                  'typing-message': message.isTyping
-                }"
-              >
-                <!-- 마크다운 렌더링 -->
-                <div
-                  v-if="!message.isLoading"
-                  v-html="parseMarkdown(message.content)"
-                />
-                <!-- 로딩 표시는 기존대로 유지 -->
-                <template v-else>
-                  {{ message.content }}
-                  <span
-                    v-if="message.isLoading && !message.isTyping"
-                    class="loading-dots"
-                  >
-                    <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
-                  </span>
-                  <span
-                    v-if="message.isTyping"
-                    class="typing-indicator"
-                  >
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                    <span class="typing-dot" />
-                  </span>
-                </template>
-              </div>
-              <div class="text-xs text-gray-500 mt-1 ml-1">
-                {{ message.time }}
-              </div>
-            </div>
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s" />
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s" />
           </div>
-          <!-- 사용자 메시지 -->
+
+          <!-- 메시지 내용 -->
           <div
             v-else
-            class="flex flex-col items-end max-w-[80%]"
+            class="prose max-w-none text-sm sm:text-base"
+            v-html="formatMessage(message.content)"
+          />
+
+          <!-- 메시지 시간 -->
+          <div
+            :class="[
+              'text-[10px] mt-1',
+              message.sender === 'user' ? 'text-right text-gray-600' : 'text-left text-gray-500'
+            ]"
           >
-            <div class="bg-base-yellow p-3 rounded-lg shadow-sm whitespace-pre-wrap">
-              {{ message.content }}
-            </div>
-            <div class="text-xs text-gray-500 mt-1 mr-1">
-              {{ message.time }}
-            </div>
+            {{ message.time }}
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 메시지 입력 영역 -->
-    <div class="bg-white p-3 border-t border-gray-200 fixed bottom-16 left-0 right-0 z-10">
-      <div class="flex items-center">
+    <!-- 입력 영역 -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 pb-safe">
+      <div class="max-w-screen-md mx-auto flex space-x-2">
         <textarea
           v-model="userAnswer"
-          placeholder="임신과 출산에 관한 질문을 입력하세요"
-          class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-point-yellow resize-none"
-          rows="1"
-          @keydown="handleKeyDown"
+          class="flex-1 resize-none rounded-xl border border-gray-300 p-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-point-yellow"
+          :rows="1"
+          placeholder="메시지를 입력하세요..."
+          @keydown.enter.prevent="handleEnterKey"
         />
         <button
-          class="p-2 ml-2 bg-point-yellow text-dark-gray rounded-full hover:bg-yellow-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="isSubmitting || !userAnswer.trim()"
-          @click="handleSendClick"
+          class="px-4 py-2 bg-point-yellow text-dark-gray rounded-xl hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow disabled:bg-gray-300 disabled:cursor-not-allowed"
+          :disabled="!userAnswer.trim() || isSubmitting"
+          @click="submitStreamAnswer"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-            />
-          </svg>
+          전송
         </button>
       </div>
     </div>
 
     <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="chat" />
+    <BottomNavBar />
   </div>
 </template>
 
 <style scoped>
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.bg-base-yellow {
-  background-color: #FFED90;
-}
-.bg-point-yellow {
-  background-color: #FFD600;
-}
-.text-dark-gray {
-  color: #353535;
+/* 스크롤바 스타일링 */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
 }
 
-.chat-messages {
-  height: calc(100vh - 170px); /* 헤더 높이 고려하여 조정 */
-  padding-bottom: 120px; /* 하단 입력창 가려지지 않도록 패딩 증가 */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* iOS 스크롤 개선 */
-  scroll-behavior: smooth; /* 부드러운 스크롤 효과 */
-  margin-top: 50px; /* 헤더 높이만큼 여백 축소 */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
 }
 
-textarea {
-  max-height: 100px;
-  min-height: 40px;
-  -webkit-appearance: none; /* iOS 입력 필드 스타일 개선 */
-  appearance: none;
-  font-size: 16px; /* iOS에서 자동 확대 방지 */
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* 모바일 환경 최적화 */
-@media (max-width: 768px) {
-  .chat-messages {
-    height: calc(100vh - 160px);
-    margin-top: 50px; /* 모바일에서 헤더 높이 조정 */
-    padding-bottom: 120px; /* 모바일에서도 충분한 하단 패딩 */
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  textarea {
+    font-size: 16px; /* iOS에서 자동 확대 방지 */
+  }
+
+  .prose {
+    font-size: 14px;
+  }
+
+  /* 아이폰 하단 safe area 대응 */
+  .pb-safe {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
 }
 
-/* 로딩 메시지 스타일 */
-.loading-message {
-  background-color: #f8f9fa !important;
-  border-left: 3px solid #FFD600;
-}
-
-/* 로딩 애니메이션 */
-.loading-dots {
-  display: inline-block;
-}
-
-.dot {
-  animation: wave 1.3s linear infinite;
-  display: inline-block;
-}
-
-.dot:nth-child(2) {
-  animation-delay: -1.1s;
-}
-
-.dot:nth-child(3) {
-  animation-delay: -0.9s;
-}
-
-@keyframes wave {
-  0%, 60%, 100% {
-    transform: initial;
-    opacity: 0.6;
-  }
-  30% {
-    transform: translateY(-5px);
-    opacity: 1;
-  }
-}
-
-/* 타이핑 메시지 스타일 */
-.typing-message {
-  background-color: #f8f9fa !important;
-  border-left: 3px solid #FFD600;
-}
-
-/* 타이핑 인디케이터 */
-.typing-indicator {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 5px;
-}
-
-.typing-dot {
-  width: 6px;
-  height: 6px;
-  margin: 0 2px;
-  background-color: #666;
-  border-radius: 50%;
-  opacity: 0;
-  animation: typingAnimation 1.4s infinite ease-in-out;
-}
-
-.typing-dot:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes typingAnimation {
-  0% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
-}
-
-/* 진행 막대 애니메이션 */
-@keyframes pulse-width {
-  0% {
-    width: 20%;
-    opacity: 0.6;
-  }
-  50% {
-    width: 100%;
-    opacity: 1;
-  }
-  100% {
-    width: 20%;
-    opacity: 0.6;
-  }
-}
-
-.animate-pulse-width {
-  animation: pulse-width 2s ease-in-out infinite;
-}
-
-/* 마크다운 콘텐츠 스타일 */
-:deep(.markdown-content) {
+/* 마크다운 스타일링 */
+.prose {
   line-height: 1.6;
 }
 
-:deep(.markdown-content h1) {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+.prose p {
+  margin-bottom: 0.5em;
 }
 
-:deep(.markdown-content h2) {
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin-top: 0.8rem;
-  margin-bottom: 0.4rem;
+.prose p:last-child {
+  margin-bottom: 0;
 }
 
-:deep(.markdown-content h3) {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-top: 0.6rem;
-  margin-bottom: 0.3rem;
+.prose ul,
+.prose ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
 }
 
-:deep(.markdown-content p) {
-  margin-bottom: 0.75rem;
+.prose li {
+  margin-bottom: 0.25em;
 }
 
-:deep(.markdown-content ul, .markdown-content ol) {
-  margin-left: 1.5rem;
-  margin-bottom: 0.75rem;
-}
-
-:deep(.markdown-content li) {
-  margin-bottom: 0.25rem;
-}
-
-:deep(.markdown-content pre) {
-  background-color: #f8f9fa;
-  padding: 0.75rem;
-  border-radius: 0.25rem;
-  overflow-x: auto;
-  margin-bottom: 0.75rem;
-}
-
-:deep(.markdown-content code) {
-  font-family: monospace;
-  background-color: #f8f9fa;
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
-}
-
-:deep(.markdown-content blockquote) {
-  border-left: 4px solid #e2e8f0;
-  padding-left: 1rem;
-  color: #4a5568;
-  font-style: italic;
-  margin-bottom: 0.75rem;
-}
-
-:deep(.markdown-content a) {
-  color: #3182ce;
+.prose a {
+  color: #2563eb;
   text-decoration: underline;
 }
 
-:deep(.markdown-content table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 0.75rem;
+.prose code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-size: 0.9em;
 }
 
-:deep(.markdown-content th, .markdown-content td) {
-  border: 1px solid #e2e8f0;
-  padding: 0.5rem;
+.prose pre {
+  background-color: #f3f4f6;
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin: 0.5em 0;
 }
 
-:deep(.markdown-content img) {
-  max-width: 100%;
-  height: auto;
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
 }
 </style>

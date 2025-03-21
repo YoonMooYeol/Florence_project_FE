@@ -505,114 +505,83 @@ watch(() => calendarStore.babyDiaries, () => {
 </script>
 
 <template>
-  <div class="py-4 min-h-screen bg-yellow-200">
-    <!-- 달 아이콘 박스 -->
-    <div 
-      class="bg-point py-0 flex justify-center items-center cursor-pointer" 
-      @click="handleGoToToday"
-    >
-      <div class="w-12 h-8">
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          viewBox="0 0 32 32" 
-          class="w-full h-full"
-        >
-          <!-- 달 모양 -->
-          <path 
-            d="M20 4C13 4 8 9 8 16C8 22 13 28 20 28C23 28 25.5 27 27.5 25.5C23 26.5 18 24 16 20C14 16 15 10 19 7C20.5 5.5 22.5 4.5 25 4.5C23.5 4 21.5 4 20 4Z" 
-            fill="#353535"
-          />
-          <!-- 별 1 -->
-          <circle 
-            cx="30" 
-            cy="6" 
-            r="1.2" 
-            fill="#353535"
-          />
-          <!-- 별 2 -->
-          <circle 
-            cx="25" 
-            cy="15" 
-            r="1.5" 
-            fill="#353535"
-          />
-          <!-- 별 3 -->
-          <circle 
-            cx="32" 
-            cy="22" 
-            r="2" 
-            fill="#353535"
-          />
-          <!-- 별 4 -->
-          <circle 
-            cx="3" 
-            cy="10" 
-            r="2" 
-            fill="#353535"
-          />
-          <!-- 별 5 -->
-          <circle 
-            cx="7" 
-            cy="25" 
-            r="1.2" 
-            fill="#353535"
-          />
-        </svg>
-      </div>
-    </div>
-
-    <!-- 상단 헤더 -->
+  <div class="flex flex-col min-h-screen bg-ivory">
+    <!-- 헤더 -->
     <CalendarHeader
       :current-year="currentYear"
       :current-month="currentMonth"
       @prev-month="handlePrevMonth"
       @next-month="handleNextMonth"
-      @today="handleGoToToday"
-      @select-date="handleDateSelect"
+      @go-to-today="handleGoToToday"
     />
 
-    <!-- 요일 표시 (추가됨) -->
-    <div class="bg-yellow-200 py-1">
-      <div class="max-w-4xl mx-auto flex justify-around">
-        <span
-          v-for="(day, index) in weekdays"
-          :key="index"
-          class="text-base font-medium text-dark-gray"
-        >
-          {{ day }}
-        </span>
-      </div>
-    </div>
-
-    <!-- 캘린더 -->
-    <div class="calendar-container">
+    <!-- 캘린더 컨테이너 -->
+    <div class="flex-1 p-2">
       <FullCalendar
         ref="calendarRef"
-        :options="calendarOptions"
-        class="calendar"
+        v-bind="calendarOptions"
+        class="h-full bg-white rounded-lg shadow-sm"
       />
     </div>
 
-    <!-- Todo List (추후 작업을 위해 주석 처리) -->
-    <!-- <TodoList class="mt-0" /> -->
-
-    <!-- 하단 네비게이션 바 -->
-    <BottomNavBar
-      active-tab="calendar"
-      class="bottom-nav"
-    />
-
     <!-- FAB 메뉴 -->
-    <!-- <div class="fab-container">
+    <div class="fixed bottom-20 right-4 z-40">
+      <div
+        v-if="showFABMenu"
+        class="absolute bottom-16 right-0 flex flex-col space-y-2 mb-2"
+      >
+        <!-- 일정 추가 버튼 -->
+        <button
+          class="w-12 h-12 bg-point-yellow rounded-full shadow-lg flex items-center justify-center text-white hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+          @click="showEventModal = true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+
+        <!-- 태교일기 추가 버튼 -->
+        <button
+          class="w-12 h-12 bg-point-yellow rounded-full shadow-lg flex items-center justify-center text-white hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+          @click="showBabyDiaryModal = true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- FAB 토글 버튼 -->
       <button
-        class="fab-button"
-        :disabled="popupActive"
-        :class="{'opacity-50 cursor-not-allowed': popupActive}"
+        class="w-14 h-14 bg-point-yellow rounded-full shadow-lg flex items-center justify-center text-white hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
         @click="showFABMenu = !showFABMenu"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
+          class="h-6 w-6 transform transition-transform duration-200"
+          :class="{ 'rotate-45': showFABMenu }"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -625,661 +594,172 @@ watch(() => calendarStore.babyDiaries, () => {
           />
         </svg>
       </button>
+    </div>
 
-      <div
-        v-if="showFABMenu"
-        class="fab-menu"
-      >
-        <button
-          class="fab-menu-item"
-          @click="handleFABMenuClick('event')"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          일정 등록
-        </button>
-        <button
-          v-if="calendarStore.isPregnant"
-          class="fab-menu-item"
-          @click="handleFABMenuClick('baby')"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-            />
-          </svg>
-          {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
-        </button>
-      </div>
-    </div> -->
+    <!-- 하단 네비게이션 바 -->
+    <BottomNavBar />
 
-    <!-- 일정 등록 모달 -->
-    <EventModal
-      v-if="showEventModal"
-      :show="showEventModal"
-      :date="selectedDate"
-      @close="showEventModal = false"
-      @save="handleEventSave"
-    />
-
-    <!-- 일정 등록 모달 -->
-    <AddEventModal
-      :show="modalManager.showAddEventModal.value"
-      :selected-date="calendarStore.selectedDate"
-      @close="modalManager.closeAddEventModal"
-      @save="handleEventSave"
-    />
-
-    <!-- 일정 유형 선택 모달 -->
-    <AddDiaryTypeModal
-      :show="modalManager.showDiaryTypeModal.value"
-      @close="modalManager.closeDiaryTypeModal"
-    />
-
-    <!-- Popup 배경 오버레이 -->
-    <div
-      v-if="modalManager.showDayEventsModal.value"
-      class="modal-overlay"
-    />
-
-    <!-- 일일 일정 모달 -->
+    <!-- 모달 컴포넌트들 -->
     <DayEventsModal
-      :show="modalManager.showDayEventsModal.value"
+      v-if="modalManager.showDayEventsModal"
       :date="calendarStore.selectedDate"
-      :events="calendarStore.eventsForSelectedDate"
-      :llm-summary="calendarStore.llmSummaryForSelectedDate"
-      :baby-diary="calendarStore.babyDiaryForSelectedDate"
       @close="modalManager.closeDayEventsModal"
-      @add-event="modalManager.openAddEventModal"
-      @view-event="modalManager.openEventDetailModal"
-      @view-llm-summary="modalManager.openLLMDetailModal"
     />
-
-    <!-- 일정 상세 모달 -->
     <EventDetailModal
-      :show="modalManager.showEventDetailModal.value"
+      v-if="modalManager.showEventDetailModal"
       :event="calendarStore.selectedEvent"
       @close="modalManager.closeEventDetailModal"
-      @delete="handleEventDelete"
     />
-
-    <!-- LLM 대화 요약 상세 모달 -->
     <LLMSummaryModal
-      :show="modalManager.showLLMDetailModal.value"
+      v-if="modalManager.showLLMDetailModal"
       :summary="calendarStore.selectedLLMSummary"
       @close="modalManager.closeLLMDetailModal"
-      @delete="modalManager.deleteLLMSummary"
+    />
+    <AddEventModal
+      v-if="modalManager.showAddEventModal"
+      :date="selectedDate"
+      @close="modalManager.closeAddEventModal"
+    />
+    <AddDiaryTypeModal
+      v-if="modalManager.showDiaryTypeModal"
+      :date="selectedDate"
+      @close="modalManager.closeDiaryTypeModal"
+    />
+    <EventModal
+      v-if="showEventModal"
+      :date="selectedDate"
+      @close="showEventModal = false"
     />
   </div>
 </template>
 
 <style>
-/* 색상 변수 */
-:root {
-  --color-base: #ffed90;
-  --color-white: #ffffff;
-  --color-dark-gray: #353535;
-  --color-ivory: #fffae0;
-  --color-point: #ffd600;
-}
-
-/* 캘린더 컨테이너 스타일 */
-.calendar-container {
-  flex: 1;
-  background-color: var(--color-ivory);
-  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
-  padding-bottom: 0;
-  position: relative;
-  z-index: 0;
-  height: calc(100vh - 100px);
-  margin-bottom: 0;
-}
-
-/* FullCalendar 기본 스타일 */
+/* FullCalendar 모바일 최적화 스타일 */
 .fc {
-  font-family: "Noto Sans KR", "Roboto", sans-serif;
-  border: none;
-  background-color: transparent;
-  height: calc(100vh - 120px);
-  width: 100%;
+  font-size: 0.875rem;
 }
 
-/* 요일 헤더 영역 숨기기 */
-.fc-col-header {
-  height: 0;
-  line-height: 0;
-  visibility: hidden;
-  display: none;
-  overflow: hidden;
-  padding: 0;
-  margin: 0;
+.fc .fc-toolbar {
+  padding: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.fc .fc-col-header-cell-cushion {
-  display: none;
+.fc .fc-toolbar-title {
+  font-size: 1.25rem;
 }
 
-.fc .fc-col-header-cell {
-  height: 0;
-  padding: 0;
-  border: none;
+.fc .fc-button {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
 }
 
-/* 날짜 셀 스타일 */
-.fc-daygrid-day {
-  border: 1px solid rgba(181, 179, 179, 0.5);
-  background-color: transparent;
-  cursor: pointer;
-  position: relative;
-  min-height: 180px;
+.fc .fc-button-primary {
+  background-color: #FFD600;
+  border-color: #FFD600;
 }
 
-.fc-daygrid-day-frame {
-  padding-top: 36px;
-  min-height: 180px;
-  background-color: rgba(255, 255, 255, 0.6);
+.fc .fc-button-primary:hover {
+  background-color: #FFC600;
+  border-color: #FFC600;
 }
 
-/* 토요일과 일요일 칸 스타일 */
-.fc-day-sat .fc-daygrid-day-frame,
-.fc-day-sun .fc-daygrid-day-frame {
-  background-color: rgba(255, 255, 255, 0);
+.fc .fc-button-primary:disabled {
+  background-color: #E5E5E5;
+  border-color: #E5E5E5;
 }
 
-/* 테이블 보더 스타일 */
-.fc-theme-standard td {
-  border: 1px solid rgba(181, 179, 179, 0.5);
+.fc .fc-button-primary:not(:disabled):active,
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: #FFB600;
+  border-color: #FFB600;
 }
 
-.fc-theme-standard th {
-  border: 1px solid rgba(181, 179, 179, 0.3);
+.fc .fc-button-primary:focus {
+  box-shadow: 0 0 0 0.2rem rgba(255, 214, 0, 0.25);
 }
 
-.fc-theme-standard .fc-scrollgrid {
-  border: 1px solid rgba(181, 179, 179, 0.3);
+.fc .fc-daygrid-day {
+  min-height: 80px;
 }
 
-/* 마지막 주의 선도 유지 */
-.fc .fc-scrollgrid-section:last-child > tr > td {
-  border-bottom: 1px solid rgba(181, 179, 179, 0.3)
+.fc .fc-daygrid-day-number {
+  padding: 0.25rem;
+  font-size: 0.875rem;
 }
 
-/* 날짜 상단 영역 스타일 */
-.fc-daygrid-day-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-height: 24px;
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  padding: 2px 4px;
+.fc .fc-event {
+  padding: 0.125rem 0.25rem;
+  margin: 0.125rem 0;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
 }
 
-/* 날짜 숫자 스타일 */
-.fc-daygrid-day-number {
-  font-size: 0.85rem;
-  color: #353535;
-  font-weight: 400;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  left: -15px;
-}
-
-/* 오늘 날짜 스타일 */
-.fc-day-today {
-  background-color: #ffed90;
-}
-
-.fc-day-today .fc-daygrid-day-frame {
-  background-color: #fff5c2;
-}
-
-.fc-day-today .fc-daygrid-day-number {
-  color: var(--color-dark-gray);
-  font-weight: 600;
-}
-
-/* LLM 요약 표시 스타일 */
-.llm-indicator {
-  font-size: 2rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #3986ce;
-  width: 20px;
-  height: 20px;
-  position: absolute;
-  left: 3px;
-  margin-top: -21px;
-}
-
-/* 아기 일기 표시 스타일 */
-.baby-diary-indicator {
-  font-size: 0.8rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  color: #f05454;
-  width: 20px;
-  height: 0px;
-  position: absolute;
-  left: 12px;
-  margin-top: -12px;
-}
-
-/* 이벤트 스타일 */
-.fc-daygrid-event {
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  margin-top: 2px;
-  margin-bottom: 2px;
-  margin-left: auto;
-  margin-right: auto;
-  width: 90%;
-  display: block;
-  text-align: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  height: auto;
-  min-height: 22px;
-  background-color: #ffd600;
-  color: #353535;
+.fc .fc-event-title {
   font-weight: 500;
-  border: none;
-}
-
-/* 이벤트 메인 콘텐츠 */
-.fc-event-main {
-  padding: 1px 3px;
-  display: block;
-  text-align: center;
-  color: #353535;
-  overflow: hidden;
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* 이벤트 컨테이너 */
-.fc-daygrid-event-harness {
-  margin: 1px 0;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  height: auto;
+.fc .fc-daygrid-more-link {
+  font-size: 0.75rem;
+  color: #666;
 }
 
-/* 날짜 바디 영역 */
-.fc-daygrid-day-events {
-  padding: 0 2px;
-  margin-top: 2px;
-  flex-grow: 1;
-  width: 100%;
-  min-height: 25px;
+.fc .fc-daygrid-day.fc-day-today {
+  background-color: rgba(255, 214, 0, 0.1);
 }
 
-/* 종일 이벤트 */
-.fc-daygrid-block-event {
-  margin: 2px 0;
-  width: 90%;
-  margin-left: auto;
-  margin-right: auto;
+.fc .fc-daygrid-day.fc-day-other {
+  background-color: #F9F9F9;
 }
 
-/* dot 이벤트 스타일 */
-.fc-daygrid-dot-event {
-  display: block;
-  padding: 2px 6px;
-  background-color: #ffd600;
-  border-color: #ffd600;
+.fc .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
+  color: #999;
 }
 
-.fc-daygrid-dot-event .fc-event-title {
-  font-weight: 500;
-  flex-grow: 1;
-  display: block;
-  color: #353535;
+.fc .fc-daygrid-day.fc-day-other .fc-event {
+  opacity: 0.8;
 }
 
-/* 다른 월의 날짜 스타일 */
-.fc-day-other {
-  opacity: 0.4;
-  background-color: rgba(0, 0, 0, 0.02);
-}
+/* 모바일에서의 스크롤 최적화 */
+@media (max-width: 640px) {
+  .fc {
+    height: calc(100vh - 180px);
+  }
 
-/* 이벤트 "더보기" 링크 */
-.fc-daygrid-more-link {
-  font-size: 0.8rem;
-  color: #3182ce;
-  font-weight: 500;
-  margin: 0 auto;
-  display: block;
-  text-align: center;
-}
+  .fc .fc-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-/* 커스텀 이벤트 콘텐츠 */
-.custom-event-content {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #353535;
-  text-align: center;
-  width: 100%;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.2;
-}
+  .fc .fc-toolbar-title {
+    font-size: 1.125rem;
+  }
 
-/* 하단 네비게이션 바 스타일 */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 30;
-  height: 64px;
-  background-color: white;
-  padding-bottom: 0px;
-}
+  .fc .fc-button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
 
-/* 플로팅 액션 버튼 스타일 */
-.floating-action-button {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  z-index: 40;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: var(--color-point);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
+  .fc .fc-daygrid-day {
+    min-height: 60px;
+  }
 
-.floating-action-button:hover {
-  transform: scale(1.05);
-}
+  .fc .fc-daygrid-day-number {
+    padding: 0.125rem;
+    font-size: 0.75rem;
+  }
 
-.floating-action-button::before {
-  content: '+';
-  font-size: 32px;
-  color: var(--color-dark-gray);
-  font-weight: bold;
-  line-height: 1;
-}
+  .fc .fc-event {
+    padding: 0.125rem;
+    margin: 0.0625rem 0;
+    font-size: 0.7rem;
+  }
 
-/* 모달 z-index 관리 */
-.day-events-modal {
-  z-index: 50;
-}
-
-.detail-modal {
-  z-index: 60;
-}
-
-/* 모달 스타일 */
-.modal-container {
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
-}
-
-.modal-content {
-  background-color: var(--color-white);
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.event-detail-modal .modal-content {
-  background-color: #ffffff;
-  border: 3px solid var(--color-point);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-.event-detail-header {
-  background-color: var(--color-point);
-  color: #000000;
-  padding: 14px 18px;
-  font-weight: 700;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
-  font-size: 1.1rem;
-}
-
-.event-detail-body {
-  padding: 18px;
-  background-color: #fffef8;
-}
-
-/* 일정 상세 모달 내부 요소 */
-.event-detail-field {
-  margin-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  padding-bottom: 12px;
-}
-
-.event-detail-label {
-  font-weight: 600;
-  color: #555555;
-  margin-bottom: 4px;
-}
-
-.event-detail-value {
-  color: #000000;
-  font-size: 1.05rem;
-}
-
-/* 모달 버튼 스타일 */
-.event-detail-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 2px solid rgba(0, 0, 0, 0.1);
-}
-
-.event-detail-button {
-  padding: 8px 18px;
-  border-radius: 8px;
-  font-weight: 600;
-  margin-left: 10px;
-}
-
-.event-detail-delete {
-  background-color: #ff6b6b;
-  color: white;
-}
-
-.event-detail-close {
-  background-color: #e9e9e9;
-  color: #353535;
-}
-
-.day-events-modal .modal-content {
-  max-height: 25vh;
-  max-width: 50%;
-  width: 360px;
-  overflow-y: auto;
-  padding-bottom: 16px;
-  margin: 20px auto;
-  position: relative;
-}
-
-.day-events-modal .modal-body {
-  padding: 12px;
-  max-height: calc(25vh - 100px);
-  overflow-y: auto;
-}
-
-.day-events-modal textarea {
-  min-height: 30px;
-  max-height: 80px;
-  resize: vertical;
-  padding: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.day-events-modal .modal-footer {
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: var(--color-white);
-  padding: 8px 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  z-index: 1;
-  margin-top: 8px;
-}
-
-.day-events-modal .save-button {
-  width: 100%;
-  padding: 10px;
-  background-color: var(--color-point);
-  color: var(--color-dark-gray);
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  margin-bottom: 4px;
-}
-
-.day-events-modal .save-button:hover {
-  background-color: #ffed90;
-}
-
-/* 일정 상세 모달 스타일 */
-.event-detail-modal {
-  z-index: 70;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.fab-container {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  z-index: 1000;
-}
-
-.fab-button {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: var(--color-point);
-  color: var(--color-dark-gray);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s;
-  border: none;
-  cursor: pointer;
-}
-
-.fab-button:hover {
-  transform: scale(1.1);
-}
-
-.fab-button:disabled:hover {
-  transform: scale(1);
-}
-
-.fab-button:disabled {
-  pointer-events: none;
-}
-
-.fab-menu {
-  position: absolute;
-  bottom: 70px;
-  right: 0;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 160px;
-}
-
-.fab-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  color: var(--color-dark-gray);
-  font-weight: 500;
-  transition: background-color 0.2s;
-  border: none;
-  background: none;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-}
-
-.fab-menu-item:hover {
-  background-color: var(--color-ivory);
-}
-
-.fab-menu-item svg {
-  color: var(--color-point);
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 45;
+  .fc .fc-daygrid-more-link {
+    font-size: 0.7rem;
+  }
 }
 </style>

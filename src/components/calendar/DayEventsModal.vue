@@ -675,25 +675,29 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div
-    v-if="show"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-  >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
-      <div class="bg-point px-6 py-4 flex justify-between items-center">
-        <h3 class="text-lg font-bold text-dark-gray">
-          {{ formatDate(date) }}
-        </h3>
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <!-- 배경 오버레이 -->
+    <div
+      class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+      @click="closeModal"
+    />
+
+    <!-- 모달 컨테이너 -->
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl">
+      <!-- 모달 헤더 -->
+      <div class="flex items-center justify-between p-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-dark-gray">
+          {{ formatDate(props.date) }}
+        </h2>
         <button
-          class="text-dark-gray hover:text-gray-700"
+          class="p-1 text-gray-400 hover:text-gray-600 focus:outline-none"
           @click="closeModal"
         >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
+            class="w-6 h-6"
             fill="none"
-            viewBox="0 0 24 24"
             stroke="currentColor"
+            viewBox="0 0 24 24"
           >
             <path
               stroke-linecap="round"
@@ -708,71 +712,54 @@ onMounted(async () => {
       <!-- 탭 메뉴 -->
       <div class="flex border-b border-gray-200">
         <button
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
-          :class="activeTab === 'schedule' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+          class="flex-1 py-3 text-sm font-medium transition-colors duration-200"
+          :class="activeTab === 'schedule' ? 'text-point-yellow border-b-2 border-point-yellow' : 'text-gray-500'"
           @click="activeTab = 'schedule'"
         >
           일정
         </button>
         <button
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
-          :class="activeTab === 'daily' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+          class="flex-1 py-3 text-sm font-medium transition-colors duration-200"
+          :class="activeTab === 'daily' ? 'text-point-yellow border-b-2 border-point-yellow' : 'text-gray-500'"
           @click="activeTab = 'daily'"
         >
           오늘의 하루
         </button>
         <button
           v-if="calendarStore.isPregnant"
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
-          :class="activeTab === 'baby' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
-          data-tab="baby"
+          class="flex-1 py-3 text-sm font-medium transition-colors duration-200"
+          :class="activeTab === 'baby' ? 'text-point-yellow border-b-2 border-point-yellow' : 'text-gray-500'"
           @click="activeTab = 'baby'"
         >
           {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
         </button>
       </div>
 
-      <div class="h-96 p-6 bg-ivory overflow-y-auto">
+      <!-- 탭 컨텐츠 -->
+      <div class="modal-content p-4 overflow-y-auto">
         <!-- 일정 탭 -->
-        <div
-          v-if="activeTab === 'schedule'"
-          class="space-y-4"
-        >
-          <div
-            v-if="events && events.length > 0"
-            class="space-y-2"
-          >
+        <div v-if="activeTab === 'schedule'">
+          <div v-if="calendarStore.eventsForSelectedDate.length === 0" class="text-center py-8">
+            <p class="text-gray-500 text-sm">등록된 일정이 없습니다.</p>
+            <button
+              class="mt-4 px-4 py-2 text-sm font-medium text-dark-gray bg-point-yellow rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+              @click="addEvent"
+            >
+              일정 등록하기
+            </button>
+          </div>
+          <div v-else class="space-y-3">
             <div
-              v-for="event in events"
+              v-for="event in calendarStore.eventsForSelectedDate"
               :key="event.id"
-              class="bg-white p-4 rounded-lg shadow cursor-pointer hover:bg-gray-50"
+              class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
               @click="viewEvent(event)"
             >
-              <h4 class="font-medium text-dark-gray">
-                {{ event.title }}
-                <span
-                  v-if="event.recurring && event.recurring !== 'none'"
-                  class="text-sm text-gray-500 ml-2"
-                >
-                  ({{ getRecurringText(event.recurring) }})
-                </span>
-              </h4>
-              <p class="text-sm text-gray-500">
-                {{ formatEventTime(event) }}
-              </p>
+              <h3 class="font-medium text-dark-gray">{{ event.title }}</h3>
+              <p class="text-sm text-gray-500 mt-1">{{ formatEventTime(event) }}</p>
             </div>
-          </div>
-          <div
-            v-else
-            class="text-center py-4"
-          >
-            <p class="text-gray-500">
-              등록된 일정이 없습니다.
-            </p>
-          </div>
-          <div class="flex justify-center">
             <button
-              class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+              class="w-full mt-4 px-4 py-2 text-sm font-medium text-dark-gray bg-point-yellow rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
               @click="addEvent"
             >
               일정 추가
@@ -781,266 +768,169 @@ onMounted(async () => {
         </div>
 
         <!-- 오늘의 하루 탭 -->
-        <div
-          v-if="activeTab === 'daily'"
-          class="space-y-4"
-        >
+        <div v-if="activeTab === 'daily'">
           <DailySummaryComponent
-            :selected-date="date"
-            @open-full-summary="viewLLMSummary"
+            :date="props.date"
+            :llm-summary="calendarStore.llmSummaryForSelectedDate"
+            @view-llm-summary="emit('view-llm-summary', $event)"
           />
         </div>
 
-        <!-- 아기와의 하루 탭 -->
-        <div
-          v-if="activeTab === 'baby'"
-          class="space-y-4"
-        >
-          <div
-            v-if="babyDiary"
-            class="space-y-6"
-          >
-            <!-- 사진 갤러리 -->
-            <div
-              v-if="babyDiary.photos && babyDiary.photos.length > 0"
-              class="space-y-3"
+        <!-- 태교일기 탭 -->
+        <div v-if="activeTab === 'baby' && calendarStore.isPregnant">
+          <div v-if="!calendarStore.babyDiaryForSelectedDate" class="text-center py-8">
+            <p class="text-gray-500 text-sm">등록된 일기가 없습니다.</p>
+            <button
+              class="mt-4 px-4 py-2 text-sm font-medium text-dark-gray bg-point-yellow rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+              @click="showDiaryModal = true"
             >
-              <h4 class="text-sm font-medium text-gray-600">
-                태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
-              </h4>
-              <div class="grid grid-cols-1 gap-4">
-                <div
-                  v-for="photo in babyDiary.photos"
-                  :key="photo.id"
-                  class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
-                  style="aspect-ratio: 16/9; height: 180px;"
-                >
-                  <img
-                    :src="getThumbnailUrl(photo.image)"
-                    :alt="'태교일기 사진'"
-                    class="w-full h-full object-cover"
-                    loading="eager"
-                    @error="handleImageError($event)"
-                    @load="handleImageLoad($event, photo)"
-                  >
-
-                  <!-- 마우스 오버 효과 -->
-                  <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-200" />
-
-                  <!-- 버튼 -->
-                  <div class="absolute top-1 right-1 flex space-x-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <button
-                      class="bg-blue-500 text-white rounded-full p-1.5 shadow-md"
-                      title="사진 수정"
-                      @click.prevent.stop="openUpdatePhoto(photo.id)"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                    </button>
-
-                    <button
-                      class="bg-red-500 text-white rounded-full p-1.5 shadow-md"
-                      title="사진 삭제"
-                      @click.prevent.stop="deletePhoto(photo.id)"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div
-                    v-if="isUpdating && selectedPhotoId === photo.id"
-                    class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20"
-                  >
-                    <div class="text-white text-sm">
-                      업데이트 중...
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 사진 추가 버튼 (MAX_PHOTOS보다 적을 때만 표시) -->
-                <!-- <div
-                  v-if="canUploadMorePhotos"
-                  class="relative border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-point hover:bg-gray-50 transition-all"
-                  style="aspect-ratio: 16/9; height: 180px;"
-                  @click="fileInput.click()"
-                >
-                  <div class="text-center text-gray-500">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-8 w-8 mx-auto mb-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    <p class="text-xs">
-                      사진 추가
-                    </p>
-                  </div>
-                </div> -->
-              </div>
+              일기 작성하기
+            </button>
+          </div>
+          <div v-else class="space-y-4">
+            <div class="bg-gray-50 rounded-lg p-4">
+              <p class="text-gray-700 whitespace-pre-wrap">{{ calendarStore.babyDiaryForSelectedDate.content }}</p>
             </div>
-
-            <!-- 일기 내용 -->
-            <div class="bg-white p-4 rounded-lg shadow">
-              <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
-                {{ babyDiary.content }}
-              </p>
-            </div>
-            
-            <!-- 일기 작성/수정 버튼 -->
             <div class="flex space-x-2">
               <button
-                v-if="!babyDiary.content"
-                class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
-                @click="openDiaryModal('create')"
+                class="flex-1 px-4 py-2 text-sm font-medium text-dark-gray bg-point-yellow rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+                @click="showDiaryModal = true"
               >
-                일기 작성
+                수정하기
               </button>
               <button
-                v-if="babyDiary.content"
-                class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
-                @click="openDiaryModal('edit')"
+                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+                @click="deleteDiary"
               >
-                일기 수정
-              </button>
-              <button
-                v-if="canUploadMorePhotos"
-                class="flex-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
-                @click="fileInput.click()"
-              >
-                사진 추가
+                삭제하기
               </button>
             </div>
           </div>
-          <div
-            v-else
-            class="text-center py-4"
+        </div>
+      </div>
+    </div>
+
+    <!-- 태교일기 작성/수정 모달 -->
+    <div
+      v-if="showDiaryModal"
+      class="fixed inset-0 z-[60] flex items-center justify-center p-4"
+    >
+      <div
+        class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+        @click="closeDiaryModal"
+      />
+      <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl">
+        <div class="flex items-center justify-between p-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-dark-gray">
+            {{ calendarStore.babyDiaryForSelectedDate ? '일기 수정하기' : '일기 작성하기' }}
+          </h3>
+          <button
+            class="p-1 text-gray-400 hover:text-gray-600 focus:outline-none"
+            @click="closeDiaryModal"
           >
-            <p class="text-gray-500">
-              기록된 일기가 없습니다.
-            </p>
-          </div>
-          <div
-            v-if="!babyDiary"
-            class="flex justify-center"
-          >
-            <button
-              class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-              @click="openDiaryModal('create')"
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              기록하기
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="p-4">
+          <textarea
+            v-model="diaryContent"
+            class="w-full h-40 p-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            placeholder="오늘 하루는 어땠나요?"
+          />
+          <div class="flex justify-end space-x-2 mt-4">
+            <button
+              class="px-4 py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+              @click="closeDiaryModal"
+            >
+              취소
+            </button>
+            <button
+              class="px-4 py-2 text-sm font-medium text-dark-gray bg-point-yellow rounded-lg hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50"
+              @click="calendarStore.babyDiaryForSelectedDate ? updateDiary() : saveBabyDiary()"
+            >
+              {{ calendarStore.babyDiaryForSelectedDate ? '수정하기' : '저장하기' }}
             </button>
           </div>
         </div>
       </div>
-          </div>
-        </div>
-
-  <!-- 태교일기 작성 모달 -->
-  <div
-    v-if="showDiaryModal"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-  >
-    <div class="bg-white rounded-lg w-full max-w-md mx-auto">
-      <div class="p-6">
-        <h3 class="text-lg font-bold mb-4">
-          오늘 하루 기록하기 ♥︎
-        </h3>
-            <textarea
-              v-model="diaryContent"
-          class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-              placeholder="아기와의 소중한 하루를 기록해보세요...♥︎"
-              ref="diaryTextarea"
-            />
-            <div class="flex justify-end space-x-2 mt-4">
-              <button
-            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            @click="closeDiaryModal"
-          >
-            취소
-          </button>
-          <button
-            v-if="!babyDiary || !babyDiary.id"
-                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-                @click="saveBabyDiary"
-              >
-                저장하기
-              </button>
-          <button
-            v-else
-            class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-            @click="updateDiary"
-          >
-            수정하기
-          </button>
-        </div>
-      </div>
     </div>
   </div>
-  
-  <!-- 숨겨진 파일 입력 필드들 -->
-  <input
-    ref="fileInput"
-    type="file"
-    class="hidden"
-    accept=".jpg,.jpeg,.png,.gif"
-    @change="handleFileSelect"
-  >
-  <input
-    ref="updateFileInput"
-    type="file"
-    class="hidden"
-    accept=".jpg,.jpeg,.png,.gif"
-    @change="handleUpdateFileSelect"
-  >
 </template>
 
 <style scoped>
-.bg-point {
+.modal-content {
+  max-height: 60vh;
+  scrollbar-width: thin;
+  scrollbar-color: #FFD600 #F3F4F6;
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
   background-color: #FFD600;
+  border-radius: 3px;
 }
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.text-dark-gray {
-  color: #353535;
-}
-.text-point {
-  color: #FFD600;
-}
-.border-point {
-  border-color: #FFD600;
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  .max-w-md {
+    max-width: 100%;
+    margin: 1rem;
+  }
+
+  .text-lg {
+    font-size: 1rem;
+  }
+
+  .p-4 {
+    padding: 1rem;
+  }
+
+  .modal-content {
+    max-height: 50vh;
+  }
+
+  .h-40 {
+    height: 8rem;
+  }
+
+  /* 모바일에서 버튼 터치 영역 확대 */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 모바일에서 텍스트 크기 조정 */
+  .text-sm {
+    font-size: 0.875rem;
+  }
+
+  /* 모바일에서 여백 조정 */
+  .space-y-3 > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .space-y-4 > * + * {
+    margin-top: 1rem;
+  }
 }
 </style>

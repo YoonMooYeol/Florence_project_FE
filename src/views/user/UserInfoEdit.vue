@@ -319,14 +319,14 @@ const deleteProfilePhoto = () => {
 <template>
   <div class="min-h-screen bg-ivory">
     <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md flex items-center justify-between">
+    <div class="bg-white p-3 sm:p-4 shadow-md flex items-center justify-between">
       <button
-        class="text-dark-gray"
+        class="text-dark-gray p-2 -m-2"
         @click="goBack"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
+          class="h-5 w-5 sm:h-6 sm:w-6"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -339,27 +339,27 @@ const deleteProfilePhoto = () => {
           />
         </svg>
       </button>
-      <h1 class="text-xl font-bold text-center text-dark-gray flex-1">
-        내 정보 관리
+      <h1 class="text-lg sm:text-xl font-bold text-center text-dark-gray flex-1">
+        사용자 정보 수정
       </h1>
-      <div class="w-6" /> <!-- 균형을 위한 빈 공간 -->
+      <div class="w-5 sm:w-6"></div>
     </div>
 
     <!-- 로딩 표시 -->
     <div
       v-if="isLoading"
-      class="p-4 text-center"
+      class="p-3 sm:p-4 text-center"
     >
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-point-yellow" />
-      <p class="mt-2 text-dark-gray">
+      <div class="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-t-2 border-b-2 border-point-yellow" />
+      <p class="mt-2 text-sm sm:text-base text-dark-gray">
         정보를 불러오는 중...
       </p>
     </div>
 
-    <!-- 일반 에러 메시지 표시 -->
+    <!-- 에러 메시지 표시 -->
     <div
       v-if="errors.form"
-      class="p-4 mb-4 text-center text-red-700 bg-red-100"
+      class="p-3 sm:p-4 mb-3 sm:mb-4 text-center text-sm sm:text-base text-red-700 bg-red-100"
     >
       {{ errors.form }}
     </div>
@@ -367,161 +367,154 @@ const deleteProfilePhoto = () => {
     <!-- 사용자 정보 폼 -->
     <div
       v-if="!isLoading"
-      class="p-4"
+      class="p-3 sm:p-4"
     >
-      <div class="bg-white rounded-lg shadow-md p-6 mb-4">
-        <!-- 프로필 이미지 섹션 -->
-        <div class="flex flex-col items-center mb-6">
-          <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-2 relative">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-12 w-12 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <button @click="openProfilePhotoModal" class="absolute bottom-0 right-0 -translate-x-1/2 -translate-y-1/2 bg-point-yellow w-6 h-6 rounded-full flex items-center justify-center border border-white">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-dark-gray" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-            </button>
-            <input type="file" ref="fileInput" style="display:none" @change="handleProfilePicChange" accept="image/*" />
-          </div>
-          <p class="text-sm text-gray-500">
-            프로필 사진 변경
-          </p>
-        </div>
-
-        <!-- 사용자명 입력 -->
-        <div class="mb-4">
-          <label
-            for="username"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >아이디</label>
-          <input
-            id="username"
-            v-model="userInfo.username"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            @input="clearFieldError('username')"
-          >
-          <p
-            v-if="errors.username"
-            class="mt-1 text-sm text-red-600"
-          >
-            {{ errors.username }}
-          </p>
-        </div>
-
-        <!-- 이름 입력 -->
-        <div class="mb-4">
-          <label
-            for="name"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >닉네임</label>
-          <input
-            id="name"
-            v-model="userInfo.name"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            @input="clearFieldError('name')"
-          >
-          <p
-            v-if="errors.name"
-            class="mt-1 text-sm text-red-600"
-          >
-            {{ errors.name }}
-          </p>
-        </div>
-
-        <!-- 이메일 입력 -->
-        <div class="mb-4">
-          <label
-            for="email"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >이메일</label>
-          <input
-            id="email"
-            v-model="userInfo.email"
-            type="email"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow bg-gray-100"
-            disabled
-          >
-          <p class="mt-1 text-xs text-gray-500">
-            이메일은 변경할 수 없습니다
-          </p>
-          <p
-            v-if="errors.email"
-            class="mt-1 text-sm text-red-600"
-          >
-            {{ errors.email }}
-          </p>
-        </div>
-
-        <!-- 전화번호 입력 -->
-        <div class="mb-4">
-          <label
-            for="phone_number"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >전화번호</label>
+      <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-3 sm:mb-4">
+        <!-- 프로필 이미지 -->
+        <div class="flex flex-col items-center mb-4 sm:mb-6">
           <div class="relative">
+            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-base-yellow flex items-center justify-center overflow-hidden">
+              <img
+                v-if="userInfo.profile_image"
+                :src="userInfo.profile_image"
+                alt="프로필 이미지"
+                class="w-full h-full object-cover"
+              >
+              <svg-icon
+                v-else
+                type="mdi"
+                :path="mdiAccount"
+                :size="40"
+                class="text-dark-gray sm:text-[52px]"
+              ></svg-icon>
+            </div>
+            <button
+              @click="triggerFileInput"
+              class="absolute bottom-0 right-0 bg-point-yellow p-1.5 sm:p-2 rounded-full shadow-md hover:bg-yellow-400"
+            >
+              <svg-icon
+                type="mdi"
+                :path="mdiCamera"
+                :size="16"
+                class="text-dark-gray sm:text-[20px]"
+              ></svg-icon>
+            </button>
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleProfilePicChange"
+            >
+          </div>
+          <p class="mt-2 text-xs sm:text-sm text-gray-500">
+            프로필 이미지를 변경하려면 클릭하세요
+          </p>
+        </div>
+
+        <!-- 사용자 정보 입력 폼 -->
+        <div class="space-y-3 sm:space-y-4">
+          <!-- 아이디 -->
+          <div>
+            <label
+              for="username"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
+            >아이디</label>
+            <input
+              id="username"
+              v-model="userInfo.username"
+              type="text"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :class="{ 'border-red-500': errors.username }"
+            >
+            <p
+              v-if="errors.username"
+              class="mt-1 text-xs text-red-500"
+            >
+              {{ errors.username }}
+            </p>
+          </div>
+
+          <!-- 닉네임 -->
+          <div>
+            <label
+              for="name"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
+            >닉네임</label>
+            <input
+              id="name"
+              v-model="userInfo.name"
+              type="text"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :class="{ 'border-red-500': errors.name }"
+            >
+            <p
+              v-if="errors.name"
+              class="mt-1 text-xs text-red-500"
+            >
+              {{ errors.name }}
+            </p>
+          </div>
+
+          <!-- 이메일 -->
+          <div>
+            <label
+              for="email"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
+            >이메일</label>
+            <input
+              id="email"
+              v-model="userInfo.email"
+              type="email"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :class="{ 'border-red-500': errors.email }"
+            >
+            <p
+              v-if="errors.email"
+              class="mt-1 text-xs text-red-500"
+            >
+              {{ errors.email }}
+            </p>
+          </div>
+
+          <!-- 전화번호 -->
+          <div>
+            <label
+              for="phone_number"
+              class="block mb-1.5 sm:mb-2 text-sm font-medium text-dark-gray"
+            >전화번호</label>
             <input
               id="phone_number"
               v-model="userInfo.phone_number"
               type="tel"
-              maxlength="13"
-              placeholder="010-0000-0000"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              class="w-full px-3 py-2.5 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :class="{ 'border-red-500': errors.phone_number }"
               @input="handlePhoneInput"
+              placeholder="010-0000-0000"
             >
+            <p
+              v-if="errors.phone_number"
+              class="mt-1 text-xs text-red-500"
+            >
+              {{ errors.phone_number }}
+            </p>
           </div>
-          <p
-            v-if="errors.phone_number"
-            class="mt-1 text-sm text-red-600"
-          >
-            {{ errors.phone_number }}
-          </p>
-          <p class="mt-1 text-xs text-gray-500">
-            휴대폰 번호는 '-'없이 숫자만 입력하셔도 됩니다
-          </p>
-        </div>
-        
-        <!-- 수정 버튼 -->
-        <div class="flex justify-center mt-6">
-          <button
-            class="w-full p-2 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
-            :disabled="isSubmitting"
-            @click="saveUserInfo"
-          >
-            <span v-if="isSubmitting">처리 중...</span>
-            <span v-else>수정</span>
-          </button>
         </div>
       </div>
-    </div>
 
-    <!-- 프로필 사진 모달 팝업 -->
-    <div v-if="showProfilePhotoModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white p-6 rounded-lg shadow-lg w-96">
-        <h2 class="text-lg font-bold mb-4 text-center">프로필 편집</h2>
-        <div class="flex flex-col space-y-2">
-          <button @click="viewProfilePhoto" class="p-2 bg-blue-200 text-white rounded-[10px]">프로필 사진 보기</button>
-          <button @click="registerOrUpdateProfilePhoto" class="p-2 bg-yellow-300 text-white rounded-[10px]">
-            {{ userInfo.profile_image ? '프로필 사진 수정' : '프로필 사진 등록' }}
-          </button>
-          <button @click="deleteProfilePhoto" class="p-2 bg-red-200 text-white rounded-[10px]">프로필 사진 삭제</button>
-        </div>
-        <button @click="closeProfilePhotoModal" class="mt-4 text-gray-500 hover:text-gray-700 block mx-auto rounded-[10px] font-bold">닫기</button>
-      </div>
+      <!-- 저장 버튼 -->
+      <button
+        class="w-full px-4 py-2.5 sm:py-3 text-sm sm:text-base text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
+        :disabled="isSubmitting"
+        @click="saveUserInfo"
+      >
+        <span v-if="isSubmitting">처리 중...</span>
+        <span v-else>저장하기</span>
+      </button>
     </div>
 
     <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="profile" />
+    <BottomNavBar />
   </div>
 </template>
 
@@ -537,5 +530,12 @@ const deleteProfilePhoto = () => {
 }
 .text-dark-gray {
   color: #353535;
+}
+
+/* iOS에서 자동 확대 방지 */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input {
+    font-size: 16px;
+  }
 }
 </style>
