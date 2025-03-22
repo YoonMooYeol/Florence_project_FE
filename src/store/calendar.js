@@ -74,6 +74,7 @@ export const useCalendarStore = defineStore('calendar', () => {
           borderColor: '#FFD600',
           textColor: '#353535',
           display: 'block',
+          pregnancy: event.pregnancy,
           event_type: event.event_type,
           recurring: event.is_recurring ? event.recurrence_pattern : 'none',
           created_at: event.created_at,
@@ -144,6 +145,7 @@ export const useCalendarStore = defineStore('calendar', () => {
           borderColor: '#FFD600',
           textColor: '#353535',
           display: 'block',
+          pregnancy: event.pregnancy,
           event_type: event.event_type,
           recurring: event.is_recurring ? event.recurrence_pattern : 'none',
           created_at: event.created_at,
@@ -200,6 +202,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         borderColor: '#FFD600',
         textColor: '#353535',
         display: 'block',
+        pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
         recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
         created_at: response.data.created_at,
@@ -243,11 +246,33 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null;
     
     try {
+      // 임신 ID가 없는 경우 현재 저장된 ID 사용
+      if (!newEvent.pregnancy && pregnancyId.value) {
+        newEvent.pregnancy = pregnancyId.value;
+      }
+      
+      // 임신 ID가 여전히 없는 경우 API로 조회
+      if (!newEvent.pregnancy) {
+        try {
+          const pregnancyResponse = await api.get('/accounts/pregnancies/');
+          
+          // 임신 정보가 있는 경우 첫 번째 항목의 ID 사용
+          if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
+            // 임신 ID와 상태 업데이트
+            newEvent.pregnancy = pregnancyResponse.data[0].id;
+            setPregnancyInfo(true, pregnancyResponse.data[0].baby_nickname, pregnancyResponse.data[0].id);
+          }
+        } catch (pregnancyError) {
+          // 임신 정보 조회 실패시에도 일정 등록은 계속 진행
+        }
+      }
+
       console.log('addEvent에 전달된 데이터:', newEvent);
       
       // API 요청 형식에 맞게 데이터 변환
       const apiPayload = {
-        title: newEvent.title
+        title: newEvent.title,
+        pregnancy: newEvent.pregnancy
       };
       
       // event_day 필드 결정 (start 필드를 먼저 확인하고, 없으면 event_day 확인)
@@ -309,6 +334,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         borderColor: '#FFD600',
         textColor: '#353535',
         display: 'block',
+        pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
         recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
         created_at: response.data.created_at,
@@ -349,11 +375,17 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null;
     
     try {
+      // 임신 ID가 없는 경우 현재 저장된 ID 사용
+      if (!updatedEvent.pregnancy && pregnancyId.value) {
+        updatedEvent.pregnancy = pregnancyId.value;
+      }
+
       console.log('updateEvent에 전달된 데이터:', updatedEvent);
       
       // API 요청 형식에 맞게 데이터 변환
       const apiPayload = {
-        title: updatedEvent.title
+        title: updatedEvent.title,
+        pregnancy: updatedEvent.pregnancy
       };
       
       // event_day 필드 결정 (start 필드를 먼저 확인하고, 없으면 event_day 확인)
@@ -414,6 +446,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         borderColor: '#FFD600',
         textColor: '#353535',
         display: 'block',
+        pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
         recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
         created_at: response.data.created_at,
