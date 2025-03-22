@@ -31,6 +31,16 @@ const formData = ref({
   recurring: 'none'
 })
 
+// 반복 일정 수정 옵션 추가
+const updateOption = ref('this_and_future')
+
+// 이 이벤트가 반복 일정인지 계산
+const isRecurringEvent = computed(() => {
+  return props.event && 
+    ((props.event.recurring && props.event.recurring !== 'none') || 
+    props.event.is_recurring === true)
+})
+
 // 이벤트 데이터로 폼 초기화
 const initFormData = () => {
   if (props.event) {
@@ -46,6 +56,9 @@ const initFormData = () => {
       allDay: event.allDay || false,
       recurring: event.recurring || 'none'
     }
+    
+    // 반복 일정 수정 옵션 기본값
+    updateOption.value = 'this_and_future'
   } else {
     // 새 이벤트: 기본값으로 초기화
     formData.value = {
@@ -93,9 +106,19 @@ const handleSave = () => {
       formData.value.end : 
       `${formData.value.end}T${formData.value.endTime}:00`,
     allDay: formData.value.allDay,
-    recurring: formData.value.recurring
+    recurring: formData.value.recurring,
+    startTime: formData.value.startTime,
+    endTime: formData.value.endTime,
+    // ID가 있는 경우 수정 모드로 처리
+    id: props.event?.id,
+    // 이벤트 타입 추가 (기본값: general)
+    event_type: props.event?.event_type || 'general',
+    // 반복 일정 수정 옵션 추가
+    updateOption: isRecurringEvent.value ? updateOption.value : null
   }
-
+  
+  console.log('이벤트 저장/수정 데이터:', eventData)
+  console.log('반복 일정 수정 옵션:', updateOption.value)
   emit('save', eventData)
 }
 
@@ -242,6 +265,44 @@ const timeOptions = computed(() => {
               <option value="monthly">매월</option>
               <option value="yearly">매년</option>
             </select>
+          </div>
+        </div>
+        
+        <!-- 반복 일정 수정 시 옵션 선택 UI -->
+        <div v-if="props.event && isRecurringEvent" class="space-y-3 mt-3 p-3 bg-gray-50 rounded-lg">
+          <h4 class="font-medium text-gray-700">반복 일정 수정 범위</h4>
+          
+          <div class="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="updateThisOnly"
+              v-model="updateOption"
+              value="this_only"
+              class="text-point focus:ring-point"
+            />
+            <label for="updateThisOnly" class="text-sm text-gray-700">이 일정만 수정</label>
+          </div>
+          
+          <div class="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="updateThisAndFuture"
+              v-model="updateOption"
+              value="this_and_future"
+              class="text-point focus:ring-point"
+            />
+            <label for="updateThisAndFuture" class="text-sm text-gray-700">이후 모든 일정 수정</label>
+          </div>
+          
+          <div class="flex items-center space-x-2">
+            <input
+              type="radio"
+              id="updateAll"
+              v-model="updateOption"
+              value="all"
+              class="text-point focus:ring-point"
+            />
+            <label for="updateAll" class="text-sm text-gray-700">모든 반복 일정 수정</label>
           </div>
         </div>
 

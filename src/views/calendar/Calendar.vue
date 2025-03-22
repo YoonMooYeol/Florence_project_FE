@@ -315,6 +315,10 @@ onMounted(async () => {
         sessionStorage.removeItem('modalState')
       }
     }
+    
+    // 캘린더 새로고침 이벤트 리스너 추가
+    window.addEventListener('calendar-needs-refresh', handleCalendarRefresh)
+    
   } catch (error) {
     logger.error(CONTEXT, '캘린더 마운트 중 오류 발생:', error)
     handleError(error, CONTEXT)
@@ -369,6 +373,9 @@ onUnmounted(() => {
   } catch (error) {
     logger.error(CONTEXT, '캘린더 언마운트 중 오류 발생:', error)
   }
+  
+  // 캘린더 새로고침 이벤트 리스너 제거
+  window.removeEventListener('calendar-needs-refresh', handleCalendarRefresh)
 })
 
 // FAB 메뉴 클릭 핸들러
@@ -433,15 +440,15 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
     let success = false
 
     if (isRecurring) {
-      if (deleteOptions?.option === 'until') {
-        if (!deleteOptions.untilDate) {
-          alert('유지할 마지막 날짜를 선택해주세요.')
-          return
-        }
-        console.log('특정 날짜까지 일정 유지 시도:', deleteOptions.untilDate)
+      if (deleteOptions?.option === 'this_only') {
+        console.log('이 일정만 삭제 시도')
+        await calendarStore.deleteRecurringEventThisOnly(eventId)
+        success = true
+      } else if (deleteOptions?.option === 'all_future') {
+        console.log('이후 모든 일정 삭제 시도')
         await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
         success = true
-      } else {
+      } else if (deleteOptions?.option === 'all') {
         console.log('모든 반복 일정 삭제 시도')
         await calendarStore.deleteRecurringEvents(eventId)
         success = true
@@ -501,6 +508,77 @@ watch(() => calendarStore.babyDiaries, () => {
     console.log('태교일기 변경 감지 - 캘린더 재렌더링')
   }
 }, { deep: true })
+
+// 캘린더 새로고침 핸들러
+const handleCalendarRefresh = async (event) => {
+  logger.info(CONTEXT, '캘린더 새로고침 이벤트 감지:', event.detail)
+  
+  if (!calendarRef.value) {
+    logger.warn(CONTEXT, '캘린더 참조가 없어 새로고침을 수행할 수 없습니다')
+    return
+  }
+  
+  try {
+    const calendarApi = calendarRef.value.getApi()
+    
+    // 1단계: 먼저 모든 이벤트 제거
+    logger.info(CONTEXT, '기존 이벤트 모두 제거 중...')
+    calendarApi.removeAllEvents()
+    
+    // 2단계: 서버에서 최신 이벤트 데이터 로드
+    logger.info(CONTEXT, '서버에서 최신 이벤트 데이터 로드 중...')
+    const timestamp = new Date().getTime() // 캐시 방지
+    await calendarStore.fetchEvents()
+    
+    // 3단계: 캘린더 API를 통해 이벤트 새로고침
+    logger.info(CONTEXT, '캘린더 API 새로고침 중...')
+    await calendarApi.refetchEvents()
+    
+    // 4단계: 캘린더 다시 렌더링 (첫 번째 렌더링)
+    logger.info(CONTEXT, '캘린더 첫 번째 렌더링 중...')
+    calendarApi.render()
+    
+    // 5단계: 모든 이벤트가 제대로 표시되었는지 확인
+    const calendarEvents = calendarApi.getEvents()
+    logger.info(CONTEXT, `캘린더 API 이벤트 개수: ${calendarEvents.length}, 스토어 이벤트 개수: ${calendarStore.events.length}`)
+    
+    // 이벤트 개수가 불일치하면 강제로 모든 이벤트를 다시 추가
+    if (calendarEvents.length !== calendarStore.events.length) {
+      logger.warn(CONTEXT, '이벤트 개수 불일치 감지. 모든 이벤트 강제 추가 중...')
+      
+      // 기존 이벤트 다시 제거
+      calendarApi.removeAllEvents()
+      
+      // 스토어에서 직접 이벤트 추가
+      calendarStore.events.forEach(event => {
+        calendarApi.addEvent({
+          id: event.id,
+          title: event.title,
+          start: event.start,
+          allDay: event.allDay,
+          backgroundColor: event.backgroundColor,
+          borderColor: event.borderColor,
+          textColor: event.textColor
+        })
+      })
+    }
+    
+    // 6단계: 추가 안정성을 위해 다음 렌더링 사이클에서도 한 번 더 렌더링
+    setTimeout(() => {
+      calendarApi.render()
+      logger.info(CONTEXT, '캘린더 최종 렌더링 완료')
+    }, 100)
+    
+    // 7단계: 최종 업데이트를 위해 requestAnimationFrame 사용
+    requestAnimationFrame(() => {
+      calendarApi.render()
+      logger.info(CONTEXT, '캘린더 새로고침 완료 (총 이벤트 수: ' + calendarStore.events.length + ')')
+    })
+  } catch (error) {
+    logger.error(CONTEXT, '캘린더 새로고침 중 오류 발생:', error)
+    handleError(error, `${CONTEXT}.handleCalendarRefresh`)
+  }
+}
 
 </script>
 
