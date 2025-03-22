@@ -43,7 +43,7 @@ const selectedEvent = ref(null)
 watch(() => props.show, async (newValue) => {
   if (newValue) {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
-    // 모달이 열리면 클릭 방지 설정 (800ms 동안)
+    // 모달이 열리면 클릭 방지 설정 (300ms 동안)
     isClickable.value = false
 
     // 항상 일정 탭부터 시작
@@ -60,7 +60,7 @@ watch(() => props.show, async (newValue) => {
     setTimeout(() => {
       isClickable.value = true
       console.log('DayEventsModal - 이제 이벤트 클릭 가능')
-    }, 800)
+    }, 300)
   } else {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 닫혔습니다')
   }
@@ -677,6 +677,33 @@ const handleEditEvent = (event) => {
   selectedEvent.value = event
   showEventDetailModal.value = false
   showEventModal.value = true
+}
+
+const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
+  try {
+    console.log('DayEventsModal: 일정 삭제 시도', { eventId, isRecurring, deleteOptions })
+    
+    if (isRecurring) {
+      if (deleteOptions?.option === 'until') {
+        if (!deleteOptions.untilDate) {
+          alert('유지할 마지막 날짜를 선택해주세요.')
+          return
+        }
+        await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
+      } else {
+        await calendarStore.deleteRecurringEvents(eventId)
+      }
+    } else {
+      await calendarStore.deleteEvent(eventId)
+    }
+
+    showEventDetailModal.value = false
+    // 캘린더 새로고침
+    await calendarStore.fetchEvents()
+  } catch (error) {
+    console.error('DayEventsModal: 일정 삭제 중 오류 발생', error)
+    alert('일정 삭제에 실패했습니다.')
+  }
 }
 
 const handleSaveEvent = async (eventData) => {

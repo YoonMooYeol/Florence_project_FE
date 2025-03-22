@@ -33,6 +33,7 @@ const emit = defineEmits(['close', 'delete', 'edit'])
 
 const deleteOption = ref('all')
 const untilDate = ref('')
+const showDeleteConfirm = ref(false)
 
 const closeModal = () => {
   console.log('일정 상세 모달 닫기 버튼 클릭')
@@ -40,16 +41,11 @@ const closeModal = () => {
 }
 
 const handleDelete = () => {
-  try {
-    console.log('EventDetailModal: 삭제 시도', {
-      eventId: props.event.id,
-      isRecurring: props.event.recurring && props.event.recurring !== 'none',
-      deleteOptions: {
-        option: deleteOption.value,
-        untilDate: untilDate.value
-      }
-    })
+  showDeleteConfirm.value = true
+}
 
+const confirmDelete = () => {
+  try {
     if (deleteOption.value === 'until' && !untilDate.value) {
       alert('유지할 마지막 날짜를 선택해주세요.')
       return
@@ -62,10 +58,15 @@ const handleDelete = () => {
         untilDate: untilDate.value
       }
     )
+    showDeleteConfirm.value = false
   } catch (error) {
     console.error('EventDetailModal: 삭제 중 오류 발생', error)
     alert('일정 삭제 중 오류가 발생했습니다.')
   }
+}
+
+const cancelDelete = () => {
+  showDeleteConfirm.value = false
 }
 
 const handleEdit = () => {
@@ -217,6 +218,67 @@ const formatEventDate = (event) => {
           @click="handleEdit"
         >
           수정
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 삭제 확인 모달 -->
+  <div
+    v-if="showDeleteConfirm"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+  >
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-auto p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-4 text-center">일정 삭제</h3>
+      <p class="text-gray-600 text-center mb-6">이 일정을 삭제하시겠습니까?</p>
+      
+      <!-- 반복 일정인 경우 삭제 옵션 표시 -->
+      <div v-if="event.recurring && event.recurring !== 'none'" class="mb-6 space-y-4">
+        <div class="flex items-center space-x-2">
+          <input
+            type="radio"
+            id="deleteConfirmAll"
+            v-model="deleteOption"
+            value="all"
+            class="text-point focus:ring-point"
+          />
+          <label for="deleteConfirmAll" class="text-sm text-gray-700">모든 반복 일정 삭제</label>
+        </div>
+        <div class="flex items-center space-x-2">
+          <input
+            type="radio"
+            id="deleteConfirmUntil"
+            v-model="deleteOption"
+            value="until"
+            class="text-point focus:ring-point"
+          />
+          <label for="deleteConfirmUntil" class="text-sm text-gray-700">특정 날짜까지만 유지</label>
+        </div>
+        
+        <!-- 날짜 선택 (deleteUntil 선택 시에만 표시) -->
+        <div v-if="deleteOption === 'until'" class="mt-2">
+          <label class="block text-sm text-gray-700 mb-1">유지할 마지막 날짜 선택</label>
+          <input
+            type="date"
+            v-model="untilDate"
+            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+            :min="event && event.start && typeof event.start === 'string' && event.start.includes('T') ? event.start.split('T')[0] : event.start"
+          />
+        </div>
+      </div>
+
+      <div class="flex justify-center gap-3">
+        <button
+          class="px-6 py-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors font-medium"
+          @click="cancelDelete"
+        >
+          취소
+        </button>
+        <button
+          class="px-6 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
+          @click="confirmDelete"
+        >
+          확인
         </button>
       </div>
     </div>
