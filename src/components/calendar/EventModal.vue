@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { formatDate } from '@/utils/dateUtils'
 
 const props = defineProps({
@@ -10,83 +10,107 @@ const props = defineProps({
   date: {
     type: String,
     required: true
+  },
+  event: {
+    type: Object,
+    default: null
   }
 })
 
 const emit = defineEmits(['close', 'save'])
 
-const eventData = ref({
+// 폼 데이터 초기화
+const formData = ref({
   title: '',
+  description: '',
   start: props.date,
   end: props.date,
-  allDay: true,
-  description: '',
+  startTime: '09:00',
+  endTime: '10:00',
+  allDay: false,
   recurring: 'none'
 })
 
-const isRecurring = ref(false)
-const recurrenceType = ref('daily')
-
-// 반복 주기 텍스트 가져오기
-const getRecurringText = (type) => {
-  switch (type) {
-    case 'daily':
-      return '매일'
-    case 'weekly':
-      return '매주'
-    case 'monthly':
-      return '매월'
-    case 'yearly':
-      return '매년'
-    default:
-      return ''
+// 이벤트 데이터로 폼 초기화
+const initFormData = () => {
+  if (props.event) {
+    // 수정 모드: 기존 이벤트 데이터로 초기화
+    const event = props.event
+    formData.value = {
+      title: event.title || '',
+      description: event.description || '',
+      start: event.start?.split('T')[0] || props.date,
+      end: event.end?.split('T')[0] || props.date,
+      startTime: event.start?.split('T')[1]?.substring(0, 5) || '09:00',
+      endTime: event.end?.split('T')[1]?.substring(0, 5) || '10:00',
+      allDay: event.allDay || false,
+      recurring: event.recurring || 'none'
+    }
+  } else {
+    // 새 이벤트: 기본값으로 초기화
+    formData.value = {
+      title: '',
+      description: '',
+      start: props.date,
+      end: props.date,
+      startTime: '09:00',
+      endTime: '10:00',
+      allDay: false,
+      recurring: 'none'
+    }
   }
 }
 
+// props.show가 변경될 때마다 폼 초기화
+watch(() => props.show, (newValue) => {
+  if (newValue) {
+    initFormData()
+  }
+})
+
+// 저장 처리
 const handleSave = () => {
-  console.log('이벤트 저장 시작')
-  
-  // 필수 입력값 검증
-  if (!eventData.value.title.trim()) {
-    alert('일정 제목을 입력해주세요.')
+  if (!formData.value.title.trim()) {
+    alert('제목을 입력해주세요.')
     return
   }
 
-  // 시작 시간이 종료 시간보다 늦은 경우 검증
-  if (!eventData.value.allDay && eventData.value.start >= eventData.value.end) {
-    alert('종료 시간은 시작 시간보다 늦어야 합니다.')
-    return
+  // 종일 일정이 아닌 경우 시간 검증
+  if (!formData.value.allDay) {
+    if (formData.value.startTime >= formData.value.endTime) {
+      alert('종료 시간은 시작 시간보다 늦어야 합니다.')
+      return
+    }
   }
 
-  // 이벤트 데이터 생성
-  const newEvent = {
-    ...eventData.value,
-    recurring: isRecurring.value ? recurrenceType.value : 'none'
+  const eventData = {
+    title: formData.value.title,
+    description: formData.value.description,
+    start: formData.value.allDay ? 
+      formData.value.start : 
+      `${formData.value.start}T${formData.value.startTime}:00`,
+    end: formData.value.allDay ? 
+      formData.value.end : 
+      `${formData.value.end}T${formData.value.endTime}:00`,
+    allDay: formData.value.allDay,
+    recurring: formData.value.recurring
   }
 
-  // 반복 일정인 경우 제목에 표시
-  if (isRecurring.value) {
-    newEvent.title = `[${getRecurringText(recurrenceType.value)}] ${newEvent.title}`
-  }
-
-  console.log('저장할 이벤트:', newEvent)
-  emit('save', newEvent)
-
-  // 폼 초기화 및 모달 닫기
-  resetForm()
-  emit('close')
+  emit('save', eventData)
 }
 
-const resetForm = () => {
-  eventData.value.title = ''
-  eventData.value.start = props.date
-  eventData.value.end = props.date
-  eventData.value.allDay = true
-  eventData.value.description = ''
-  eventData.value.recurring = 'none'
-  isRecurring.value = false
-  recurrenceType.value = 'daily'
-}
+// 시간 선택 옵션 생성
+const timeOptions = computed(() => {
+  const options = []
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const hourStr = hour.toString().padStart(2, '0')
+      const minuteStr = minute.toString().padStart(2, '0')
+      options.push(`${hourStr}:${minuteStr}`)
+    }
+  }
+  return options
+})
 </script>
 
 <template>
@@ -94,14 +118,14 @@ const resetForm = () => {
     v-if="show"
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
   >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
-      <div class="bg-point px-6 py-4 flex justify-between items-center">
+    <div class="bg-ivory rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
+      <div class="bg-point px-6 py-3 flex justify-between items-center">
         <h3 class="text-lg font-bold text-dark-gray">
-          일정 등록
+          {{ props.event ? '일정 수정' : '일정 등록' }}
         </h3>
         <button
           class="text-dark-gray hover:text-gray-700"
-          @click="emit('close')"
+          @click="$emit('close')"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -120,15 +144,15 @@ const resetForm = () => {
         </button>
       </div>
 
-      <div class="p-6 space-y-4">
+      <div class="p-3 space-y-2">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
             날짜
           </label>
           <input
             type="date"
-            v-model="eventData.start"
-            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+            v-model="formData.start"
+            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point bg-white"
           />
         </div>
 
@@ -138,8 +162,8 @@ const resetForm = () => {
           </label>
           <input
             type="text"
-            v-model="eventData.title"
-            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+            v-model="formData.title"
+            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point bg-white"
             placeholder="일정 제목을 입력하세요"
           />
         </div>
@@ -149,8 +173,8 @@ const resetForm = () => {
             설명
           </label>
           <textarea
-            v-model="eventData.description"
-            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point resize-none h-32"
+            v-model="formData.description"
+            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point resize-none h-32 bg-white"
             placeholder="일정에 대한 설명을 입력하세요"
           />
         </div>
@@ -158,31 +182,61 @@ const resetForm = () => {
         <div class="flex items-center">
           <input
             type="checkbox"
-            v-model="eventData.allDay"
-            class="h-4 w-4 text-point focus:ring-point border-gray-300 rounded"
+            v-model="formData.allDay"
+            class="h-4 w-4 text-point focus:ring-point border-gray-300 rounded bg-white"
           />
           <label class="ml-2 text-sm text-gray-700">
             종일 일정
           </label>
         </div>
 
+        <!-- 시간 선택 (종일 일정이 아닌 경우에만 표시) -->
+        <div
+          v-if="!formData.allDay"
+          class="grid grid-cols-2 gap-4"
+        >
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">시작 시간</label>
+            <select
+              v-model="formData.startTime"
+              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point bg-white"
+            >
+              <option
+                v-for="time in timeOptions"
+                :key="time"
+                :value="time"
+              >
+                {{ time }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">종료 시간</label>
+            <select
+              v-model="formData.endTime"
+              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point bg-white"
+            >
+              <option
+                v-for="time in timeOptions"
+                :key="time"
+                :value="time"
+              >
+                {{ time }}
+              </option>
+            </select>
+          </div>
+        </div>
+
         <div class="space-y-2">
           <div class="flex items-center">
-            <input
-              type="checkbox"
-              v-model="isRecurring"
-              class="h-4 w-4 text-point focus:ring-point border-gray-300 rounded"
-            />
-            <label class="ml-2 text-sm text-gray-700">
-              반복 일정
+            <label class="block text-sm font-medium text-gray-700">
+              반복
             </label>
-          </div>
-
-          <div v-if="isRecurring" class="mt-2">
             <select
-              v-model="recurrenceType"
-              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+              v-model="formData.recurring"
+              class="ml-2 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point bg-white"
             >
+              <option value="none">반복 안함</option>
               <option value="daily">매일</option>
               <option value="weekly">매주</option>
               <option value="monthly">매월</option>
@@ -191,18 +245,20 @@ const resetForm = () => {
           </div>
         </div>
 
-        <div class="flex justify-end space-x-2 mt-6">
+        <div class="flex justify-end space-x-2 mt-3 -mx-3 -mb-3 px-4 py-3 bg-white border-t border-gray-200">
           <button
+            type="button"
             class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            @click="emit('close')"
+            @click="$emit('close')"
           >
             취소
           </button>
           <button
+            type="button"
             class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
             @click="handleSave"
           >
-            저장하기
+            {{ props.event ? '수정' : '저장' }}
           </button>
         </div>
       </div>
@@ -214,7 +270,16 @@ const resetForm = () => {
 .bg-point {
   background-color: #FFD600;
 }
+.text-point {
+  color: #FFD600;
+}
+.ring-point {
+  --tw-ring-color: #FFD600;
+}
 .text-dark-gray {
   color: #353535;
+}
+.bg-ivory {
+  background-color: #FFFAE0;
 }
 </style> 

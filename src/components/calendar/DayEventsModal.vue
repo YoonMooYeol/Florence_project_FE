@@ -4,6 +4,8 @@ import { formatDate, formatTime } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
 import api from '@/utils/axios'
 import DailySummaryComponent from './DailySummaryComponent.vue'
+import EventDetailModal from './EventDetailModal.vue'
+import EventModal from './EventModal.vue'
 
 const props = defineProps({
   show: {
@@ -33,6 +35,9 @@ const isClickable = ref(false)
 const diaryContent = ref('')
 const activeTab = ref('schedule') // 초기 활성 탭은 '일정' 탭
 const showDiaryModal = ref(false)
+const showEventModal = ref(false)
+const showEventDetailModal = ref(false)
+const selectedEvent = ref(null)
 
 // 모달이 열렸을 때 props 변화 감지 및 처리
 watch(() => props.show, async (newValue) => {
@@ -104,7 +109,8 @@ const viewEvent = (event) => {
 
   // 사용자의 명시적인 클릭만 처리하도록 메시지 추가
   console.log('사용자가 일정 항목을 클릭: 이벤트 상세 보기 요청됨', event.title)
-  emit('view-event', event)
+  selectedEvent.value = event
+  showEventDetailModal.value = true
 }
 
 // 반복 주기 텍스트 변환 함수
@@ -546,7 +552,7 @@ const deletePhoto = async (photoId) => {
     
     // 페이지 새로고침
     window.location.reload()
-  } catch (error) {
+    } catch (error) {
     console.error('사진 삭제 실패:', error)
     let errorMessage = '사진 삭제에 실패했습니다.'
 
@@ -664,6 +670,44 @@ function handleImageError(event) {
 const handleImageLoad = (event, photo) => {
   console.log('이미지 로드 성공:', photo.id)
   // 성공적으로 이미지가 로드된 후 처리할 작업이 있으면 여기에 추가
+}
+
+const handleEditEvent = (event) => {
+  console.log('일정 수정 시작:', event)
+  selectedEvent.value = event
+  showEventDetailModal.value = false
+  showEventModal.value = true
+}
+
+const handleSaveEvent = async (eventData) => {
+  try {
+    console.log('일정 저장/수정:', eventData)
+    
+    if (selectedEvent.value) {
+      // 수정 모드
+      await calendarStore.updateEvent({
+        ...eventData,
+        id: selectedEvent.value.id
+      })
+      console.log('일정 수정 완료')
+    } else {
+      // 새로운 일정 등록
+      await calendarStore.addEvent(eventData)
+      console.log('새 일정 등록 완료')
+    }
+
+    showEventModal.value = false
+    selectedEvent.value = null
+    
+    // 성공 메시지 표시
+    alert(selectedEvent.value ? '일정이 수정되었습니다.' : '일정이 등록되었습니다.')
+    
+    // 캘린더 새로고침
+    await calendarStore.fetchEvents()
+  } catch (error) {
+    console.error('일정 저장/수정 실패:', error)
+    alert('일정 저장에 실패했습니다.')
+  }
 }
 
 onMounted(async () => {
@@ -1025,6 +1069,24 @@ onMounted(async () => {
     accept=".jpg,.jpeg,.png,.gif"
     @change="handleUpdateFileSelect"
   >
+
+  <!-- 일정 상세 모달 -->
+  <EventDetailModal
+    :show="showEventDetailModal"
+    :event="selectedEvent"
+    @close="showEventDetailModal = false"
+    @delete="handleDeleteEvent"
+    @edit="handleEditEvent"
+  />
+  
+  <!-- 일정 등록/수정 모달 -->
+  <EventModal
+    :show="showEventModal"
+    :date="date"
+    :event="selectedEvent"
+    @close="showEventModal = false"
+    @save="handleSaveEvent"
+  />
 </template>
 
 <style scoped>
