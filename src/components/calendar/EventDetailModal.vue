@@ -29,7 +29,7 @@ watch(() => props.show, (newValue) => {
   }
 })
 
-const emit = defineEmits(['close', 'delete'])
+const emit = defineEmits(['close', 'delete', 'edit'])
 
 const deleteOption = ref('all')
 const untilDate = ref('')
@@ -66,6 +66,12 @@ const handleDelete = () => {
     console.error('EventDetailModal: 삭제 중 오류 발생', error)
     alert('일정 삭제 중 오류가 발생했습니다.')
   }
+}
+
+const handleEdit = () => {
+  console.log('일정 수정 버튼 클릭')
+  emit('edit', props.event)
+  emit('close')
 }
 
 // 반복 주기 텍스트 변환 함수
@@ -207,10 +213,10 @@ const formatEventDate = (event) => {
           삭제
         </button>
         <button
-          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-          @click="closeModal"
+          class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors"
+          @click="handleEdit"
         >
-          닫기
+          수정
         </button>
       </div>
     </div>

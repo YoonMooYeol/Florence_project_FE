@@ -25,6 +25,39 @@ const memo = ref('')
 const isRecurring = ref(false)
 const recurrenceType = ref('none')
 
+// 드롭다운 상태
+const showStartTimeDropdown = ref(false)
+const showEndTimeDropdown = ref(false)
+
+// 시간 옵션 생성 (00:00부터 23:30까지 30분 간격)
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const hour = Math.floor(i / 2)
+  const minute = (i % 2) * 30
+  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+})
+
+// 드롭다운 토글 함수
+const toggleStartTimeDropdown = () => {
+  showStartTimeDropdown.value = !showStartTimeDropdown.value
+  showEndTimeDropdown.value = false
+}
+
+const toggleEndTimeDropdown = () => {
+  showEndTimeDropdown.value = !showEndTimeDropdown.value
+  showStartTimeDropdown.value = false
+}
+
+// 시간 선택 함수
+const selectStartTime = (time) => {
+  startTime.value = time
+  showStartTimeDropdown.value = false
+}
+
+const selectEndTime = (time) => {
+  endTime.value = time
+  showEndTimeDropdown.value = false
+}
+
 // 선택된 날짜가 변경되면 폼 데이터 업데이트
 watch(() => props.selectedDate, (newDate) => {
   if (newDate) {
@@ -157,7 +190,7 @@ const saveEvent = () => {
             xmlns="http://www.w3.org/2000/svg"
             class="h-6 w-6"
             fill="none"
-            viewBox="0 0 24 24"
+            viewBox="0 0 18 24"
             stroke="currentColor"
           >
             <path
@@ -171,9 +204,9 @@ const saveEvent = () => {
       </div>
 
       <!-- 모달 내용 -->
-      <div class="p-6 bg-ivory">
+      <div class="p-5 bg-ivory">
         <!-- 일정 제목 입력 -->
-        <div class="mb-4">
+        <div class="mb-2">
           <label
             for="event-title"
             class="block text-dark-gray font-medium mb-2"
@@ -182,20 +215,20 @@ const saveEvent = () => {
             id="event-title"
             v-model="title"
             type="text"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+            class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
             placeholder="일정 제목을 입력하세요"
           >
         </div>
 
         <!-- 날짜 선택 -->
-        <div class="mb-4">
+        <div class="mb-1">
           <label class="block text-dark-gray font-medium mb-2">날짜</label>
           <div v-for="(date, index) in dates" :key="index" class="flex items-center mb-2">
             <input
               :id="'event-date-' + index"
               v-model="dates[index]"
               type="date"
-              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+              class="flex-1 px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
             >
             <button
               v-if="index > 0"
@@ -220,7 +253,7 @@ const saveEvent = () => {
         </div>
 
         <!-- 시간 선택 -->
-        <div class="mb-4">
+        <div class="mb-2">
           <div class="flex items-center mb-2">
             <input
               id="all-day"
@@ -241,32 +274,62 @@ const saveEvent = () => {
             <div>
               <label
                 for="start-time"
-                class="block text-dark-gray font-medium mb-2"
+                class="block text-dark-gray font-medium mb-1"
               >시작 시간</label>
-              <input
-                id="start-time"
-                v-model="startTime"
-                type="time"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-              >
+              <div class="relative">
+                <div
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point cursor-pointer bg-white"
+                  @click="toggleStartTimeDropdown"
+                >
+                  {{ startTime }}
+                </div>
+                <div
+                  v-if="showStartTimeDropdown"
+                  class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-[180px] overflow-y-auto"
+                >
+                  <div
+                    v-for="time in timeOptions"
+                    :key="time"
+                    class="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                    @click="selectStartTime(time)"
+                  >
+                    {{ time }}
+                  </div>
+                </div>
+              </div>
             </div>
             <div>
               <label
                 for="end-time"
-                class="block text-dark-gray font-medium mb-2"
+                class="block text-dark-gray font-medium mb-1"
               >종료 시간</label>
-              <input
-                id="end-time"
-                v-model="endTime"
-                type="time"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-              >
+              <div class="relative">
+                <div
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point cursor-pointer bg-white"
+                  @click="toggleEndTimeDropdown"
+                >
+                  {{ endTime }}
+                </div>
+                <div
+                  v-if="showEndTimeDropdown"
+                  class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-[180px] overflow-y-auto"
+                >
+                  <div
+                    v-for="time in timeOptions"
+                    :key="time"
+                    class="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                    @click="selectEndTime(time)"
+                  >
+                    {{ time }}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 반복 설정 -->
-        <div class="mb-4">
+        <div class="mb-2">
           <div class="flex items-center mb-2">
             <input
               id="recurring"
@@ -294,7 +357,7 @@ const saveEvent = () => {
         </div>
 
         <!-- 알림 설정 -->
-        <div class="mb-4">
+        <div class="mb-2">
           <label
             for="notification"
             class="block text-dark-gray font-medium mb-2"
@@ -302,7 +365,7 @@ const saveEvent = () => {
           <select
             id="notification"
             v-model="notification"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
+            class="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
           >
             <option value="none">
               알림 없음
@@ -323,22 +386,22 @@ const saveEvent = () => {
         </div>
 
         <!-- 메모 입력 -->
-        <div class="mb-4">
+        <div class="mb-1">
           <label
             for="event-memo"
-            class="block text-dark-gray font-medium mb-2"
+            class="block text-dark-gray font-medium mb-1"
           >메모</label>
           <textarea
             id="event-memo"
             v-model="memo"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point h-24"
-            placeholder="메모를 입력하세요"
+            class="w-full px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point h-18"
+            placeholder="메모를 입력하세요..."
           />
         </div>
       </div>
 
       <!-- 모달 푸터 -->
-      <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-end">
+      <div class="px-5 py-2.5 bg-white border-t border-gray-200 flex justify-end">
         <button
           class="px-6 py-2 bg-point text-dark-gray rounded-full hover:bg-yellow-500 transition-colors font-medium"
           @click="saveEvent"
@@ -359,5 +422,25 @@ const saveEvent = () => {
 }
 .text-dark-gray {
   color: #353535;
+}
+
+select {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+select option {
+  padding: 8px;
+}
+
+/* 드롭다운 메뉴의 최대 높이 제한 */
+select:focus option:checked {
+  background: #FFD600;
+}
+
+/* 드롭다운 메뉴의 스타일 */
+select option {
+  max-height: 180px;
+  overflow-y: auto;
 }
 </style>
