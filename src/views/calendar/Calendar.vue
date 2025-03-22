@@ -105,7 +105,7 @@ const handleEventClick = (info) => {
       if (eventObj.start) {
         eventDate = typeof eventObj.start === 'string' && eventObj.start.includes('T')
           ? eventObj.start.split('T')[0]
-          : normalizeDate(eventObj.start)
+          : normalizeDate(eventObj.event_day)
       }
 
       // 날짜가 있으면 일일 이벤트 모달 열기
@@ -175,7 +175,8 @@ calendarOptions.eventSources = [
         const mappedEvents = calendarStore.events.map(event => ({
           id: event.id,
           title: event.title,
-          start: event.start,
+          event_day: event.event_day,
+          // start: event.start,
           backgroundColor: event.backgroundColor || '#FFD600',
           borderColor: event.borderColor || '#FFD600',
           textColor: event.textColor || '#353535',
@@ -387,7 +388,7 @@ const handleEventSave = async (eventData) => {
   try {
     console.log('일정 저장 시작:', eventData)
     // 입력받은 날짜를 YYYY-MM-DD 형식으로 정규화
-    eventData.start = normalizeDate(eventData.start)
+    eventData.event_day = normalizeDate(eventData.event_day)
     
     // 반복 일정 여부 확인
     if (eventData.recurring && eventData.recurring !== 'none') {
