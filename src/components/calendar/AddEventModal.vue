@@ -133,6 +133,14 @@ const saveEvent = () => {
     return
   }
 
+  console.log('일정 저장 시작:', {
+    title: title.value,
+    dates: dates.value,
+    isAllDay: isAllDay.value,
+    startTime: startTime.value,
+    endTime: endTime.value
+  })
+
   // 각 날짜별로 이벤트 생성
   const events = dates.value.map(date => {
     const recurringText = isRecurring.value ? `[${getRecurringText(recurrenceType.value)}] ` : ''
@@ -144,26 +152,41 @@ const saveEvent = () => {
       borderColor: '#FFD600',
       textColor: '#353535',
       display: 'block',
-      recurring: isRecurring.value ? recurrenceType.value : 'none'
+      recurring: isRecurring.value ? recurrenceType.value : 'none',
+      event_time: isAllDay.value ? null : startTime.value,
+      startTime: startTime.value,
+      endTime: endTime.value
     }
 
     // 종일 이벤트인 경우
     if (isAllDay.value) {
       newEvent.start = date
+      newEvent.end = date
     } else {
       // 시간이 있는 이벤트인 경우
-      newEvent.start = `${date}T${startTime.value}:00`
-      newEvent.end = `${date}T${endTime.value}:00`
+      const startDateTime = `${date}T${startTime.value}:00`
+      const endDateTime = `${date}T${endTime.value}:00`
+      newEvent.start = startDateTime
+      newEvent.end = endDateTime
+      console.log('시간 정보:', {
+        startDateTime,
+        endDateTime,
+        event_time: newEvent.event_time
+      })
     }
 
     // 알림 설정 추가
     newEvent.notification = notification.value
 
+    console.log('생성된 이벤트:', newEvent)
     return newEvent
   })
 
   // 부모 컴포넌트로 이벤트 전달
-  events.forEach(event => emit('save', event))
+  events.forEach(event => {
+    console.log('이벤트 전달:', event)
+    emit('save', event)
+  })
 
   // 폼 초기화 및 모달 닫기
   resetForm()

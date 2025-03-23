@@ -68,10 +68,11 @@ export const useCalendarStore = defineStore('calendar', () => {
           id: event.event_id, // event_id를 id로 매핑
           title: event.title,
           description: event.description,
-          start: event.event_day, // event_day를 start로 매핑
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+          event_day: event.event_day,
+          // start: event.event_day, // event_day를 start로 매핑
+          backgroundColor: '#FFD600',
+          borderColor: '#FFD600',
+          textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
@@ -80,9 +81,14 @@ export const useCalendarStore = defineStore('calendar', () => {
           updated_at: event.updated_at
         };
         
-        // 시간 정보가 있으면 start에 통합
-        if (event.event_time) {
-          mappedEvent.start = `${event.event_day}T${event.event_time}`;
+        // 시작 시간 정보가 있으면 start에 통합
+        if (event.start_time) {
+          mappedEvent.start = `${event.event_day}T${event.start_time}`;
+        }
+        
+        // 종료 시간 정보가 있으면 추가 
+        if (event.end_time) {
+          mappedEvent.end = `${event.event_day}T${event.end_time}`;
         }
         
         // 반복 이벤트면 allDay 속성 추가
@@ -133,10 +139,11 @@ export const useCalendarStore = defineStore('calendar', () => {
           id: event.event_id,
           title: event.title,
           description: event.description,
-          start: event.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+          event_day: event.event_day,
+          // start: event.event_day,
+          backgroundColor: '#FFD600',
+          borderColor: '#FFD600',
+          textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
@@ -145,9 +152,14 @@ export const useCalendarStore = defineStore('calendar', () => {
           updated_at: event.updated_at
         };
         
-        // 시간 정보가 있으면 start에 통합
-        if (event.event_time) {
-          mappedEvent.start = `${event.event_day}T${event.event_time}`;
+        // 시작 시간 정보가 있으면 start에 통합
+        if (event.start_time) {
+          mappedEvent.start = `${event.event_day}T${event.start_time}`;
+        }
+        
+        // 종료 시간 정보가 있으면 추가
+        if (event.end_time) {
+          mappedEvent.end = `${event.event_day}T${event.end_time}`;
         }
         
         // 반복 이벤트면 allDay 속성 추가
@@ -184,10 +196,11 @@ export const useCalendarStore = defineStore('calendar', () => {
         id: response.data.event_id,
         title: response.data.title,
         description: response.data.description,
-        start: response.data.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        event_day: response.data.event_day,
+        // start: response.data.event_day,
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -196,9 +209,14 @@ export const useCalendarStore = defineStore('calendar', () => {
         updated_at: response.data.updated_at
       };
       
-      // 시간 정보가 있으면 start에 통합
-      if (response.data.event_time) {
-        mappedEvent.start = `${response.data.event_day}T${response.data.event_time}`;
+      // 시작 시간 정보가 있으면 start에 통합
+      if (response.data.start_time) {
+        mappedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
+      }
+      
+      // 종료 시간 정보가 있으면 추가
+      if (response.data.end_time) {
+        mappedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
       }
       
       // 반복 이벤트면 allDay 속성 추가
@@ -223,17 +241,11 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   // 일정 추가 함수 (API 연동)
-  async function addEvent(newEvent) {
-    isLoading.value = true;
-    error.value = null;
-    
+  const addEvent = async (newEvent) => {
     try {
-      // 임신 ID가 없는 경우 현재 저장된 ID 사용
-      if (!newEvent.pregnancy && pregnancyId.value) {
-        newEvent.pregnancy = pregnancyId.value;
-      }
+      console.log('일정 추가 시작:', newEvent)
       
-      // 임신 ID가 여전히 없는 경우 API로 조회
+      // pregnancy ID 확인
       if (!newEvent.pregnancy) {
         try {
           const pregnancyResponse = await api.get('/accounts/pregnancies/');
@@ -248,22 +260,45 @@ export const useCalendarStore = defineStore('calendar', () => {
           // 임신 정보 조회 실패시에도 일정 등록은 계속 진행
         }
       }
+
+      console.log('addEvent에 전달된 데이터:', newEvent);
       
       // API 요청 형식에 맞게 데이터 변환
       const apiPayload = {
         title: newEvent.title,
-        event_day: normalizeDate(newEvent.start) || normalizeDate(new Date()),
         pregnancy: newEvent.pregnancy
       };
+      
+      // event_day 필드 결정 (start 필드를 먼저 확인하고, 없으면 event_day 확인)
+      if (newEvent.start) {
+        // start가 ISO 문자열 형식(YYYY-MM-DDT...)이면 날짜 부분만 추출
+        if (typeof newEvent.start === 'string' && newEvent.start.includes('T')) {
+          apiPayload.event_day = newEvent.start.split('T')[0];
+        } else {
+          apiPayload.event_day = normalizeDate(newEvent.start);
+        }
+      } else if (newEvent.event_day) {
+        apiPayload.event_day = normalizeDate(newEvent.event_day);
+      } else {
+        // 둘 다 없으면 오늘 날짜 사용
+        apiPayload.event_day = normalizeDate(new Date());
+      }
+      
+      console.log('변환된 API 페이로드:', apiPayload);
       
       // 설명 필드가 있으면 추가
       if (newEvent.description) {
         apiPayload.description = newEvent.description;
       }
       
-      // 시간 정보가 있으면 추가
+      // 시작 시간 정보가 있으면 추가
       if (newEvent.start && typeof newEvent.start === 'string' && newEvent.start.includes('T')) {
-        apiPayload.event_time = newEvent.start.split('T')[1];
+        apiPayload.start_time = newEvent.start.split('T')[1];
+      }
+      
+      // 종료 시간 정보가 있으면 추가
+      if (newEvent.end && typeof newEvent.end === 'string' && newEvent.end.includes('T')) {
+        apiPayload.end_time = newEvent.end.split('T')[1];
       }
       
       // 반복 일정 정보가 있으면 추가
@@ -286,11 +321,14 @@ export const useCalendarStore = defineStore('calendar', () => {
       const mappedEvent = {
         id: response.data.event_id, // API 응답의 event_id를 id로 매핑
         title: response.data.title,
+        start: response.data.event_day + (response.data.event_time ? `T${response.data.event_time}` : ''),
+        end: response.data.event_day + (response.data.event_time ? `T${response.data.event_time}` : ''),
         description: response.data.description,
-        start: response.data.event_day, // event_day를 start로 매핑
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        event_day: response.data.event_day,
+        // start: response.data.event_day, // event_day를 start로 매핑
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -299,9 +337,14 @@ export const useCalendarStore = defineStore('calendar', () => {
         updated_at: response.data.updated_at
       };
       
-      // 시간 정보가 있으면 start에 통합
-      if (response.data.event_time) {
-        mappedEvent.start = `${response.data.event_day}T${response.data.event_time}`;
+      // 시작 시간 정보가 있으면 start에 통합
+      if (response.data.start_time) {
+        mappedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
+      }
+      
+      // 종료 시간 정보가 있으면 추가
+      if (response.data.end_time) {
+        mappedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
       }
       
       // 반복 이벤트면 allDay 속성 추가
@@ -332,22 +375,45 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (!updatedEvent.pregnancy && pregnancyId.value) {
         updatedEvent.pregnancy = pregnancyId.value;
       }
+
+      console.log('updateEvent에 전달된 데이터:', updatedEvent);
       
       // API 요청 형식에 맞게 데이터 변환
       const apiPayload = {
         title: updatedEvent.title,
-        event_day: normalizeDate(updatedEvent.start) || normalizeDate(new Date()),
         pregnancy: updatedEvent.pregnancy
       };
+      
+      // event_day 필드 결정 (start 필드를 먼저 확인하고, 없으면 event_day 확인)
+      if (updatedEvent.start) {
+        // start가 ISO 문자열 형식(YYYY-MM-DDT...)이면 날짜 부분만 추출
+        if (typeof updatedEvent.start === 'string' && updatedEvent.start.includes('T')) {
+          apiPayload.event_day = updatedEvent.start.split('T')[0];
+        } else {
+          apiPayload.event_day = normalizeDate(updatedEvent.start);
+        }
+      } else if (updatedEvent.event_day) {
+        apiPayload.event_day = normalizeDate(updatedEvent.event_day);
+      } else {
+        // 둘 다 없으면 오늘 날짜 사용
+        apiPayload.event_day = normalizeDate(new Date());
+      }
+      
+      console.log('변환된 API 페이로드:', apiPayload);
       
       // 설명 필드가 있으면 추가
       if (updatedEvent.description) {
         apiPayload.description = updatedEvent.description;
       }
       
-      // 시간 정보가 있으면 추가
+      // 시작 시간 정보가 있으면 추가
       if (updatedEvent.start && typeof updatedEvent.start === 'string' && updatedEvent.start.includes('T')) {
-        apiPayload.event_time = updatedEvent.start.split('T')[1];
+        apiPayload.start_time = updatedEvent.start.split('T')[1];
+      }
+      
+      // 종료 시간 정보가 있으면 추가
+      if (updatedEvent.end && typeof updatedEvent.end === 'string' && updatedEvent.end.includes('T')) {
+        apiPayload.end_time = updatedEvent.end.split('T')[1];
       }
       
       // 반복 일정 정보가 있으면 추가
@@ -361,19 +427,23 @@ export const useCalendarStore = defineStore('calendar', () => {
         apiPayload.event_type = updatedEvent.event_type;
       }
       
-      // API 호출 (baseURL에 v1이 포함되어 있음)
+      console.log('API 요청 데이터:', apiPayload)
+      
+      // API 호출
       const eventId = updatedEvent.id;
       const response = await api.put(`calendars/events/${eventId}/`, apiPayload);
+      console.log('API 응답:', response.data)
       
       // API 응답 형식에 맞게 데이터 매핑
       const mappedEvent = {
         id: response.data.event_id,
         title: response.data.title,
         description: response.data.description,
-        start: response.data.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        event_day: response.data.event_day,
+        // start: response.data.event_day,
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -382,9 +452,14 @@ export const useCalendarStore = defineStore('calendar', () => {
         updated_at: response.data.updated_at
       };
       
-      // 시간 정보가 있으면 start에 통합
-      if (response.data.event_time) {
-        mappedEvent.start = `${response.data.event_day}T${response.data.event_time}`;
+      // 시작 시간 정보가 있으면 start에 통합
+      if (response.data.start_time) {
+        mappedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
+      }
+      
+      // 종료 시간 정보가 있으면 추가
+      if (response.data.end_time) {
+        mappedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
       }
       
       // 반복 이벤트면 allDay 속성 추가
@@ -394,14 +469,13 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // UI 업데이트를 위해 로컬 상태 업데이트
       const index = events.value.findIndex(e => e.id === eventId);
-      if (index !== -1) {
+    if (index !== -1) {
         events.value[index] = mappedEvent;
       }
       
       return true;
     } catch (err) {
       error.value = '일정 수정에 실패했습니다.';
-      
       throw err;
     } finally {
       isLoading.value = false;
@@ -1262,8 +1336,8 @@ export const useCalendarStore = defineStore('calendar', () => {
 
     try {
       const filteredEvents = events.value.filter(event => {
-        // event나 event.start가 없는 경우 필터링에서 제외
-        if (!event || !event.start) {
+        // event나 event.event_day가 없는 경우 필터링에서 제외
+        if (!event || !event.event_day) {
           return false
         }
         
@@ -1271,20 +1345,20 @@ export const useCalendarStore = defineStore('calendar', () => {
           // 선택된 날짜 문자열 정규화 (YYYY-MM-DD 형식)
           const normalizedSelectedDate = normalizeDate(selectedDate.value)
           
-          // event.start가 문자열이고 T를 포함하는 경우 (ISO 형식)
-          if (typeof event.start === 'string' && event.start.includes('T')) {
+          // event.event_day가 문자열이고 T를 포함하는 경우 (ISO 형식)
+          if (typeof event.event_day === 'string' && event.start.includes('T')) {
             const eventStartDate = event.start.split('T')[0]
             return eventStartDate === normalizedSelectedDate
           }
           
-          // event.start가 일반 날짜 문자열인 경우
-          if (typeof event.start === 'string') {
-            const normalizedEventDate = normalizeDate(event.start)
+          // event.event_day가 일반 날짜 문자열인 경우
+          if (typeof event.event_day === 'string') {
+            const normalizedEventDate = normalizeDate(event.event_day)
             return normalizedEventDate === normalizedSelectedDate
           }
           
           // 그 외의 경우, 이벤트 날짜를 정규화하여 비교
-          return normalizeDate(event.start) === normalizedSelectedDate
+          return normalizeDate(event.event_day) === normalizedSelectedDate
         } catch (error) {
           return false
         }
