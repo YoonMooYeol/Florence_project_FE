@@ -12,7 +12,8 @@ const userInfo = ref({
   name: '',
   email: '',
   phone_number: '',
-  gender: ''
+  gender: '',
+  image: '' // 프로필 이미지 URL 추가
 })
 
 // 오류 메시지 객체
@@ -260,7 +261,7 @@ const handleProfilePicChange = async (event) => {
           return;
         }
         const formData = new FormData();
-        formData.append("profile_image", blob, file.name);
+        formData.append("image", blob, file.name);
         try {
           const response = await api.post('accounts/users/me/profile-image/', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
@@ -288,8 +289,8 @@ const closeProfilePhotoModal = () => {
   showProfilePhotoModal.value = false
 }
 const viewProfilePhoto = () => {
-  if (userInfo.value.profile_image) {
-    window.open(userInfo.value.profile_image, '_blank')
+  if (userInfo.value.image) {
+    window.open(userInfo.value.image, '_blank')
   } else {
     alert('등록된 프로필 사진이 없습니다.')
   }
@@ -302,10 +303,10 @@ const registerOrUpdateProfilePhoto = () => {
 }
 const deleteProfilePhoto = () => {
   if (confirm('프로필 사진을 삭제하시겠습니까?')) {
-    api.delete('/accounts/users/me/profile-image/')
+    api.delete('/accounts/users/me/profile-image/{photoId}/')
       .then(response => {
         alert('프로필 사진이 삭제되었습니다.')
-        userInfo.value.profile_image = null
+        userInfo.value.image = null
       })
       .catch(error => {
         alert('프로필 사진 삭제에 실패했습니다.')
@@ -512,7 +513,7 @@ const deleteProfilePhoto = () => {
         <div class="flex flex-col space-y-2">
           <button @click="viewProfilePhoto" class="p-2 bg-blue-200 text-white rounded-[10px]">프로필 사진 보기</button>
           <button @click="registerOrUpdateProfilePhoto" class="p-2 bg-yellow-300 text-white rounded-[10px]">
-            {{ userInfo.profile_image ? '프로필 사진 수정' : '프로필 사진 등록' }}
+            {{ userInfo.image ? '프로필 사진 수정' : '프로필 사진 등록' }}
           </button>
           <button @click="deleteProfilePhoto" class="p-2 bg-red-200 text-white rounded-[10px]">프로필 사진 삭제</button>
         </div>
