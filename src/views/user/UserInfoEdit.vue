@@ -285,40 +285,39 @@ const handleProfilePicChange = async (event) => {
   };
 };
 
-
-const showProfilePhotoModal = ref(false)
+const showProfilePhotoModal = ref(false);
 const openProfilePhotoModal = () => {
-  showProfilePhotoModal.value = true
-}
+  showProfilePhotoModal.value = true;
+};
 const closeProfilePhotoModal = () => {
-  showProfilePhotoModal.value = false
-}
+  showProfilePhotoModal.value = false;
+};
 const viewProfilePhoto = () => {
   if (userInfo.value.image) {
-    window.open(userInfo.value.image, '_blank')
+    window.open(userInfo.value.image, '_blank');
   } else {
-    alert('등록된 프로필 사진이 없습니다.')
+    alert('등록된 프로필 사진이 없습니다.');
   }
-}
+};
 const registerOrUpdateProfilePhoto = () => {
   if (fileInput.value) {
-    fileInput.value.click()
+    fileInput.value.click();
   }
-  closeProfilePhotoModal()
-}
+  closeProfilePhotoModal();
+};
 const deleteProfilePhoto = () => {
   if (confirm('프로필 사진을 삭제하시겠습니까?')) {
     api.delete('/accounts/users/me/profile-image/{photoId}/')
       .then(response => {
-        alert('프로필 사진이 삭제되었습니다.')
-        userInfo.value.image = null
+        alert('프로필 사진이 삭제되었습니다.');
+        userInfo.value.image = null;
       })
       .catch(error => {
-        alert('프로필 사진 삭제에 실패했습니다.')
-      })
+        alert('프로필 사진 삭제에 실패했습니다.');
+      });
   }
-  closeProfilePhotoModal()
-}
+  closeProfilePhotoModal();
+};
 
 </script>
 
