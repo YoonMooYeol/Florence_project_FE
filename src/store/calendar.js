@@ -223,102 +223,68 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   // 일정 추가 함수 (API 연동)
-  async function addEvent(newEvent) {
-    isLoading.value = true;
-    error.value = null;
-    
+  const addEvent = async (newEvent) => {
     try {
-      // 임신 ID가 없는 경우 현재 저장된 ID 사용
-      if (!newEvent.pregnancy && pregnancyId.value) {
-        newEvent.pregnancy = pregnancyId.value;
-      }
+      console.log('일정 추가 시작:', newEvent)
       
-      // 임신 ID가 여전히 없는 경우 API로 조회
+      // pregnancy ID 확인
       if (!newEvent.pregnancy) {
-        try {
-          const pregnancyResponse = await api.get('/accounts/pregnancies/');
-          
-          // 임신 정보가 있는 경우 첫 번째 항목의 ID 사용
-          if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
-            // 임신 ID와 상태 업데이트
-            newEvent.pregnancy = pregnancyResponse.data[0].id;
-            setPregnancyInfo(true, pregnancyResponse.data[0].baby_nickname, pregnancyResponse.data[0].id);
+        newEvent.pregnancy = pregnancyId.value
+        if (!newEvent.pregnancy) {
+          const response = await api.get('pregnancies/')
+          if (response.data && response.data.length > 0) {
+            newEvent.pregnancy = response.data[0].id
+          } else {
+            throw new Error('임신 정보를 찾을 수 없습니다.')
           }
-        } catch (pregnancyError) {
-          // 임신 정보 조회 실패시에도 일정 등록은 계속 진행
         }
       }
-      
-      // API 요청 형식에 맞게 데이터 변환
-      const apiPayload = {
+
+      // API 요청 데이터 구성
+      const apiData = {
         title: newEvent.title,
-        event_day: normalizeDate(newEvent.start) || normalizeDate(new Date()),
+        event_day: newEvent.start.split('T')[0],
+        description: newEvent.description || '',
+        event_time: newEvent.event_time || newEvent.startTime || (newEvent.start.includes('T') ? newEvent.start.split('T')[1].substring(0, 5) : null),
+        is_recurring: newEvent.recurring !== 'none',
+        recurrence_pattern: newEvent.recurring !== 'none' ? newEvent.recurring : null,
+        event_type: 'custom',
         pregnancy: newEvent.pregnancy
-      };
-      
-      // 설명 필드가 있으면 추가
-      if (newEvent.description) {
-        apiPayload.description = newEvent.description;
       }
+
+      console.log('API 요청 데이터:', apiData)
       
-      // 시간 정보가 있으면 추가
-      if (newEvent.start && typeof newEvent.start === 'string' && newEvent.start.includes('T')) {
-        apiPayload.event_time = newEvent.start.split('T')[1];
-      }
-      
-      // 반복 일정 정보가 있으면 추가
-      if (newEvent.recurring && newEvent.recurring !== 'none') {
-        apiPayload.is_recurring = true;
-        apiPayload.recurrence_pattern = newEvent.recurring;
-      }
-      
-      // 이벤트 타입 정보가 있으면 추가
-      if (newEvent.event_type) {
-        apiPayload.event_type = newEvent.event_type;
-      } else {
-        apiPayload.event_type = 'other'; // 기본값
-      }
-      
-      // API 호출 (baseURL에 v1이 포함되어 있음)
-      const response = await api.post('calendars/events/', apiPayload);
-      
-      // API 응답 형식에 맞게 데이터 매핑
-      const mappedEvent = {
-        id: response.data.event_id, // API 응답의 event_id를 id로 매핑
+      const response = await api.post('calendars/events/', apiData)
+      console.log('API 응답:', response.data)
+
+      // 응답 데이터를 이벤트 형식으로 변환
+      const createdEvent = {
+        id: response.data.id,
         title: response.data.title,
+        start: response.data.event_day + (response.data.event_time ? `T${response.data.event_time}` : ''),
+        end: response.data.event_day + (response.data.event_time ? `T${response.data.event_time}` : ''),
         description: response.data.description,
-        start: response.data.event_day, // event_day를 start로 매핑
+        allDay: !response.data.event_time,
+        recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
+        event_time: response.data.event_time,
+        startTime: response.data.event_time,
+        endTime: response.data.event_time,
       backgroundColor: '#FFD600',
       borderColor: '#FFD600',
       textColor: '#353535',
-        display: 'block',
-        pregnancy: response.data.pregnancy,
-        event_type: response.data.event_type,
-        recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
-        created_at: response.data.created_at,
-        updated_at: response.data.updated_at
-      };
-      
-      // 시간 정보가 있으면 start에 통합
-      if (response.data.event_time) {
-        mappedEvent.start = `${response.data.event_day}T${response.data.event_time}`;
+      display: 'block'
       }
-      
-      // 반복 이벤트면 allDay 속성 추가
-      if (response.data.is_recurring) {
-        mappedEvent.allDay = true;
-      }
-      
-      // UI 업데이트를 위해 로컬 상태 추가
-      events.value.push(mappedEvent);
-      
-      return mappedEvent;
-    } catch (err) {
-      error.value = err.message || '일정 추가에 실패했습니다.';
-      
-      throw err;
-    } finally {
-      isLoading.value = false;
+
+      console.log('생성된 이벤트:', createdEvent)
+
+      // 로컬 상태 업데이트
+      events.value.push(createdEvent)
+      console.log('일정 추가 완료:', createdEvent)
+
+      return createdEvent
+    } catch (error) {
+      console.error('일정 추가 중 오류 발생:', error)
+      throw error
     }
   }
 
@@ -333,37 +299,34 @@ export const useCalendarStore = defineStore('calendar', () => {
         updatedEvent.pregnancy = pregnancyId.value;
       }
       
+      // 시간 정보 처리
+      let eventTime = null
+      if (updatedEvent.start && typeof updatedEvent.start === 'string' && updatedEvent.start.includes('T')) {
+        const [date, time] = updatedEvent.start.split('T')
+        updatedEvent.start = date
+        eventTime = time
+      } else if (updatedEvent.event_time) {
+        eventTime = updatedEvent.event_time
+      }
+      
       // API 요청 형식에 맞게 데이터 변환
       const apiPayload = {
         title: updatedEvent.title,
         event_day: normalizeDate(updatedEvent.start) || normalizeDate(new Date()),
-        pregnancy: updatedEvent.pregnancy
+        pregnancy: updatedEvent.pregnancy,
+        description: updatedEvent.description || '',
+        event_time: eventTime,
+        is_recurring: updatedEvent.recurring !== 'none',
+        recurrence_pattern: updatedEvent.recurring === 'none' ? null : updatedEvent.recurring,
+        event_type: updatedEvent.event_type || 'general'
       };
       
-      // 설명 필드가 있으면 추가
-      if (updatedEvent.description) {
-        apiPayload.description = updatedEvent.description;
-      }
+      console.log('API 요청 데이터:', apiPayload)
       
-      // 시간 정보가 있으면 추가
-      if (updatedEvent.start && typeof updatedEvent.start === 'string' && updatedEvent.start.includes('T')) {
-        apiPayload.event_time = updatedEvent.start.split('T')[1];
-      }
-      
-      // 반복 일정 정보가 있으면 추가
-      if (updatedEvent.recurring && updatedEvent.recurring !== 'none') {
-        apiPayload.is_recurring = true;
-        apiPayload.recurrence_pattern = updatedEvent.recurring;
-      }
-      
-      // 이벤트 타입 정보가 있으면 추가
-      if (updatedEvent.event_type) {
-        apiPayload.event_type = updatedEvent.event_type;
-      }
-      
-      // API 호출 (baseURL에 v1이 포함되어 있음)
+      // API 호출
       const eventId = updatedEvent.id;
       const response = await api.put(`calendars/events/${eventId}/`, apiPayload);
+      console.log('API 응답:', response.data)
       
       // API 응답 형식에 맞게 데이터 매핑
       const mappedEvent = {
@@ -394,14 +357,13 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // UI 업데이트를 위해 로컬 상태 업데이트
       const index = events.value.findIndex(e => e.id === eventId);
-      if (index !== -1) {
+    if (index !== -1) {
         events.value[index] = mappedEvent;
       }
       
       return true;
     } catch (err) {
       error.value = '일정 수정에 실패했습니다.';
-      
       throw err;
     } finally {
       isLoading.value = false;

@@ -386,8 +386,16 @@ const handleFABMenuClick = (action) => {
 const handleEventSave = async (eventData) => {
   try {
     console.log('일정 저장 시작:', eventData)
-    // 입력받은 날짜를 YYYY-MM-DD 형식으로 정규화
-    eventData.start = normalizeDate(eventData.start)
+    
+    // 시간 정보가 있는 경우 시간을 분리하여 저장
+    if (eventData.start && typeof eventData.start === 'string' && eventData.start.includes('T')) {
+      const [date, time] = eventData.start.split('T')
+      eventData.start = date
+      eventData.event_time = time
+    } else {
+      // 시간 정보가 없는 경우 날짜만 정규화
+      eventData.start = normalizeDate(eventData.start)
+    }
     
     // 반복 일정 여부 확인
     if (eventData.recurring && eventData.recurring !== 'none') {

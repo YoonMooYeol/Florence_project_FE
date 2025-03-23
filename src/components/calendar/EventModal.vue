@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { formatDate } from '@/utils/dateUtils'
+import { useCalendarStore } from '@/store/calendar'
 
 const props = defineProps({
   show: {
@@ -18,6 +19,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'save'])
+
+const calendarStore = useCalendarStore()
 
 // 폼 데이터 초기화
 const formData = ref({
@@ -111,6 +114,31 @@ const timeOptions = computed(() => {
   }
   return options
 })
+
+// 삭제 확인 모달 상태
+const showDeleteConfirm = ref(false)
+
+// 삭제 처리
+const handleDelete = async () => {
+  showDeleteConfirm.value = true
+}
+
+// 삭제 확인
+const confirmDelete = async () => {
+  try {
+    await calendarStore.deleteEvent(props.event.id)
+    showDeleteConfirm.value = false
+    emit('close')
+  } catch (error) {
+    console.error('일정 삭제 중 오류 발생:', error)
+    alert('일정 삭제에 실패했습니다.')
+  }
+}
+
+// 삭제 취소
+const cancelDelete = () => {
+  showDeleteConfirm.value = false
+}
 </script>
 
 <template>
@@ -245,22 +273,47 @@ const timeOptions = computed(() => {
           </div>
         </div>
 
-        <div class="flex justify-end space-x-2 mt-3 -mx-3 -mb-3 px-4 py-3 bg-white border-t border-gray-200">
+        <!-- 모달 푸터 -->
+        <div class="px-5 py-2.5 bg-white border-t border-gray-200 flex justify-end gap-2">
           <button
-            type="button"
-            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            @click="$emit('close')"
+            v-if="props.event"
+            class="px-6 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
+            @click="handleDelete"
           >
-            취소
+            삭제
           </button>
           <button
-            type="button"
-            class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+            class="px-6 py-2 bg-point text-dark-gray rounded-full hover:bg-yellow-500 transition-colors font-medium"
             @click="handleSave"
           >
-            {{ props.event ? '수정' : '저장' }}
+            저장
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 삭제 확인 모달 -->
+  <div
+    v-if="showDeleteConfirm"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+  >
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-auto p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-4 text-center">일정 삭제</h3>
+      <p class="text-gray-600 text-center mb-6">이 일정을 삭제하시겠습니까?</p>
+      <div class="flex justify-center gap-3">
+        <button
+          class="px-6 py-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors font-medium"
+          @click="cancelDelete"
+        >
+          취소
+        </button>
+        <button
+          class="px-6 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
+          @click="confirmDelete"
+        >
+          확인
+        </button>
       </div>
     </div>
   </div>
