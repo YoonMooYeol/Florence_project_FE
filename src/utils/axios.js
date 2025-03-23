@@ -20,6 +20,19 @@ api.interceptors.request.use(
     const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
 
     console.log('요청 인터셉터 - 경로:', config.url)
+    console.log('요청 인터셉터 - 메서드:', config.method.toUpperCase())
+    
+    // DELETE 요청에 대한 특별한 로깅
+    if (config.method.toLowerCase() === 'delete') {
+      console.log('⚠️ 삭제 요청 감지:', config.url)
+      console.log('삭제 요청 세부 정보:', {
+        url: config.url,
+        headers: config.headers,
+        params: config.params,
+        timestamp: new Date().toISOString()
+      })
+    }
+    
     console.log('Local Storage Token:', localStorage.getItem('accessToken') ? '있음' : '없음')
     console.log('Session Storage Token:', sessionStorage.getItem('accessToken') ? '있음' : '없음')
 
@@ -59,9 +72,53 @@ api.interceptors.request.use(
 // 응답 인터셉터 설정
 api.interceptors.response.use(
   (response) => {
+    // 성공 응답 로깅
+    const method = response.config.method.toUpperCase()
+    const url = response.config.url
+    const status = response.status
+    
+    console.log(`=== API 응답 수신 [${status}] ${method} ${url} ===`)
+    
+    // DELETE 요청에 대한 특별한 로깅
+    if (method === 'DELETE') {
+      console.log('✅ 삭제 요청 성공:', {
+        url: url,
+        status: status,
+        statusText: response.statusText,
+        timestamp: new Date().toISOString()
+      })
+    }
+    
     return response
   },
   async (error) => {
+    // 오류 응답 로깅
+    console.error('=== API 응답 오류 ===')
+    
+    if (error.config) {
+      const method = error.config.method.toUpperCase()
+      const url = error.config.url
+      console.error(`요청 정보: ${method} ${url}`)
+      
+      // DELETE 요청에 대한 특별한 로깅
+      if (method === 'DELETE') {
+        console.error('❌ 삭제 요청 실패:', {
+          url: url,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          timestamp: new Date().toISOString()
+        })
+      }
+    }
+    
+    if (error.response) {
+      console.error('응답 상태:', error.response.status)
+      console.error('응답 데이터:', error.response.data)
+    } else {
+      console.error('네트워크 오류 또는 요청 취소됨')
+    }
+
     const originalRequest = error.config
 
     // 401 에러(인증 실패)이고 재시도하지 않은 경우

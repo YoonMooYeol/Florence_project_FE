@@ -1,6 +1,7 @@
 <script setup>
-import { watch, ref } from 'vue'
+import { watch, ref, computed } from 'vue'
 import { formatDate, formatTime } from '@/utils/dateUtils'
+import { useCalendarStore } from '@/store/calendar'
 
 const props = defineProps({
   event: {
@@ -20,16 +21,106 @@ const props = defineProps({
   }
 })
 
+// 이벤트가 반복 일정인지 확인하는 computed 속성
+const isRecurringEvent = computed(() => {
+  if (!props.event) return false;
+  
+  try {
+    // 1. 직접적인 반복 일정 속성 확인 (명시적인 반복 일정인 경우)
+    // 주요 판단 기준: recurring 속성이 'none'이 아니거나 is_recurring이 true인 경우
+    const directRecurring = (props.event.recurring && props.event.recurring !== 'none') || 
+                           props.event.is_recurring === true ||
+                           (props.event.recurrence_pattern && props.event.recurrence_pattern !== 'none');
+    
+    // 2. 반복 일정의 일부인 경우 (명시적으로 마스터 이벤트와 연결된 경우)
+    const isPartOfRecurring = props.event.recurringEventId || 
+                             props.event.parentId || 
+                             (typeof props.event.start === 'string' && props.event.start.includes('RRULE'));
+    
+    // 로깅
+    console.log('반복 일정 확인 결과:', { 
+      직접_반복_설정됨: directRecurring, 
+      반복_일정의_일부: isPartOfRecurring,
+      이벤트_제목: props.event.title
+    });
+    
+    // 직접적인 반복 일정이거나 반복 일정의 일부인 경우만 true 반환
+    return directRecurring || isPartOfRecurring;
+  } catch (error) {
+    console.error('반복 일정 확인 중 오류:', error);
+    return false;
+  }
+})
+
+// 서버에서 이벤트 세부 정보를 다시 확인하는 함수
+const checkRecurringStatusFromServer = async () => {
+  if (props.event && props.event.id) {
+    try {
+      console.log('서버에서 반복 일정 상태 확인 중...')
+      const { calendarStore } = useCalendarStore()
+      const serverEvent = await calendarStore.fetchEventDetail(props.event.id)
+      
+      // 서버 정보로 이벤트 상태 보강
+      if (serverEvent) {
+        console.log('서버에서 받은 이벤트 정보:', serverEvent)
+        
+        // 서버에서 확인된 반복 일정 상태 - 명시적으로 반복 속성이 있는 경우만 반복 일정으로 인식
+        const isServerRecurring = (serverEvent.recurring && serverEvent.recurring !== 'none') || 
+                                  serverEvent.is_recurring === true ||
+                                  (serverEvent.recurrence_pattern && serverEvent.recurrence_pattern !== 'none') ||
+                                  serverEvent.recurringEventId || 
+                                  serverEvent.parentId
+        
+        // 클라이언트와 서버 상태가 다르면 로그 출력
+        if (isServerRecurring !== isRecurringEvent.value) {
+          console.log('클라이언트-서버 반복 일정 상태 불일치 발견:', {
+            '클라이언트': isRecurringEvent.value,
+            '서버': isServerRecurring
+          })
+          
+          // 서버에서 반복 일정으로 확인된 경우, 클라이언트 상태 업데이트
+          if (isServerRecurring) {
+            console.log('서버에서 반복 일정으로 확인됨, 클라이언트 상태 업데이트')
+            emit('update:event', {
+              ...props.event,
+              is_recurring: true,
+              recurring: serverEvent.recurring || 'weekly',
+              recurrence_pattern: serverEvent.recurrence_pattern || 'weekly',
+              recurringEventId: serverEvent.recurringEventId,
+              parentId: serverEvent.parentId
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('서버에서 반복 일정 상태 확인 중 오류:', error)
+    }
+  }
+}
+
 // show prop이 변경될 때마다 콘솔에 로그 출력
 watch(() => props.show, (newValue) => {
   if (newValue) {
     console.log('EventDetailModal 컴포넌트에서 - 일정 상세 모달이 열렸습니다:', props.event)
+    console.log('반복 일정 여부:', isRecurringEvent.value)
+    // 모달이 열렸을 때 서버에서 반복 일정 상태 확인
+    checkRecurringStatusFromServer()
   } else {
     console.log('EventDetailModal 컴포넌트에서 - 일정 상세 모달이 닫혔습니다')
   }
 })
 
-const emit = defineEmits(['close', 'delete', 'edit'])
+// event prop이 변경될 때마다 콘솔에 로그 출력
+watch(() => props.event, (newEvent) => {
+  if (newEvent) {
+    console.log('EventDetailModal - 이벤트 객체 변경:', newEvent)
+    console.log('반복 일정 여부:', isRecurringEvent.value)
+    // 이벤트가 변경되었을 때 서버에서 반복 일정 상태 확인
+    checkRecurringStatusFromServer()
+  }
+})
+
+const emit = defineEmits(['close', 'delete', 'edit', 'update:event'])
 
 const deleteOption = ref('all')
 const untilDate = ref('')
@@ -40,28 +131,85 @@ const closeModal = () => {
   emit('close')
 }
 
-const handleDelete = () => {
-  showDeleteConfirm.value = true
+const handleDelete = async () => {
+  console.log('일정 삭제 버튼 클릭')
+  // 로깅 추가
+  console.log('삭제 대상 이벤트:', props.event)
+  console.log('현재 감지된 반복 일정 여부:', isRecurringEvent.value)
+  
+  try {
+    // 서버에서 최신 이벤트 정보로 반복 일정 여부 확인
+    if (props.event?.id) {
+      // 서버에서 최신 정보 확인
+      await checkRecurringStatusFromServer()
+    }
+  } catch (error) {
+    console.warn('이벤트 정보 확인 중 오류:', error)
+  }
+  
+  // 반복 일정인지 최종 확인
+  const finalIsRecurring = isRecurringEvent.value
+  
+  if (finalIsRecurring) {
+    // 반복 일정인 경우 삭제 옵션 표시
+    console.log('반복 일정 삭제 옵션 표시')
+    // 반복 일정 유형에 따라 적절한 기본 삭제 옵션 설정
+    deleteOption.value = 'all' // 기본값은 '모든 반복 일정 삭제'
+    showDeleteConfirm.value = true
+  } else {
+    // 일반 일정인 경우 바로 확인 창 표시 후 삭제
+    console.log('일반 일정 삭제 진행')
+    if (confirm(`"${props.event.title}" 일정을 삭제하시겠습니까?`)) {
+      emit('delete', props.event.id, false, {
+        option: 'this_only' // 일반 일정은 항상 'this_only'
+      })
+      emit('close')
+    }
+  }
 }
 
-const confirmDelete = () => {
+const confirmDelete = async () => {
   try {
-    if (deleteOption.value === 'until' && !untilDate.value) {
-      alert('유지할 마지막 날짜를 선택해주세요.')
-      return
-    }
-
-    emit('delete', props.event.id, 
-      props.event.recurring && props.event.recurring !== 'none',
-      {
-        option: deleteOption.value,
-        untilDate: untilDate.value
+    console.log('삭제 확인 - 옵션:', deleteOption.value)
+    console.log('삭제 대상 이벤트:', props.event)
+    console.log('반복 일정 여부:', isRecurringEvent.value)
+    
+    // 반복 일정인 경우에만 옵션에 따라 확인 메시지 구성
+    let confirmMessage = '이 일정을 삭제하시겠습니까?';
+    
+    if (isRecurringEvent.value) {
+      if (deleteOption.value === 'all') {
+        confirmMessage = `"${props.event.title}" 모든 반복 일정을 삭제하시겠습니까?`;
+      } else if (deleteOption.value === 'all_future') {
+        // all_future 옵션의 경우 날짜 자동 설정
+        if (!untilDate.value && props.event && props.event.start) {
+          untilDate.value = typeof props.event.start === 'string' && props.event.start.includes('T') 
+            ? props.event.start.split('T')[0] 
+            : props.event.start;
+        }
+        
+        confirmMessage = `"${props.event.title}" ${untilDate.value || '현재 날짜'} 이후의 모든 일정을 삭제하시겠습니까?`;
+      } else {
+        confirmMessage = `"${props.event.title}" 이 일정만 삭제하시겠습니까?`;
       }
-    )
-    showDeleteConfirm.value = false
+    }
+    
+    // 사용자 최종 확인
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+    
+    // 반복 일정 여부에 따라 처리
+    emit('delete', props.event.id, isRecurringEvent.value, {
+      option: deleteOption.value,
+      untilDate: untilDate.value
+    });
+    
+    showDeleteConfirm.value = false;
+    emit('close');
   } catch (error) {
-    console.error('EventDetailModal: 삭제 중 오류 발생', error)
-    alert('일정 삭제 중 오류가 발생했습니다.')
+    console.error('EventDetailModal: 삭제 중 오류 발생', error);
+    alert('일정 삭제 중 오류가 발생했습니다.');
   }
 }
 
@@ -167,41 +315,11 @@ const formatEventDate = (event) => {
           <p v-if="event.description" class="mt-2 text-gray-600">
             {{ event.description }}
           </p>
-        </div>
-
-        <!-- 반복 일정인 경우 삭제 옵션 -->
-        <div v-if="event.recurring && event.recurring !== 'none'" class="space-y-4">
-          <div class="flex items-center space-x-2">
-            <input
-              type="radio"
-              id="deleteAll"
-              v-model="deleteOption"
-              value="all"
-              class="text-point focus:ring-point"
-            />
-            <label for="deleteAll" class="text-sm text-gray-700">모든 반복 일정 삭제</label>
-          </div>
-          <div class="flex items-center space-x-2">
-            <input
-              type="radio"
-              id="deleteUntil"
-              v-model="deleteOption"
-              value="until"
-              class="text-point focus:ring-point"
-            />
-            <label for="deleteUntil" class="text-sm text-gray-700">특정 날짜까지만 유지</label>
-          </div>
           
-          <!-- 날짜 선택 (deleteUntil 선택 시에만 표시) -->
-          <div v-if="deleteOption === 'until'" class="mt-2">
-            <label class="block text-sm text-gray-700 mb-1">유지할 마지막 날짜 선택</label>
-            <input
-              type="date"
-              v-model="untilDate"
-              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-              :min="event && event.start && typeof event.start === 'string' && event.start.includes('T') ? event.start.split('T')[0] : event.start"
-            />
-          </div>
+          <!-- 반복 일정인 경우 표시 -->
+          <p v-if="isRecurringEvent" class="mt-2 text-sm text-blue-600">
+            <span class="font-medium">반복 유형:</span> {{ getRecurringText(event.recurring || event.recurrence_pattern) }}
+          </p>
         </div>
       </div>
 
@@ -232,8 +350,8 @@ const formatEventDate = (event) => {
       <h3 class="text-lg font-bold text-gray-900 mb-4 text-center">일정 삭제</h3>
       <p class="text-gray-600 text-center mb-6">이 일정을 삭제하시겠습니까?</p>
       
-      <!-- 반복 일정인 경우 삭제 옵션 표시 -->
-      <div v-if="event.recurring && event.recurring !== 'none'" class="mb-6 space-y-4">
+      <!-- 삭제 옵션 표시 (반복 일정만) -->
+      <div v-if="isRecurringEvent" class="mb-6 space-y-4">
         <div class="flex items-center space-x-2">
           <input
             type="radio"
@@ -249,21 +367,20 @@ const formatEventDate = (event) => {
             type="radio"
             id="deleteConfirmUntil"
             v-model="deleteOption"
-            value="until"
+            value="all_future"
             class="text-point focus:ring-point"
           />
-          <label for="deleteConfirmUntil" class="text-sm text-gray-700">특정 날짜까지만 유지</label>
+          <label for="deleteConfirmUntil" class="text-sm text-gray-700">이후 모든 일정 삭제</label>
         </div>
-        
-        <!-- 날짜 선택 (deleteUntil 선택 시에만 표시) -->
-        <div v-if="deleteOption === 'until'" class="mt-2">
-          <label class="block text-sm text-gray-700 mb-1">유지할 마지막 날짜 선택</label>
+        <div class="flex items-center space-x-2">
           <input
-            type="date"
-            v-model="untilDate"
-            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
-            :min="event && event.start && typeof event.start === 'string' && event.start.includes('T') ? event.start.split('T')[0] : event.start"
+            type="radio"
+            id="deleteConfirmThisOnly"
+            v-model="deleteOption"
+            value="this_only"
+            class="text-point focus:ring-point"
           />
+          <label for="deleteConfirmThisOnly" class="text-sm text-gray-700">이 일정만 삭제</label>
         </div>
       </div>
 
