@@ -229,7 +229,7 @@ const triggerFileInput = () => {
 const handleProfilePicChange = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
-  
+
   const reader = new FileReader();
   reader.readAsDataURL(file);
   reader.onload = () => {
@@ -240,7 +240,7 @@ const handleProfilePicChange = async (event) => {
       const minSize = Math.min(img.width, img.height);
       const sx = (img.width - minSize) / 2;
       const sy = (img.height - minSize) / 2;
-      
+
       const canvas = document.createElement('canvas');
       canvas.width = minSize;
       canvas.height = minSize;
@@ -265,10 +265,14 @@ const handleProfilePicChange = async (event) => {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
 
-          // ✅ 업로드 성공 시 userInfo.image 갱신
+          // ✅ [추가된 부분 시작] - 상대경로일 경우 절대경로로 바꿔서 저장
           if (response.data && response.data.image) {
-            userInfo.value.image = response.data.image;
+            const imageUrl = response.data.image.startsWith('http')
+              ? response.data.image
+              : `${import.meta.env.VITE_API_BASE_URL}${response.data.image}`;
+            userInfo.value.image = imageUrl;
           }
+          // ✅ [추가된 부분 끝]
 
           alert("프로필 사진이 업데이트되었습니다.");
         } catch (error) {
@@ -285,6 +289,7 @@ const handleProfilePicChange = async (event) => {
   };
 };
 
+
 const showProfilePhotoModal = ref(false);
 const openProfilePhotoModal = () => {
   showProfilePhotoModal.value = true;
@@ -294,11 +299,15 @@ const closeProfilePhotoModal = () => {
 };
 const viewProfilePhoto = () => {
   if (userInfo.value.image) {
-    window.open(userInfo.value.image, '_blank');
+    const imageUrl = userInfo.value.image.startsWith('http')
+      ? userInfo.value.image
+      : `${import.meta.env.VITE_API_BASE_URL}${userInfo.value.image}`;
+    window.open(imageUrl, '_blank');
   } else {
     alert('등록된 프로필 사진이 없습니다.');
   }
 };
+
 const registerOrUpdateProfilePhoto = () => {
   if (fileInput.value) {
     fileInput.value.click();
@@ -307,17 +316,17 @@ const registerOrUpdateProfilePhoto = () => {
 };
 const deleteProfilePhoto = () => {
   if (confirm('프로필 사진을 삭제하시겠습니까?')) {
-    api.delete('/accounts/users/me/profile-image/{photoId}/')
-      .then(response => {
+    api.delete(`/accounts/users/me/profile-image/${userInfo.value.photoId}/`)
+      .then(() => {
+        userInfo.value.image = null; // 또는 ''
         alert('프로필 사진이 삭제되었습니다.');
-        userInfo.value.image = null;
       })
-      .catch(error => {
-        alert('프로필 사진 삭제에 실패했습니다.');
+      .catch(() => {
+        alert('프로필 사진 삭제 실패');
       });
   }
-  closeProfilePhotoModal();
 };
+
 
 </script>
 
@@ -376,31 +385,66 @@ const deleteProfilePhoto = () => {
     >
       <div class="bg-white rounded-lg shadow-md p-6 mb-4">
         <!-- 프로필 이미지 섹션 -->
-        <div class="flex flex-col items-center mb-6">
-          <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-2 relative">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-12 w-12 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <button @click="openProfilePhotoModal" class="absolute bottom-0 right-0 -translate-x-1/2 -translate-y-1/2 bg-point-yellow w-6 h-6 rounded-full flex items-center justify-center border border-white">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-dark-gray" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-            </button>
-            <input type="file" ref="fileInput" style="display:none" @change="handleProfilePicChange" accept="image/*" />
-          </div>
-          <p class="text-sm text-gray-500">
-            프로필 사진 변경
-          </p>
-        </div>
+<div class="flex flex-col items-center mb-6">
+  <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-2 relative overflow-hidden">
+    
+    <!-- ✅ 프로필 이미지가 있을 경우 표시 + 클릭 시 모달 -->
+    <img
+      v-if="userInfo.image"
+      :src="`${userInfo.image}?t=${Date.now()}`"
+      alt="프로필 사진"
+      class="absolute inset-0 w-full h-full object-cover rounded-full z-10 cursor-pointer"
+      @click="openProfilePhotoModal"
+    />
+
+    <!-- ✅ 기본 아이콘일 때도 클릭 시 모달 -->
+    <svg
+      v-else
+      @click="openProfilePhotoModal"
+      xmlns="http://www.w3.org/2000/svg"
+      class="h-12 w-12 text-gray-500 cursor-pointer"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+    >
+      <path
+        fill-rule="evenodd"
+        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+        clip-rule="evenodd"
+      />
+    </svg>
+
+    <!-- 숨겨진 파일 입력 필드 -->
+    <input type="file" ref="fileInput" style="display: none" @change="handleProfilePicChange" accept="image/*" />
+  </div>
+
+  <!-- 설명 텍스트 (선택사항) -->
+  <p class="text-sm text-gray-500">
+    프로필 사진을 클릭하여 수정하세요
+  </p>
+</div>
+
+<!-- 프로필 이미지 수정 모달 -->
+<transition name="fade">
+  <div v-if="showProfilePhotoModal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-lg p-5 w-64 space-y-3">
+      <button @click="viewProfilePhoto" class="w-full bg-gray-100 py-2 rounded-md hover:bg-gray-200">
+        프로필 사진 조회
+      </button>
+      <button @click="registerOrUpdateProfilePhoto" class="w-full bg-gray-100 py-2 rounded-md hover:bg-gray-200">
+        프로필 사진 수정
+      </button>
+      <button @click="deleteProfilePhoto" class="w-full bg-red-100 text-red-600 py-2 rounded-md hover:bg-red-200">
+        프로필 사진 삭제
+      </button>
+      <button @click="closeProfilePhotoModal" class="text-sm text-gray-400 hover:text-gray-600 w-full py-1">
+        닫기
+      </button>
+    </div>
+  </div>
+</transition>
+
+
+
 
         <!-- 사용자명 입력 -->
         <div class="mb-4">
