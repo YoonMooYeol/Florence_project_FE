@@ -95,6 +95,7 @@ const fetchUserInfo = async () => {
     userInfo.value.email = response.data.email || ''
     userInfo.value.phone_number = response.data.phone_number || ''
     userInfo.value.gender = response.data.gender || ''
+    userInfo.value.image = response.data.image || ''
   } catch (error) {
     errors.form = error.response?.data?.detail || '사용자 정보를 불러오는 중 오류가 발생했습니다.'
 
@@ -236,12 +237,10 @@ const handleProfilePicChange = async (event) => {
     const img = new Image();
     img.src = imageDataUrl;
     img.onload = () => {
-      // 이미지의 가장 작은 크기를 기준으로 중앙 정사각형을 계산
       const minSize = Math.min(img.width, img.height);
       const sx = (img.width - minSize) / 2;
       const sy = (img.height - minSize) / 2;
       
-      // 캔버스를 생성하여 원형 클리핑 적용
       const canvas = document.createElement('canvas');
       canvas.width = minSize;
       canvas.height = minSize;
@@ -250,22 +249,27 @@ const handleProfilePicChange = async (event) => {
       ctx.arc(minSize / 2, minSize / 2, minSize / 2, 0, Math.PI * 2, true);
       ctx.closePath();
       ctx.clip();
-      
-      // 중앙 정사각형 영역을 캔버스에 그리기
       ctx.drawImage(img, sx, sy, minSize, minSize, 0, 0, minSize, minSize);
-      
-      // 캔버스의 내용을 Blob으로 변환하여 업로드
+
       canvas.toBlob(async (blob) => {
         if (!blob) {
           alert("이미지 처리 실패");
           return;
         }
+
         const formData = new FormData();
         formData.append("image", blob, file.name);
+
         try {
           const response = await api.post('accounts/users/me/profile-image/', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
+
+          // ✅ 업로드 성공 시 userInfo.image 갱신
+          if (response.data && response.data.image) {
+            userInfo.value.image = response.data.image;
+          }
+
           alert("프로필 사진이 업데이트되었습니다.");
         } catch (error) {
           alert("프로필 사진 업데이트 실패");
@@ -280,6 +284,7 @@ const handleProfilePicChange = async (event) => {
     alert("파일 읽기 실패");
   };
 };
+
 
 const showProfilePhotoModal = ref(false)
 const openProfilePhotoModal = () => {
