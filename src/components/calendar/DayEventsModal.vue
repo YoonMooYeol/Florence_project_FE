@@ -43,7 +43,7 @@ const selectedEvent = ref(null)
 watch(() => props.show, async (newValue) => {
   if (newValue) {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
-    // 모달이 열리면 클릭 방지 설정 (800ms 동안)
+    // 모달이 열리면 클릭 방지 설정 (300ms 동안)
     isClickable.value = false
 
     // 항상 일정 탭부터 시작
@@ -60,7 +60,7 @@ watch(() => props.show, async (newValue) => {
     setTimeout(() => {
       isClickable.value = true
       console.log('DayEventsModal - 이제 이벤트 클릭 가능')
-    }, 800)
+    }, 300)
   } else {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 닫혔습니다')
   }
@@ -94,7 +94,7 @@ const addEvent = () => {
   emit('add-event')
 }
 
-const viewEvent = (event) => {
+const viewEvent = async (event) => {
   // 클릭 가능 상태가 아니면 무시
   if (!isClickable.value) {
     console.log('모달 열린 직후 클릭 무시됨')
@@ -107,9 +107,27 @@ const viewEvent = (event) => {
     return
   }
 
-  // 사용자의 명시적인 클릭만 처리하도록 메시지 추가
-  console.log('사용자가 일정 항목을 클릭: 이벤트 상세 보기 요청됨', event.title)
-  selectedEvent.value = event
+  try {
+    console.log('서버에서 최신 이벤트 데이터 확인 중...')
+    // 서버에서 최신 이벤트 데이터 가져오기
+    const updatedEvent = await calendarStore.fetchEventDetail(event.id)
+    
+    // 원본 이벤트 객체와 서버에서 가져온 데이터 병합
+    let mergedEvent = { ...event, ...updatedEvent }
+    
+    // 로깅
+    console.log('서버에서 가져온 최신 이벤트:', updatedEvent)
+    console.log('최종 이벤트 데이터:', mergedEvent)
+    
+    // 업데이트된 이벤트 정보로 selectedEvent 설정
+    selectedEvent.value = mergedEvent
+  } catch (error) {
+    console.error('이벤트 데이터 가져오기 실패:', error)
+    // 오류 발생 시 원본 이벤트 데이터 사용
+    selectedEvent.value = event
+  }
+  
+  // 이벤트 상세 모달 열기
   showEventDetailModal.value = true
 }
 
@@ -679,34 +697,251 @@ const handleEditEvent = (event) => {
   showEventModal.value = true
 }
 
+const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
+  try {
+    console.log('DayEventsModal: 일정 삭제 시도', { eventId, isRecurring, deleteOptions })
+    
+    // 이벤트 ID가 유효한지 확인
+    if (!eventId) {
+      alert('삭제할 일정 정보가 유효하지 않습니다.')
+      return
+    }
+    
+    // 서버에서 최신 이벤트 정보 가져오기
+    console.log('서버에서 최신 이벤트 정보 확인 중...')
+    const eventDetail = await calendarStore.fetchEventDetail(eventId)
+    
+    // 실제 반복 일정인지 확인 - 명시적으로 반복 속성이 있는 경우만 반복 일정으로 인식
+    const isActuallyRecurring = eventDetail && (
+      (eventDetail.recurring && eventDetail.recurring !== 'none') ||
+      eventDetail.is_recurring === true ||
+      (eventDetail.recurrence_pattern && eventDetail.recurrence_pattern !== 'none') ||
+      eventDetail.recurringEventId || 
+      eventDetail.parentId
+    )
+    
+    // 클라이언트 상태와 서버 상태가 다를 때 처리 (반복 일정이지만 반복 일정으로 처리되지 않은 경우)
+    if (isActuallyRecurring && !isRecurring) {
+      console.log('서버 확인 결과: 반복 일정으로 확인됨. 삭제 옵션 표시 필요')
+      
+      // 모달 초기화 후 반복 일정 상태로 다시 열기
+      showEventDetailModal.value = false
+      
+      // 업데이트된 이벤트 정보로 모달 다시 열기
+      selectedEvent.value = {
+        ...eventDetail,
+        is_recurring: true,
+        recurring: eventDetail.recurring || 'weekly'
+      }
+      
+      setTimeout(() => {
+        showEventDetailModal.value = true
+      }, 100)
+      
+      alert('반복 일정입니다. 삭제 옵션을 선택해주세요.')
+      return
+    }
+    
+    // 반복 일정 및 삭제 옵션에 따른 처리
+    let success = false
+    
+    if (isActuallyRecurring || isRecurring) {
+      console.log('반복 일정 삭제:', deleteOptions?.option)
+      
+      if (deleteOptions?.option === 'all_future') {
+        if (!deleteOptions.untilDate) {
+          // 자동으로 현재 날짜를 untilDate로 설정
+          if (selectedEvent.value && selectedEvent.value.start) {
+            deleteOptions.untilDate = typeof selectedEvent.value.start === 'string' && selectedEvent.value.start.includes('T') 
+              ? selectedEvent.value.start.split('T')[0] 
+              : selectedEvent.value.start
+            
+            console.log('이후 모든 일정 삭제: 자동으로 기준일 설정됨:', deleteOptions.untilDate)
+          } else {
+            alert('유지할 마지막 날짜를 선택해주세요.')
+            return
+          }
+        }
+        console.log('이후 모든 일정 삭제 시도 - 기준날짜:', deleteOptions.untilDate)
+        success = await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
+      } else if (deleteOptions?.option === 'this_only') {
+        console.log('이 일정만 삭제 시도')
+        success = await calendarStore.deleteRecurringEventThisOnly(eventId)
+      } else if (deleteOptions?.option === 'all') {
+        console.log('모든 반복 일정 삭제 시도')
+        success = await calendarStore.deleteRecurringEvents(eventId)
+      } else {
+        console.warn('알 수 없는 삭제 옵션:', deleteOptions?.option)
+        alert('삭제 옵션을 선택해주세요.')
+        return
+      }
+    } else {
+      // 일반 일정 삭제
+      console.log('단일 일정 삭제 시도')
+      success = await calendarStore.deleteEvent(eventId)
+    }
+    
+    // 삭제 결과 처리
+    if (success) {
+      console.log('일정 삭제 성공!')
+      
+      // 일정 상세 모달 먼저 닫기
+      showEventDetailModal.value = false
+      
+      // 일일 이벤트 모달 닫기
+      emit('close')
+      
+      // 삭제 성공 메시지
+      setTimeout(() => {
+        alert('일정이 성공적으로 삭제되었습니다.')
+      }, 100)
+      
+      // 캘린더 새로고침 - 강력한 새로고침을 위해 여러 단계로 처리
+      console.log('서버에서 최신 이벤트 데이터 가져오는 중...')
+      await calendarStore.fetchEvents()
+      
+      // 삭제 확인을 위해 이벤트가 실제로 삭제되었는지 확인
+      const eventStillExists = calendarStore.events.some(e => e.id === eventId)
+      if (eventStillExists) {
+        console.warn('삭제된 이벤트가 여전히 존재함 - 다시 한번 서버 데이터 갱신 시도')
+        // 한 번 더 서버 데이터 갱신 시도
+        setTimeout(async () => {
+          await calendarStore.fetchEvents()
+        }, 500)
+      }
+      
+      console.log('이벤트 발행: calendar-needs-refresh (삭제)')
+      // 새로고침 없이 현재 상태에서 캘린더 리렌더링을 위해 이벤트 발행
+      window.dispatchEvent(new CustomEvent('calendar-needs-refresh', {
+        detail: { action: 'delete', eventId, timestamp: new Date().getTime() }
+      }))
+      
+      // 약간의 딜레이 후 한 번 더 이벤트 발행 (완전한 갱신 보장)
+      setTimeout(() => {
+        console.log('이벤트 재발행: calendar-needs-refresh (삭제 - 딜레이)')
+        window.dispatchEvent(new CustomEvent('calendar-needs-refresh', {
+          detail: { action: 'delete_delayed', eventId, timestamp: new Date().getTime() }
+        }))
+      }, 1000)
+    } else {
+      console.warn('일정 삭제 실패 - API에서 성공 결과가 반환되지 않음')
+      alert('일정 삭제에 실패했습니다.')
+    }
+  } catch (error) {
+    console.error('DayEventsModal: 일정 삭제 중 오류 발생', error)
+    let errorMessage = '일정 삭제에 실패했습니다.'
+    
+    if (error.response) {
+      if (error.response.data && typeof error.response.data === 'object') {
+        errorMessage = Object.entries(error.response.data)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('\n')
+      } else if (error.response.data) {
+        errorMessage = error.response.data
+      } else {
+        errorMessage += ` (${error.response.status})`
+      }
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    
+    alert(errorMessage)
+  }
+}
+
 const handleSaveEvent = async (eventData) => {
   try {
-    console.log('일정 저장/수정:', eventData)
-    
-    if (selectedEvent.value) {
-      // 수정 모드
-      await calendarStore.updateEvent({
-        ...eventData,
-        id: selectedEvent.value.id
-      })
-      console.log('일정 수정 완료')
-    } else {
-      // 새로운 일정 등록
-      await calendarStore.addEvent(eventData)
-      console.log('새 일정 등록 완료')
+    // 시간 정보가 있는 경우 event_time 필드 추가
+    const newEventData = {
+      ...eventData,
+      event_time: eventData.startTime
     }
 
+    if (!eventData.allDay) {
+      // 시간 정보가 있는 경우 start와 end에 시간 포함
+      newEventData.start = `${eventData.start}T${eventData.startTime}`
+      newEventData.end = `${eventData.end}T${eventData.endTime}`
+    }
+
+    console.log('저장할 이벤트 데이터:', newEventData)
+    console.log('반복 설정 값:', newEventData.recurring)
+    console.log('반복 일정 여부:', newEventData.recurring && newEventData.recurring !== 'none')
+    console.log('반복 일정 수정 옵션:', eventData.updateOption)
+
+    let savedEvent
+    if (eventData.id) {
+      // 기존 이벤트 수정
+      if (eventData.recurring && eventData.recurring !== 'none') {
+        // 반복 일정인 경우 특별한 API 사용
+        const updateOption = eventData.updateOption || 'this_and_future'
+        console.log(`반복 일정 수정 시도 - 옵션: ${updateOption}`)
+        savedEvent = await calendarStore.updateRecurringEvent(newEventData, updateOption)
+      } else {
+        // 일반 일정 수정
+        console.log('일반 일정 수정 시도')
+        savedEvent = await calendarStore.updateEvent(newEventData)
+      }
+    } else {
+      // 새 이벤트 추가
+      console.log('새 이벤트 추가 시도')
+      console.log('새 이벤트의 반복 설정:', newEventData.recurring)
+      savedEvent = await calendarStore.addEvent(newEventData)
+    }
+    
+    if (savedEvent) {
+      console.log('이벤트 저장 성공:', savedEvent)
+      console.log('저장된 이벤트의 반복 설정:', savedEvent.recurring, savedEvent.is_recurring)
+    } else {
+      console.warn('이벤트는 저장되었지만 반환된 데이터가 없습니다')
+    }
+    
+    // 모달 닫기
     showEventModal.value = false
-    selectedEvent.value = null
     
-    // 성공 메시지 표시
-    alert(selectedEvent.value ? '일정이 수정되었습니다.' : '일정이 등록되었습니다.')
-    
-    // 캘린더 새로고침
+    // 이벤트 목록 갱신 - 강력한 새로고침을 위해 바로 fetchEvents 호출
     await calendarStore.fetchEvents()
-  } catch (error) {
-    console.error('일정 저장/수정 실패:', error)
-    alert('일정 저장에 실패했습니다.')
+    
+    // 현재 모달 상태 및 날짜 저장 (페이지 새로고침 없이 즉시 반영을 위해)
+    sessionStorage.setItem('modalState', JSON.stringify({
+      open: true,
+      date: props.date,
+      activeTab: activeTab.value
+    }))
+    
+    // 새로고침 없이 현재 상태에서 캘린더 리렌더링을 위해 이벤트 발행
+    console.log('이벤트 발행: calendar-needs-refresh')
+    window.dispatchEvent(new CustomEvent('calendar-needs-refresh', {
+      detail: { action: 'save', eventId: savedEvent?.id || eventData.id }
+    }))
+    
+    // 약간의 딜레이 후 한 번 더 이벤트 발행 (완전한 갱신 보장)
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('calendar-needs-refresh', {
+        detail: { action: 'save_delayed', eventId: savedEvent?.id || eventData.id }
+      }))
+    }, 500)
+    
+    return savedEvent
+    } catch (error) {
+    console.error('이벤트 저장 중 오류:', error)
+    let errorMessage = '일정 저장에 실패했습니다.'
+    
+    if (error.response) {
+      if (error.response.data && typeof error.response.data === 'object') {
+        errorMessage = Object.entries(error.response.data)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('\n')
+      } else if (error.response.data) {
+        errorMessage = error.response.data
+      } else {
+        errorMessage += ` (${error.response.status})`
+      }
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    
+    alert(errorMessage)
+    throw error
   }
 }
 
@@ -1072,6 +1307,7 @@ onMounted(async () => {
 
   <!-- 일정 상세 모달 -->
   <EventDetailModal
+    v-if="showEventDetailModal"
     :show="showEventDetailModal"
     :event="selectedEvent"
     @close="showEventDetailModal = false"
@@ -1081,9 +1317,10 @@ onMounted(async () => {
   
   <!-- 일정 등록/수정 모달 -->
   <EventModal
+    v-if="showEventModal"
     :show="showEventModal"
-    :date="date"
     :event="selectedEvent"
+    :date="date"
     @close="showEventModal = false"
     @save="handleSaveEvent"
   />
