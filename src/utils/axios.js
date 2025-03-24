@@ -15,12 +15,12 @@ const api = axios.create({
 // 요청 인터셉터 설정
 api.interceptors.request.use(
   (config) => {
-    console.log('=== API 요청 인터셉터 시작 ===')
+    // console.log('=== API 요청 인터셉터 시작 ===')
     // 로컬 스토리지 또는 세션 스토리지에서 직접 토큰 가져오기
     const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
 
-    console.log('요청 인터셉터 - 경로:', config.url)
-    console.log('요청 인터셉터 - 메서드:', config.method.toUpperCase())
+    // console.log('요청 인터셉터 - 경로:', config.url)
+    // console.log('요청 인터셉터 - 메서드:', config.method.toUpperCase())
     
     // DELETE 요청에 대한 특별한 로깅
     if (config.method.toLowerCase() === 'delete') {
@@ -33,13 +33,13 @@ api.interceptors.request.use(
       })
     }
     
-    console.log('Local Storage Token:', localStorage.getItem('accessToken') ? '있음' : '없음')
-    console.log('Session Storage Token:', sessionStorage.getItem('accessToken') ? '있음' : '없음')
+    // console.log('Local Storage Token:', localStorage.getItem('accessToken') ? '있음' : '없음')
+    // console.log('Session Storage Token:', sessionStorage.getItem('accessToken') ? '있음' : '없음')
 
     // 액세스 토큰이 있으면 헤더에 추가
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`
-      console.log('인증 헤더 추가됨:', `Bearer ${accessToken.substring(0, 10)}...`)
+      // console.log('인증 헤더 추가됨:', `Bearer ${accessToken.substring(0, 10)}...`)
 
       // JWT 만료 시간 확인 (토큰 디코딩)
       try {
@@ -48,7 +48,7 @@ api.interceptors.request.use(
         const currentTime = Math.floor(Date.now() / 1000)
         const timeLeft = expTime - currentTime
 
-        console.log(`토큰 만료까지 남은 시간: ${timeLeft}초 (${Math.floor(timeLeft / 60)}분)`)
+        // console.log(`토큰 만료까지 남은 시간: ${timeLeft}초 (${Math.floor(timeLeft / 60)}분)`)
 
         if (timeLeft < 300) { // 5분 이내로 만료되면 경고
           console.warn('⚠️ 토큰이 곧 만료됩니다! 갱신이 필요할 수 있습니다.')
@@ -60,7 +60,7 @@ api.interceptors.request.use(
       console.log('인증 토큰 없음 - 인증되지 않은 요청을 보냅니다')
     }
 
-    console.log('=== API 요청 인터셉터 종료 ===')
+    // console.log('=== API 요청 인터셉터 종료 ===')
     return config
   },
   (error) => {

@@ -663,43 +663,40 @@ export const useCalendarStore = defineStore('calendar', () => {
         return null
       }
       
-      try {
-        // API 호출 (GET 메서드로 변경 - 기존 일기를 조회만 함)
-        const response = await api.get(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/${normalizedDate}/`)
-        
-        // 응답 데이터 변환
-        const diaryData = {
-          id: response.data.diary_id,
-          date: response.data.diary_date,
-          content: response.data.content,
-          photos: Array.isArray(response.data.photos) 
-            ? response.data.photos.map(photo => ({
-                id: photo.photo_id,
-                image: photo.image,
-                created_at: photo.created_at
-              }))
-            : []
+      // API 호출
+      const response = await api.get(`calendars/baby-diaries/`, {
+        params: {
+          diary_date: normalizedDate
         }
-        
-        // 선택된 태교일기 업데이트
-        selectedBabyDiary.value = diaryData
-        
-        return diaryData
-      } catch (err) {
-        // 404 오류는 일기가 없는 경우로 처리
-        if (err.response && err.response.status === 404) {
-          console.log('해당 날짜의 태교일기가 없습니다:', normalizedDate)
-          selectedBabyDiary.value = null
-          return null
-        } else {
-          throw err; // 다른 오류는 상위로 전달
-        }
+      })
+      
+      // 응답 데이터 변환
+      const diaryData = {
+        id: response.data.diary_id,
+        date: response.data.diary_date,
+        content: response.data.content,
+        photos: Array.isArray(response.data.photos) 
+          ? response.data.photos.map(photo => ({
+              id: photo.photo_id,
+              image: photo.image,
+              created_at: photo.created_at
+            }))
+          : []
       }
+      
+      // 선택된 태교일기 업데이트
+      selectedBabyDiary.value = diaryData
+      
+      return diaryData
     } catch (err) {
-      error.value = '태교일기를 불러오는데 실패했습니다.'
-      console.error('태교일기 조회 오류:', err)
-      selectedBabyDiary.value = null
-      return null
+      if (err.response && err.response.status === 404) {
+        selectedBabyDiary.value = null
+        return null
+      } else {
+        error.value = '태교일기를 불러오는데 실패했습니다.'
+        console.error('태교일기 조회 오류:', err)
+        return null
+      }
     } finally {
       isLoading.value = false
     }
