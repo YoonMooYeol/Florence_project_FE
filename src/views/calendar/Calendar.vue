@@ -1000,7 +1000,7 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
   width: 20px;
   height: 20px;
   position: absolute;
-  right: 5px;
+  left: 17px;
   top: 5px;
 }
 
@@ -1015,8 +1015,8 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
   width: 20px;
   height: 18px;
   position: absolute;
-  right: 28px;
-  top: 5px;
+  left: 27px;
+  top: 4.5px;
 }
 
 /* 이벤트 스타일 */
