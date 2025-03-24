@@ -1,6 +1,7 @@
 /* eslint-disable no-trailing-spaces */
 import { defineStore } from 'pinia'
 import api from '../utils/axios'
+import { clearAuthData } from '../utils/auth'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -49,18 +50,11 @@ export const useAuthStore = defineStore('auth', {
         this.accessToken = null
         this.refreshToken = null
 
-        // 저장소에서 사용자 정보 제거
-        localStorage.removeItem('userId')
-        localStorage.removeItem('userName')
-        localStorage.removeItem('isPregnant')
-        localStorage.removeItem('rememberMe')
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        sessionStorage.removeItem('userId')
-        sessionStorage.removeItem('userName')
-        sessionStorage.removeItem('isPregnant')
-        sessionStorage.removeItem('accessToken')
-        sessionStorage.removeItem('refreshToken')
+        // auth.js의 clearAuthData 함수를 사용하여 모든 데이터 삭제
+        clearAuthData()
+        
+        // 페이지 새로고침 (선택 사항)
+        // window.location.reload()
       }
     },
 

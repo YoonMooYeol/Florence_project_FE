@@ -86,6 +86,24 @@ export const clearAuthData = () => {
   sessionStorage.removeItem('pregnancyId')
   sessionStorage.removeItem('isPregnant')
   sessionStorage.removeItem('babyNickname')
+  
+  // 캘린더 및 태명 관련 정보 완전히 삭제
+  localStorage.removeItem('modalState')
+  sessionStorage.removeItem('modalState')
+  
+  // 사용자별 기본 설정 삭제
+  localStorage.removeItem('userPreferences')
+  sessionStorage.removeItem('userPreferences')
+  
+  // 태명과 관련된 추가적인 키 삭제
+  const storageKeys = ['태명', 'baby_name', 'baby_nickname', 'nickname']
+  storageKeys.forEach(key => {
+    localStorage.removeItem(key)
+    sessionStorage.removeItem(key)
+  })
+  
+  // 브라우저 콘솔에 로그아웃 및 데이터 삭제 확인 메시지
+  console.log('로그아웃 완료: 사용자 데이터 및 태명 정보가 모두 삭제되었습니다.')
 }
 
 /**

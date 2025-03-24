@@ -105,11 +105,21 @@ const searchUserByEmail = async () => {
     // 이메일로 사용자 검색 (백엔드에서 이제 is_following 정보 포함)
     const response = await api.get(`/accounts/search/?email=${searchQuery.value.trim()}`)
 
+    // 응답 데이터 로깅
+    console.log('검색 응답 데이터:', response.data)
+
     // 백엔드에서 is_following 값을 제공하므로 별도 요청 필요 없음
     // 응답에 is_following 필드가 없다면 기본값으로 false 설정
     if (response.data && response.data.user_id) {
       if (response.data.is_following === undefined) {
         response.data.is_following = false
+      }
+      
+      // 이메일 필드 확인 및 처리
+      if (!response.data.email && searchQuery.value.includes('@')) {
+        // 소셜 로그인 사용자의 경우 email 필드가 없을 수 있음
+        console.log('이메일 필드가 없어 검색어를 이메일로 설정:', searchQuery.value)
+        response.data.email = searchQuery.value.trim()
       }
     }
 
@@ -410,7 +420,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
                 {{ searchResult.name || '이름 없음' }}
               </h3>
               <p class="text-sm text-gray-500 mt-1">
-                {{ searchQuery }}
+                {{ searchResult.email || searchResult.social_email || searchResult.user_email || '이메일 정보 없음' }}
               </p>
             </div>
           </div>

@@ -986,6 +986,14 @@ const handleSaveEvent = async (eventData) => {
 onMounted(async () => {
   console.log('DayEventsModal 마운트됨')
 
+  // 로컬 또는 세션에서 저장된 이전 태명 정보 삭제
+  if (localStorage.getItem('babyNickname') === '(태명)') {
+    localStorage.removeItem('babyNickname')
+  }
+  if (sessionStorage.getItem('babyNickname') === '(태명)') {
+    sessionStorage.removeItem('babyNickname')
+  }
+
   // 임신 정보 초기화
   const success = await calendarStore.initPregnancyInfo()
   console.log('DayEventsModal - 임신 정보 초기화 결과:', success)
