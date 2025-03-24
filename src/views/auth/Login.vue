@@ -161,7 +161,7 @@ const initiateKakaoLogin = () => {
     }
 
     // 향후 통합된 콜백 URL로 변경할 수 있지만, 현재는 호환성을 위해 원래 URL 유지
-    const REDIRECT_URI = 'https://nooridal.com/v1/accounts/kakao/callback'
+    const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI
 
     // 카카오 인증 페이지로 리다이렉션
     window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
@@ -186,7 +186,7 @@ const initiateNaverLogin = () => {
     }
 
     // 향후 통합된 콜백 URL로 변경할 수 있지만, 현재는 호환성을 위해 원래 URL 유지
-    const REDIRECT_URI_RAW = 'https://nooridal.com/v1/accounts/naver/callback'
+    const REDIRECT_URI_RAW = import.meta.env.VITE_NAVER_REDIRECT_URI
     const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
 
     // 상태 토큰 (CSRF 방지)
@@ -221,7 +221,7 @@ const initiateGoogleLogin = () => {
     }
 
     // 향후 통합된 콜백 URL로 변경할 수 있지만, 현재는 호환성을 위해 원래 URL 유지
-    const REDIRECT_URI_RAW = 'https://nooridal.com/v1/accounts/google/callback/'
+    const REDIRECT_URI_RAW = import.meta.env.VITE_GOOGLE_REDIRECT_URI
     const REDIRECT_URI = encodeURIComponent(REDIRECT_URI_RAW)
 
     // 범위 설정 (이메일, 프로필 정보)
