@@ -304,14 +304,6 @@ onMounted(async () => {
         // 모달 열기
         modalManager.openDayEventsModal(modalState.date)
         
-        // 활성 탭 설정 (태교일기 탭인 경우)
-        if (modalState.activeTab === 'baby') {
-          // 다음 틱에서 activeTab 설정 (DOM이 업데이트된 후)
-          setTimeout(() => {
-            document.querySelector('[data-tab="baby"]')?.click()
-          }, 100)
-        }
-        
         // 사용 후 삭제
         sessionStorage.removeItem('modalState')
       }

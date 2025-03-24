@@ -43,6 +43,9 @@ const selectedEvent = ref(null)
 watch(() => props.show, async (newValue) => {
   if (newValue) {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
+    // 모달이 열리면 항상 '일정' 탭으로 설정
+    activeTab.value = 'schedule'
+    
     // 모달이 열리면 클릭 방지 설정 (300ms 동안)
     isClickable.value = false
 
@@ -58,6 +61,13 @@ watch(() => props.show, async (newValue) => {
       isClickable.value = true
       console.log('DayEventsModal - 이제 이벤트 클릭 가능')
     }, 300)
+
+    // 현재 모달 상태 및 날짜 저장
+    sessionStorage.setItem('modalState', JSON.stringify({
+      open: true,
+      date: props.date,
+      activeTab: 'schedule' // 항상 일정 탭으로 설정
+    }))
   } else {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 닫혔습니다')
   }
@@ -467,7 +477,7 @@ const uploadPhotoToDiary = async (diaryId) => {
     sessionStorage.setItem('modalState', JSON.stringify({
       open: true,
       date: props.date,
-      activeTab: activeTab.value
+      activeTab: 'schedule'
     }))
     
     // 페이지 새로고침
@@ -542,7 +552,7 @@ const updatePhoto = async (photoId, file) => {
     sessionStorage.setItem('modalState', JSON.stringify({
       open: true,
       date: props.date,
-      activeTab: activeTab.value
+      activeTab: 'schedule'
     }))
     
     // 페이지 새로고침
@@ -585,7 +595,7 @@ const deletePhoto = async (photoId) => {
     sessionStorage.setItem('modalState', JSON.stringify({
       open: true,
       date: props.date,
-      activeTab: activeTab.value
+      activeTab: 'schedule'
     }))
     
     // 페이지 새로고침
@@ -933,7 +943,7 @@ const handleSaveEvent = async (eventData) => {
     sessionStorage.setItem('modalState', JSON.stringify({
       open: true,
       date: props.date,
-      activeTab: activeTab.value
+      activeTab: 'schedule'
     }))
     
     // 새로고침 없이 현재 상태에서 캘린더 리렌더링을 위해 이벤트 발행
@@ -988,8 +998,8 @@ onMounted(async () => {
     calendarStore.babyNickname = '(태명)'
   }
   
-  // 기본 탭을 태교일기로 설정
-  activeTab.value = 'baby'
+  // 기본 탭을 일정으로 설정
+  activeTab.value = 'schedule'
 })
 
 // 태명과 조사를 안전하게 표시하는 계산된 속성 추가
