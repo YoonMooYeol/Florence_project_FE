@@ -68,9 +68,11 @@ watch(() => props.show, async (newValue) => {
 
 // babyDiary가 변경될 때 diaryContent 업데이트
 watch(() => props.babyDiary, (newDiary) => {
-  if (newDiary) {
+  if (newDiary && newDiary.id) {
+    // 실제 저장된 일기(id가 있는 경우)만 내용 표시
     diaryContent.value = newDiary.content
   } else {
+    // id가 없으면 빈 내용으로 설정
     diaryContent.value = ''
   }
 }, { immediate: true })
@@ -114,6 +116,21 @@ const viewEvent = async (event) => {
     
     // 원본 이벤트 객체와 서버에서 가져온 데이터 병합
     let mergedEvent = { ...event, ...updatedEvent }
+    
+    // 제목이 [매일], [매주], [매월], [매년]으로 시작하는 경우 반복 일정으로 처리
+    if (mergedEvent.title && (
+      mergedEvent.title.startsWith('[매일]') || 
+      mergedEvent.title.startsWith('[매주]') || 
+      mergedEvent.title.startsWith('[매월]') || 
+      mergedEvent.title.startsWith('[매년]')
+    )) {
+      console.log('제목 패턴으로 반복 일정 판단:', mergedEvent.title)
+      mergedEvent = {
+        ...mergedEvent,
+        is_recurring: true,
+        recurring: 'weekly' // 기본값
+      }
+    }
     
     // 로깅
     console.log('서버에서 가져온 최신 이벤트:', updatedEvent)
@@ -177,6 +194,12 @@ const saveBabyDiary = async () => {
     if (!diaryDate) {
       console.error('날짜 정보가 없습니다')
       alert('날짜 정보가 없어 저장할 수 없습니다.')
+      return
+    }
+
+    // 내용이 비어있다면 저장하지 않음
+    if (!diaryContent.value || diaryContent.value.trim() === '') {
+      alert('일기 내용을 입력해주세요.')
       return
     }
 
@@ -711,13 +734,21 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     console.log('서버에서 최신 이벤트 정보 확인 중...')
     const eventDetail = await calendarStore.fetchEventDetail(eventId)
     
-    // 실제 반복 일정인지 확인 - 명시적으로 반복 속성이 있는 경우만 반복 일정으로 인식
+    // 실제 반복 일정인지 확인 - 명시적으로 반복 속성이 있는 경우 또는 [매*] 패턴의 제목인 경우
     const isActuallyRecurring = eventDetail && (
+      // 직접적인 반복 속성이 있는 경우
       (eventDetail.recurring && eventDetail.recurring !== 'none') ||
       eventDetail.is_recurring === true ||
       (eventDetail.recurrence_pattern && eventDetail.recurrence_pattern !== 'none') ||
       eventDetail.recurringEventId || 
-      eventDetail.parentId
+      eventDetail.parentId ||
+      // 제목이 [매일], [매주], [매월], [매년]으로 시작하는 경우
+      (eventDetail.title && (
+        eventDetail.title.startsWith('[매일]') || 
+        eventDetail.title.startsWith('[매주]') || 
+        eventDetail.title.startsWith('[매월]') || 
+        eventDetail.title.startsWith('[매년]')
+      ))
     )
     
     // 클라이언트 상태와 서버 상태가 다를 때 처리 (반복 일정이지만 반복 일정으로 처리되지 않은 경우)
@@ -1076,7 +1107,7 @@ onMounted(async () => {
           class="space-y-4"
         >
           <div
-            v-if="babyDiary"
+            v-if="babyDiary && babyDiary.id"
             class="space-y-6"
           >
             <!-- 사진 갤러리 -->
@@ -1160,34 +1191,6 @@ onMounted(async () => {
                     </div>
                   </div>
                 </div>
-
-                <!-- 사진 추가 버튼 (MAX_PHOTOS보다 적을 때만 표시) -->
-                <!-- <div
-                  v-if="canUploadMorePhotos"
-                  class="relative border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-point hover:bg-gray-50 transition-all"
-                  style="aspect-ratio: 16/9; height: 180px;"
-                  @click="fileInput.click()"
-                >
-                  <div class="text-center text-gray-500">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-8 w-8 mx-auto mb-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    <p class="text-xs">
-                      사진 추가
-                    </p>
-                  </div>
-                </div> -->
               </div>
             </div>
 
@@ -1200,26 +1203,28 @@ onMounted(async () => {
             
             <!-- 일기 작성/수정 버튼 -->
             <div class="flex space-x-2">
-              <button
+              <!-- 사진 추가 버튼 임시 비활성화 -->
+              <!-- <button
+                v-if="canUploadMorePhotos"
+                class="flex-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
+                @click="fileInput.click()"
+              >
+                사진 추가
+              </button> -->
+              <!-- 일기 작성 버튼 제거 -->
+              <!-- <button
                 v-if="!babyDiary.content"
                 class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
                 @click="openDiaryModal('create')"
               >
                 일기 작성
-              </button>
+              </button> -->
               <button
                 v-if="babyDiary.content"
                 class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
                 @click="openDiaryModal('edit')"
               >
                 일기 수정
-              </button>
-              <button
-                v-if="canUploadMorePhotos"
-                class="flex-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
-                @click="fileInput.click()"
-              >
-                사진 추가
               </button>
             </div>
           </div>
@@ -1232,7 +1237,7 @@ onMounted(async () => {
             </p>
           </div>
           <div
-            v-if="!babyDiary"
+            v-if="!babyDiary || !babyDiary.id"
             class="flex justify-center"
           >
             <button

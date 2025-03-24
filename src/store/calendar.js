@@ -70,9 +70,9 @@ export const useCalendarStore = defineStore('calendar', () => {
           description: event.description,
           event_day: event.event_day,
           // start: event.event_day, // event_day를 start로 매핑
-          backgroundColor: '#FFD600',
-          borderColor: '#FFD600',
-          textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
@@ -141,9 +141,9 @@ export const useCalendarStore = defineStore('calendar', () => {
           description: event.description,
           event_day: event.event_day,
           // start: event.event_day,
-          backgroundColor: '#FFD600',
-          borderColor: '#FFD600',
-          textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
@@ -198,9 +198,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         description: response.data.description,
         event_day: response.data.event_day,
         // start: response.data.event_day,
-        backgroundColor: '#FFD600',
-        borderColor: '#FFD600',
-        textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -326,9 +326,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         description: response.data.description,
         event_day: response.data.event_day,
         // start: response.data.event_day, // event_day를 start로 매핑
-        backgroundColor: '#FFD600',
-        borderColor: '#FFD600',
-        textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -441,9 +441,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         description: response.data.description,
         event_day: response.data.event_day,
         // start: response.data.event_day,
-        backgroundColor: '#FFD600',
-        borderColor: '#FFD600',
-        textColor: '#353535',
+      backgroundColor: '#FFD600',
+      borderColor: '#FFD600',
+      textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -585,6 +585,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       const lastDay = new Date(currentYear, currentMonth, 0).getDate()
       const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
       
+      console.log(`일기 조회 기간: ${startDate} ~ ${endDate}`)
+      
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.get('calendars/baby-diaries/', {
         params: {
@@ -594,6 +596,15 @@ export const useCalendarStore = defineStore('calendar', () => {
       })
       
       console.log('아기 일기 데이터 가져오기 성공:', response.data.length, '개')
+      
+      // 데이터 변환 및 저장 전 로그
+      if (response.data.length > 0) {
+        console.log('첫 번째 일기 데이터 샘플:', {
+          diary_id: response.data[0].diary_id,
+          diary_date: response.data[0].diary_date,
+          content_preview: response.data[0].content ? response.data[0].content.substring(0, 20) + '...' : '(내용 없음)'
+        })
+      }
       
       // 데이터 변환 및 저장
       babyDiaries.value = response.data.map(diary => ({
@@ -608,6 +619,14 @@ export const useCalendarStore = defineStore('calendar', () => {
             }))
           : []
       }))
+      
+      // 변환 후 데이터 확인 로그
+      console.log('변환된 일기 데이터:', babyDiaries.value.map(d => ({ 
+        id: d.id, 
+        date: d.date, 
+        content_length: d.content ? d.content.length : 0,
+        photos_count: d.photos.length 
+      })))
       
       return babyDiaries.value
     } catch (error) {
@@ -644,38 +663,43 @@ export const useCalendarStore = defineStore('calendar', () => {
         return null
       }
       
-      // API 호출 (POST 메서드로 변경)
-      const response = await api.post(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/`, {
-        diary_date: normalizedDate
-      })
-      
-      // 응답 데이터 변환
-      const diaryData = {
-        id: response.data.diary_id,
-        date: response.data.diary_date,
-        content: response.data.content,
-        photos: Array.isArray(response.data.photos) 
-          ? response.data.photos.map(photo => ({
-              id: photo.photo_id,
-              image: photo.image,
-              created_at: photo.created_at
-            }))
-          : []
+      try {
+        // API 호출 (GET 메서드로 변경 - 기존 일기를 조회만 함)
+        const response = await api.get(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/${normalizedDate}/`)
+        
+        // 응답 데이터 변환
+        const diaryData = {
+          id: response.data.diary_id,
+          date: response.data.diary_date,
+          content: response.data.content,
+          photos: Array.isArray(response.data.photos) 
+            ? response.data.photos.map(photo => ({
+                id: photo.photo_id,
+                image: photo.image,
+                created_at: photo.created_at
+              }))
+            : []
+        }
+        
+        // 선택된 태교일기 업데이트
+        selectedBabyDiary.value = diaryData
+        
+        return diaryData
+      } catch (err) {
+        // 404 오류는 일기가 없는 경우로 처리
+        if (err.response && err.response.status === 404) {
+          console.log('해당 날짜의 태교일기가 없습니다:', normalizedDate)
+          selectedBabyDiary.value = null
+          return null
+        } else {
+          throw err; // 다른 오류는 상위로 전달
+        }
       }
-      
-      // 선택된 태교일기 업데이트
-      selectedBabyDiary.value = diaryData
-      
-      return diaryData
     } catch (err) {
-      if (err.response && err.response.status === 404) {
-        selectedBabyDiary.value = null
-        return null
-      } else {
-        error.value = '태교일기를 불러오는데 실패했습니다.'
-        console.error('태교일기 조회 오류:', err)
-        return null
-      }
+      error.value = '태교일기를 불러오는데 실패했습니다.'
+      console.error('태교일기 조회 오류:', err)
+      selectedBabyDiary.value = null
+      return null
     } finally {
       isLoading.value = false
     }
@@ -685,6 +709,13 @@ export const useCalendarStore = defineStore('calendar', () => {
   async function addBabyDiary(newDiary) {
     try {
       const { date, content } = newDiary
+      
+      // 날짜 로그 추가
+      console.log('태교일기 추가 요청 - 원본 날짜:', date)
+      
+      // 날짜 정규화 (YYYY-MM-DD 형식)
+      const normalizedDate = normalizeDate(date)
+      console.log('태교일기 추가 - 정규화된 날짜:', normalizedDate)
       
       // pregnancyId가 없으면 임신 정보를 가져옴
       if (!pregnancyId.value) {
@@ -697,7 +728,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 페이로드 구성 - 요구사항에 맞게 diary_date만 포함
       const payload = {
-        diary_date: normalizeDate(date)
+        diary_date: normalizedDate
       }
       
       // 서버 호출 - URL에 pregnancyId 포함
@@ -721,6 +752,10 @@ export const useCalendarStore = defineStore('calendar', () => {
           console.error('일기 내용 업데이트 실패:', updateError)
         }
       }
+      
+      // 서버 응답 확인 로그
+      console.log('서버 응답 일기 ID:', response.data.diary_id)
+      console.log('서버 응답 일기 날짜:', response.data.diary_date)
       
       // 로컬 상태 업데이트
       const newDiaryData = {
@@ -1390,9 +1425,34 @@ export const useCalendarStore = defineStore('calendar', () => {
     return llmSummaries.value.some(summary => summary.summary_date === formattedDate)
   }
 
+  /**
+   * 특정 날짜에 태교일기가 있는지 확인합니다.
+   * @param {string} dateStr - 확인할 날짜 문자열
+   * @returns {boolean} 태교일기 존재 여부
+   */
   const hasBabyDiary = (dateStr) => {
+    try {
+      // 날짜 정규화
     const formattedDate = normalizeDate(dateStr)
-    return babyDiaries.value.some(diary => diary.date === formattedDate)
+      
+      // 디버깅을 위한 로그
+      console.log(`hasBabyDiary 호출: 입력=${dateStr}, 정규화=${formattedDate}`)
+      
+      // 이전 코드에서는 simple.some을 사용했으나, 디버깅이 용이하도록 for문으로 변경
+      for (const diary of babyDiaries.value) {
+        if (diary.date === formattedDate && diary.id) {
+          console.log(`✅ 일기 찾음: ${diary.date} (ID: ${diary.id})`)
+          return true
+        }
+      }
+      
+      // 일치하는 일기가 없는 경우
+      console.log(`❌ 일기 없음: ${formattedDate}`)
+      return false
+    } catch (error) {
+      console.error('일기 확인 중 오류 발생:', error)
+      return false
+    }
   }
 
   // 스토어 초기화 함수

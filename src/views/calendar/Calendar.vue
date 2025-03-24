@@ -652,11 +652,11 @@ const handleCalendarRefresh = async (event) => {
 
     <!-- 요일 표시 (추가됨) -->
     <div class="bg-yellow-200 py-1">
-      <div class="max-w-4xl mx-auto flex justify-around">
+      <div class="calendar-weekdays">
         <span
           v-for="(day, index) in weekdays"
           :key="index"
-          class="text-base font-medium text-dark-gray"
+          class="text-base font-medium text-dark-gray weekday-label"
         >
           {{ day }}
         </span>
@@ -831,8 +831,25 @@ const handleCalendarRefresh = async (event) => {
   padding-bottom: 0;
   position: relative;
   z-index: 0;
-  height: calc(100vh - 100px);
+  min-height: calc(100vh - 180px);
+  max-height: calc(100vh - 120px);
   margin-bottom: 0;
+  overflow: hidden;
+}
+
+/* 요일 표시 영역 */
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.weekday-label {
+  width: 100%;
+  text-align: center;
 }
 
 /* FullCalendar 기본 스타일 */
@@ -840,8 +857,9 @@ const handleCalendarRefresh = async (event) => {
   font-family: "Noto Sans KR", "Roboto", sans-serif;
   border: none;
   background-color: transparent;
-  height: calc(100vh - 120px);
   width: 100%;
+  height: 100%;
+  text-align: left;
 }
 
 /* 요일 헤더 영역 숨기기 */
@@ -871,12 +889,15 @@ const handleCalendarRefresh = async (event) => {
   background-color: transparent;
   cursor: pointer;
   position: relative;
-  min-height: 180px;
+  min-height: 120px;
+  height: auto;
+  text-align: left;
 }
 
 .fc-daygrid-day-frame {
-  padding-top: 36px;
-  min-height: 180px;
+  padding-top: 30px;
+  min-height: 120px;
+  height: 100%;
   background-color: rgba(255, 255, 255, 0.6);
 }
 
@@ -905,30 +926,53 @@ const handleCalendarRefresh = async (event) => {
 }
 
 /* 날짜 상단 영역 스타일 */
-.fc-daygrid-day-top {
+.fc .fc-daygrid-day-top {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-height: 24px;
-  position: absolute;
-  left: 0;
-  top: 0;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  height: 24px;
   width: 100%;
-  padding: 2px 4px;
+  padding: 0;
+  margin: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* 이 스타일도 추가 */
+div.fc-daygrid-day-top > a.fc-daygrid-day-number {
+  left: 5px;
+  text-align: left;
+  position: absolute;
+}
+
+/* 날짜 숫자에 대한 더 구체적인 선택자 */
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
+.fc .fc-daygrid-day .fc-daygrid-day-number {
+  float: left;
+  padding-left: 2px;
+  padding-right: 0;
+  text-align: left;
+  width: auto;
+  position: static;
 }
 
 /* 날짜 숫자 스타일 */
-.fc-daygrid-day-number {
-  font-size: 0.85rem;
-  color: #353535;
-  font-weight: 400;
+.fc .fc-daygrid-day-number {
+  display: inline-block;
   width: 24px;
   height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0;
+  padding: 2px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-dark-gray);
+  font-weight: 400;
+  font-size: 0.85rem;
   position: absolute;
-  left: -15px;
+  left: 5px;
+  top: 2px;
 }
 
 /* 오늘 날짜 스타일 */
@@ -956,8 +1000,8 @@ const handleCalendarRefresh = async (event) => {
   width: 20px;
   height: 20px;
   position: absolute;
-  left: 3px;
-  margin-top: -21px;
+  right: 5px;
+  top: 5px;
 }
 
 /* 아기 일기 표시 스타일 */
@@ -969,10 +1013,10 @@ const handleCalendarRefresh = async (event) => {
   justify-content: flex-end;
   color: #f05454;
   width: 20px;
-  height: 0px;
+  height: 18px;
   position: absolute;
-  left: 12px;
-  margin-top: -12px;
+  right: 28px;
+  top: 5px;
 }
 
 /* 이벤트 스타일 */
@@ -1052,12 +1096,6 @@ const handleCalendarRefresh = async (event) => {
   color: #353535;
 }
 
-/* 다른 월의 날짜 스타일 */
-.fc-day-other {
-  opacity: 0.4;
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
 /* 이벤트 "더보기" 링크 */
 .fc-daygrid-more-link {
   font-size: 0.8rem;
@@ -1080,6 +1118,47 @@ const handleCalendarRefresh = async (event) => {
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.2;
+}
+
+/* 다른 월의 날짜 스타일 */
+.fc-day-other {
+  opacity: 0.4;
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* 반응형 설정 */
+@media screen and (max-width: 768px) {
+  .fc-daygrid-day {
+    min-height: 80px;
+  }
+  
+  .fc-daygrid-day-frame {
+    padding-top: 25px;
+    min-height: 80px;
+  }
+  
+  .fc-daygrid-day-top {
+    padding: 2px 0 0 2px;
+  }
+  
+  .fc-daygrid-day-number {
+    font-size: 0.75rem;
+    margin-left: 3px;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  .fc-daygrid-day {
+    min-height: 150px;
+  }
+  
+  .fc-daygrid-day-frame {
+    min-height: 150px;
+  }
+  
+  .fc-daygrid-day-number {
+    margin-left: 8px;
+  }
 }
 
 /* 하단 네비게이션 바 스타일 */
@@ -1360,5 +1439,18 @@ const handleCalendarRefresh = async (event) => {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 45;
+}
+
+/* 날짜 정렬 오버라이드 */
+body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top {
+  display: flex;
+  flex-direction: row;
+}
+
+body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top a.fc-daygrid-day-number {
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  text-align: left;
 }
 </style>

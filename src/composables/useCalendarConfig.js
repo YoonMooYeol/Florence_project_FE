@@ -19,24 +19,40 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
 
   // 날짜 셀 컨텐츠 렌더링
   const dayCellContent = (info) => {
-    // 날짜를 YYYY-MM-DD 형식으로 변환
-    const dateStr = normalizeDate(info.date)
+    try {
+      // 날짜 객체에서 직접 년, 월, 일 추출하여 정확한 날짜 문자열 생성
+      const year = info.date.getFullYear()
+      const month = String(info.date.getMonth() + 1).padStart(2, '0')
+      const day = String(info.date.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+      
+      // 개발 로그 (필요시 활성화)
+      console.log(`Calendar Cell: ${dateStr}, 원본 날짜:`, info.date)
 
-    // 날짜 텍스트에서 '일' 제거
-    const dayNumber = info.dayNumberText.replace('일', '')
+      // 날짜 텍스트에서 '일' 제거
+      const dayNumber = info.dayNumberText.replace('일', '')
 
-    // LLM 요약과 아기 일기 존재 여부 확인
-    const hasLLM = calendarStore.hasLLMSummary(dateStr)
-    const hasBabyDiary = calendarStore.hasBabyDiary(dateStr)
+      // LLM 요약과 아기 일기 존재 여부 확인
+      const hasLLM = calendarStore.hasLLMSummary(dateStr)
+      const hasBabyDiary = calendarStore.hasBabyDiary(dateStr)
+      
+      // 일기가 있는 경우만 로그 출력 (하트 표시 디버깅용)
+      if (hasBabyDiary) {
+        console.log(`🧡 ${dateStr}에 일기 있음 - 하트 표시 대상`)
+      }
 
-    return {
-      html: `
-        <div class="day-cell-content">
-          <span class="fc-daygrid-day-number">${dayNumber}</span>
-          ${hasLLM ? '<span class="llm-indicator">•</span>' : ''}
-          ${hasBabyDiary ? '<span class="baby-diary-indicator">♥︎</span>' : ''}
-        </div>
-      `
+      return {
+        html: `
+          <div class="day-cell-content">
+            <span class="fc-daygrid-day-number">${dayNumber}</span>
+            ${hasLLM ? '<span class="llm-indicator">•</span>' : ''}
+            ${hasBabyDiary ? '<span class="baby-diary-indicator">♥︎</span>' : ''}
+          </div>
+        `
+      }
+    } catch (error) {
+      console.error('날짜 셀 렌더링 중 오류:', error)
+      return { html: `<span class="fc-daygrid-day-number">${info.dayNumberText}</span>` }
     }
   }
 
