@@ -92,31 +92,44 @@ api.interceptors.response.use(
     return response
   },
   async (error) => {
-    // 오류 응답 로깅
-    console.error('=== API 응답 오류 ===')
+    // 404 에러 중 일부는 정상적인 상황일 수 있으므로 특별 처리
+    const isNonCriticalError = error.response?.status === 404 && 
+      (error.config?.url?.includes('/baby-diaries/pregnancy/') || 
+       error.response?.data?.detail?.includes('해당 아기 일기가 존재하지 않습니다'));
     
-    if (error.config) {
-      const method = error.config.method.toUpperCase()
-      const url = error.config.url
-      console.error(`요청 정보: ${method} ${url}`)
-      
-      // DELETE 요청에 대한 특별한 로깅
-      if (method === 'DELETE') {
-        console.error('❌ 삭제 요청 실패:', {
-          url: url,
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          timestamp: new Date().toISOString()
-        })
-      }
-    }
-    
-    if (error.response) {
-      console.error('응답 상태:', error.response.status)
-      console.error('응답 데이터:', error.response.data)
+    if (isNonCriticalError) {
+      // 특정 404 에러는 경고 수준으로 로깅 (예: 아기 일기 없음)
+      console.info('=== API 조회 정보 ===')
+      console.info(`요청 정보: ${error.config.method.toUpperCase()} ${error.config.url}`)
+      console.info('응답 상태:', error.response.status)
+      console.info('응답 메시지:', error.response.data.detail || '데이터가 존재하지 않습니다.')
     } else {
-      console.error('네트워크 오류 또는 요청 취소됨')
+      // 일반적인 오류 응답 로깅
+      console.error('=== API 응답 오류 ===')
+      
+      if (error.config) {
+        const method = error.config.method.toUpperCase()
+        const url = error.config.url
+        console.error(`요청 정보: ${method} ${url}`)
+        
+        // DELETE 요청에 대한 특별한 로깅
+        if (method === 'DELETE') {
+          console.error('❌ 삭제 요청 실패:', {
+            url: url,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            timestamp: new Date().toISOString()
+          })
+        }
+      }
+      
+      if (error.response) {
+        console.error('응답 상태:', error.response.status)
+        console.error('응답 데이터:', error.response.data)
+      } else {
+        console.error('네트워크 오류 또는 요청 취소됨')
+      }
     }
 
     const originalRequest = error.config

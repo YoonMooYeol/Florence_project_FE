@@ -28,68 +28,47 @@ export function formatTime (dateTime) {
 
 /**
  * 날짜를 YYYY-MM-DD 형식의 문자열로 정규화합니다.
- * 시간대 처리 문제를 해결하기 위해 항상 로컬 타임존을 기준으로 합니다.
  * @param {Date|string} date - 정규화할 날짜
  * @returns {string} YYYY-MM-DD 형식의 문자열
  */
 export function normalizeDate(date) {
-  try {
-    // 로깅 추가
-    console.log('normalizeDate 입력값:', date, typeof date);
-    
-    let d;
-    
-    // null이나 undefined인 경우 현재 날짜 사용
-    if (!date) {
-      d = new Date();
-      console.log('날짜 없음, 현재 날짜 사용:', d);
-      return formatDate(d);
-    }
-    
-    // Date 객체인 경우
-    if (date instanceof Date) {
-      d = date;
-    } 
-    // 문자열인 경우
-    else if (typeof date === 'string') {
-      // 이미 YYYY-MM-DD 형식인지 확인
-      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        console.log('이미 YYYY-MM-DD 형식:', date);
-        return date;
-      }
-      
-      // ISO 형식 문자열(T 포함)인 경우
-      if (date.includes('T')) {
-        // 날짜 부분만 사용
-        const parts = date.split('T');
-        if (parts[0] && /^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
-          console.log('ISO 형식에서 날짜 부분만 사용:', parts[0]);
-          return parts[0];
-        }
-      }
-      
-      // 다른 형식의 문자열인 경우 Date 객체로 변환
-      d = new Date(date);
-    }
-    
-    // 유효한 날짜인지 확인
-    if (isNaN(d.getTime())) {
-      console.error('유효하지 않은 날짜:', date);
-      return '';
-    }
-    
-    // 로컬 타임존 기준으로 년, 월, 일 추출
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    
-    const result = `${year}-${month}-${day}`;
-    console.log('normalizeDate 결과:', result);
-    return result;
-  } catch (error) {
-    console.error('날짜 정규화 오류:', error);
-    return '';
+  // null이나 undefined인 경우 현재 날짜 사용
+  if (!date) {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   }
+  
+  // Date 객체인 경우
+  if (date instanceof Date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  } 
+  // 문자열인 경우
+  else if (typeof date === 'string') {
+    // 이미 YYYY-MM-DD 형식인지 확인
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return date;
+    }
+    
+    // ISO 형식 문자열(T 포함)인 경우
+    if (date.includes('T')) {
+      // 날짜 부분만 사용
+      const parts = date.split('T');
+      if (parts[0] && /^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
+        return parts[0];
+      }
+    }
+    
+    // 다른 형식의 문자열은 Date 객체로 변환 시도
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+  }
+  
+  // 변환 실패 시 현재 날짜 반환
+  console.error('유효하지 않은 날짜 형식:', date);
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 /**

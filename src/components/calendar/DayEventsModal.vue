@@ -33,7 +33,7 @@ const props = defineProps({
 // 필요한 상태 변수들
 const isClickable = ref(false)
 const diaryContent = ref('')
-const activeTab = ref('schedule') // 초기 활성 탭은 '일정' 탭
+const activeTab = ref('schedule') // 초기 활성 탭을 '일정' 탭으로 되돌림
 const showDiaryModal = ref(false)
 const showEventModal = ref(false)
 const showEventDetailModal = ref(false)
@@ -45,9 +45,6 @@ watch(() => props.show, async (newValue) => {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
     // 모달이 열리면 클릭 방지 설정 (300ms 동안)
     isClickable.value = false
-
-    // 항상 일정 탭부터 시작
-    activeTab.value = 'schedule'
 
     // 이벤트 데이터가 없으면 로딩 표시
     if (!props.events || props.events.length === 0) {
@@ -980,7 +977,28 @@ onMounted(async () => {
   console.log('DayEventsModal 마운트됨')
 
   // 임신 정보 초기화
-  await calendarStore.initPregnancyInfo()
+  const success = await calendarStore.initPregnancyInfo()
+  console.log('DayEventsModal - 임신 정보 초기화 결과:', success)
+  console.log('DayEventsModal - 임신 상태(isPregnant):', calendarStore.isPregnant)
+  console.log('DayEventsModal - 태명(babyNickname):', calendarStore.babyNickname)
+  
+  // 태명이 없을 경우에만 기본값 설정
+  if (!calendarStore.babyNickname) {
+    console.log('DayEventsModal - 태명이 설정되지 않아 기본값 사용')
+    calendarStore.babyNickname = '(태명)'
+  }
+  
+  // 기본 탭을 태교일기로 설정
+  activeTab.value = 'baby'
+})
+
+// 태명과 조사를 안전하게 표시하는 계산된 속성 추가
+const babyTabLabel = computed(() => {
+  // 태명이 없거나 null인 경우 '(태명)'을 사용
+  const nickname = calendarStore.babyNickname || '(태명)'
+  const josa = calendarStore.getJosa(nickname, '과', '와')
+  console.log('태명 탭 레이블 계산:', nickname, josa)
+  return `${nickname}${josa}의 하루`
 })
 </script>
 
@@ -1018,14 +1036,14 @@ onMounted(async () => {
       <!-- 탭 메뉴 -->
       <div class="flex border-b border-gray-200">
         <button
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
+          class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
           :class="activeTab === 'schedule' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
           @click="activeTab = 'schedule'"
         >
           일정
         </button>
         <button
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
+          class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
           :class="activeTab === 'daily' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
           @click="activeTab = 'daily'"
         >
@@ -1033,12 +1051,12 @@ onMounted(async () => {
         </button>
         <button
           v-if="calendarStore.isPregnant"
-          class="flex-1 py-3 px-4 text-center font-medium transition-colors"
+          class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
           :class="activeTab === 'baby' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
           data-tab="baby"
           @click="activeTab = 'baby'"
         >
-          {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
+          {{ babyTabLabel }}
         </button>
       </div>
 
@@ -1107,7 +1125,7 @@ onMounted(async () => {
           class="space-y-4"
         >
           <div
-            v-if="babyDiary && babyDiary.id"
+            v-if="babyDiary && babyDiary.id && babyDiary.content"
             class="space-y-6"
           >
             <!-- 사진 갤러리 -->
@@ -1203,24 +1221,7 @@ onMounted(async () => {
             
             <!-- 일기 작성/수정 버튼 -->
             <div class="flex space-x-2">
-              <!-- 사진 추가 버튼 임시 비활성화 -->
-              <!-- <button
-                v-if="canUploadMorePhotos"
-                class="flex-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium"
-                @click="fileInput.click()"
-              >
-                사진 추가
-              </button> -->
-              <!-- 일기 작성 버튼 제거 -->
-              <!-- <button
-                v-if="!babyDiary.content"
-                class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
-                @click="openDiaryModal('create')"
-              >
-                일기 작성
-              </button> -->
               <button
-                v-if="babyDiary.content"
                 class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
                 @click="openDiaryModal('edit')"
               >
@@ -1235,17 +1236,14 @@ onMounted(async () => {
             <p class="text-gray-500">
               기록된 일기가 없습니다.
             </p>
-          </div>
-          <div
-            v-if="!babyDiary || !babyDiary.id"
-            class="flex justify-center"
-          >
-            <button
-              class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-              @click="openDiaryModal('create')"
-            >
-              기록하기
-            </button>
+            <div class="flex justify-center mt-4">
+              <button
+                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                @click="openDiaryModal('create')"
+              >
+                기록하기
+              </button>
+            </div>
           </div>
         </div>
       </div>
