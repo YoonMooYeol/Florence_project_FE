@@ -508,68 +508,6 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   // 반복 일정 삭제 함수 (API 연동)
-  async function deleteRecurringEvents(eventId) {
-    isLoading.value = true;
-    error.value = null;
-    
-    try {
-      const baseEvent = events.value.find(e => e.id === eventId);
-      
-      if (!baseEvent) {
-        throw new Error('삭제할 일정을 찾을 수 없습니다.');
-      }
-      
-      if (!baseEvent.recurring || baseEvent.recurring === 'none') {
-        return await deleteEvent(eventId);
-      }
-      
-      // 백엔드에 반복 일정 삭제 요청
-      await api.delete(`calendars/events/${eventId}/?delete_all=true`);
-      
-      // 성공 후 fetchEvents 호출하여 최신 데이터로 갱신
-      await fetchEvents();
-      
-      return true;
-    } catch (err) {
-      error.value = '반복 일정 삭제에 실패했습니다.';
-      
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  // 특정 날짜까지의 반복 일정 유지 함수 (API 연동)
-  async function deleteRecurringEventsUntil(eventId, untilDate) {
-    isLoading.value = true;
-    error.value = null;
-    
-    try {
-      const baseEvent = events.value.find(e => e.id === eventId);
-      
-      if (!baseEvent) {
-        throw new Error('수정할 일정을 찾을 수 없습니다.');
-      }
-      
-      if (!baseEvent.recurring || baseEvent.recurring === 'none') {
-        return await deleteEvent(eventId);
-      }
-      
-      // 백엔드에 특정 날짜까지의 반복 일정 삭제 요청
-      await api.delete(`calendars/events/${eventId}/?until_date=${untilDate}`);
-      
-      // 성공 후 fetchEvents 호출하여 최신 데이터로 갱신
-      await fetchEvents();
-      
-      return true;
-    } catch (err) {
-      error.value = '반복 일정 수정에 실패했습니다.';
-      
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  }
 
   // 아기 일기 관련 함수들
   async function fetchBabyDiaries(year, month) {
@@ -1538,6 +1476,251 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
   }
 
+  /**
+   * 반복 일정 중 이 일정만 삭제
+   * @param {string} eventId - 삭제할 이벤트 ID
+   * @returns {Promise<boolean>} 삭제 성공 여부
+   */
+  async function deleteRecurringEventThisOnly(eventId) {
+    try {
+      console.log('이 일정만 삭제 API 호출:', eventId)
+      const response = await api.delete(`/calendars/events/${eventId}/delete_recurring/`, {
+        headers: getAuthHeaders(),
+        params: {
+          delete_type: 'this_only'
+        }
+      })
+      
+      if (response.status === 204 || response.status === 200) {
+        console.log('이 일정만 삭제 성공')
+        
+        // 캐시에서 삭제된 이벤트 제거
+        const index = events.value.findIndex(e => e.id === eventId)
+        if (index !== -1) {
+          events.value.splice(index, 1)
+        }
+        
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('이 일정만 삭제 실패:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 반복 일정 중 이 일정과 이후 모든 일정 삭제
+   * @param {string} eventId - 삭제 시작점이 되는 이벤트 ID
+   * @returns {Promise<boolean>} 삭제 성공 여부
+   */
+  async function deleteRecurringEventsThisAndFuture(eventId) {
+    try {
+      console.log('이 일정과 이후 모든 일정 삭제 API 호출:', eventId)
+      const response = await api.delete(`/calendars/events/${eventId}/delete_recurring/`, {
+        headers: getAuthHeaders(),
+        params: {
+          delete_type: 'this_and_future'
+        }
+      })
+      
+      if (response.status === 204 || response.status === 200) {
+        console.log('이 일정과 이후 모든 일정 삭제 성공')
+        
+        // 캐시에서 삭제된 이벤트와 관련된 이벤트들 제거
+        const deleted = events.value.find(e => e.id === eventId)
+        if (deleted) {
+          const recurringId = deleted.recurringEventId || deleted.id
+          // 재귀적으로 연결된 모든 이벤트 찾기
+          const toRemove = events.value.filter(e => 
+            e.id === eventId || 
+            e.recurringEventId === recurringId || 
+            e.parentId === recurringId
+          )
+          for (const item of toRemove) {
+            const idx = events.value.findIndex(e => e.id === item.id)
+            if (idx !== -1) {
+              events.value.splice(idx, 1)
+            }
+          }
+        }
+        
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('이 일정과 이후 모든 일정 삭제 실패:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 모든 반복 일정 삭제
+   * @param {string} eventId - 반복 일정 중 하나의 이벤트 ID
+   * @returns {Promise<boolean>} 삭제 성공 여부
+   */
+  async function deleteRecurringEventsAll(eventId) {
+    try {
+      console.log('모든 반복 일정 삭제 API 호출:', eventId)
+      const response = await api.delete(`/calendars/events/${eventId}/delete_recurring/`, {
+        headers: getAuthHeaders(),
+        params: {
+          delete_type: 'all'
+        }
+      })
+      
+      if (response.status === 204 || response.status === 200) {
+        console.log('모든 반복 일정 삭제 성공')
+        
+        // 캐시에서 삭제된 이벤트와 관련된 모든 이벤트 제거
+        const deleted = events.value.find(e => e.id === eventId)
+        if (deleted) {
+          const recurringId = deleted.recurringEventId || deleted.id
+          // 같은 반복 일정에 속한 모든 이벤트 찾기
+          const toRemove = events.value.filter(e => 
+            e.id === eventId || 
+            e.recurringEventId === recurringId || 
+            e.parentId === recurringId ||
+            e.id === recurringId
+          )
+          for (const item of toRemove) {
+            const idx = events.value.findIndex(e => e.id === item.id)
+            if (idx !== -1) {
+              events.value.splice(idx, 1)
+            }
+          }
+        }
+        
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('모든 반복 일정 삭제 실패:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 반복 일정 중 이 일정만 수정
+   * @param {Object} eventData - 수정할 이벤트 데이터
+   * @returns {Promise<Object>} 수정된 이벤트 객체
+   */
+  async function updateRecurringEventThisOnly(eventData) {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      console.log('이 일정만 수정 API 호출:', eventData.id)
+      
+      // API 요청 형식에 맞게 데이터 변환
+      const apiPayload = prepareEventPayload(eventData);
+      
+      // API 호출
+      const response = await api.put(`calendars/events/${eventData.id}/update_recurring/`, apiPayload, {
+        headers: getAuthHeaders(),
+        params: {
+          update_type: 'this_only'
+        }
+      });
+      
+      // 응답 데이터 매핑
+      const updatedEvent = mapEventResponse(response.data);
+      
+      // UI 업데이트를 위해 로컬 상태 업데이트
+      const index = events.value.findIndex(e => e.id === eventData.id);
+    if (index !== -1) {
+        events.value[index] = updatedEvent;
+      }
+      
+      return updatedEvent;
+    } catch (err) {
+      error.value = '일정 수정에 실패했습니다.';
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * 반복 일정 중 이 일정과 이후 모든 일정 수정
+   * @param {Object} eventData - 수정할 이벤트 데이터
+   * @returns {Promise<Object>} 수정된 이벤트 객체
+   */
+  async function updateRecurringEventsThisAndFuture(eventData) {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      console.log('이 일정과 이후 모든 일정 수정 API 호출:', eventData.id)
+      
+      // API 요청 형식에 맞게 데이터 변환
+      const apiPayload = prepareEventPayload(eventData);
+      
+      // API 호출
+      const response = await api.put(`calendars/events/${eventData.id}/update_recurring/`, apiPayload, {
+        headers: getAuthHeaders(),
+        params: {
+          update_type: 'this_and_future'
+        }
+      });
+      
+      // 응답 데이터 매핑
+      const updatedEvent = mapEventResponse(response.data);
+      
+      // UI 업데이트를 위해 로컬 상태 업데이트
+      // 여러 일정이 업데이트될 수 있으므로 전체 일정 새로고침이 필요할 수 있음
+      await fetchEvents();
+      
+      return updatedEvent;
+    } catch (err) {
+      error.value = '일정 수정에 실패했습니다.';
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * 모든 반복 일정 수정
+   * @param {Object} eventData - 수정할 이벤트 데이터
+   * @returns {Promise<Object>} 수정된 이벤트 객체
+   */
+  async function updateRecurringEventsAll(eventData) {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      console.log('모든 반복 일정 수정 API 호출:', eventData.id)
+      
+      // API 요청 형식에 맞게 데이터 변환
+      const apiPayload = prepareEventPayload(eventData);
+      
+      // API 호출
+      const response = await api.put(`calendars/events/${eventData.id}/update_recurring/`, apiPayload, {
+        headers: getAuthHeaders(),
+        params: {
+          update_type: 'all'
+        }
+      });
+      
+      // 응답 데이터 매핑
+      const updatedEvent = mapEventResponse(response.data);
+      
+      // UI 업데이트를 위해 로컬 상태 업데이트
+      // 모든 반복 일정이 업데이트되므로 전체 일정 새로고침
+      await fetchEvents();
+      
+      return updatedEvent;
+    } catch (err) {
+      error.value = '일정 수정에 실패했습니다.';
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+
+
   return {
     // 상태
     events,
@@ -1580,11 +1763,16 @@ export const useCalendarStore = defineStore('calendar', () => {
     setPregnancyId,
     initPregnancyInfo,
     getJosa,
-    deleteRecurringEvents,
-    deleteRecurringEventsUntil,
+    deleteRecurringEventsThisAndFuture,
+    deleteRecurringEventThisOnly,
+    deleteRecurringEventsAll,
     $reset,
     fetchLLMSummaries,
     deleteLLMSummary,
+    // updateRecurringEvent,
+    updateRecurringEventThisOnly,
+    updateRecurringEventsThisAndFuture,
+    updateRecurringEventsAll,
 
     // 게터
     eventsForSelectedDate,

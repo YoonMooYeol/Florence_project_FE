@@ -311,7 +311,7 @@ const cancelDelete = () => {
             <label for="updateThisOnly" class="text-sm text-gray-700">이 일정만 수정</label>
           </div>
           
-          <div class="flex items-center space-x-2">
+          <!-- <div class="flex items-center space-x-2">
             <input
               type="radio"
               id="updateThisAndFuture"
@@ -320,8 +320,8 @@ const cancelDelete = () => {
               class="text-point focus:ring-point"
             />
             <label for="updateThisAndFuture" class="text-sm text-gray-700">이후 모든 일정 수정</label>
-          </div>
-          
+          </div> -->
+<!--           
           <div class="flex items-center space-x-2">
             <input
               type="radio"
@@ -331,7 +331,7 @@ const cancelDelete = () => {
               class="text-point focus:ring-point"
             />
             <label for="updateAll" class="text-sm text-gray-700">모든 반복 일정 수정</label>
-          </div>
+          </div> -->
         </div>
 
         <!-- 모달 푸터 -->

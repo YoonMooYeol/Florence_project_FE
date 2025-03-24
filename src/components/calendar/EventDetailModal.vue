@@ -180,8 +180,8 @@ const confirmDelete = async () => {
     if (isRecurringEvent.value) {
       if (deleteOption.value === 'all') {
         confirmMessage = `"${props.event.title}" 모든 반복 일정을 삭제하시겠습니까?`;
-      } else if (deleteOption.value === 'all_future') {
-        // all_future 옵션의 경우 날짜 자동 설정
+      } else if (deleteOption.value === 'this_and_future') {
+        // this_and_future 옵션의 경우 날짜 자동 설정
         if (!untilDate.value && props.event && props.event.start) {
           untilDate.value = typeof props.event.start === 'string' && props.event.start.includes('T') 
             ? props.event.start.split('T')[0] 
@@ -367,7 +367,7 @@ const formatEventDate = (event) => {
             type="radio"
             id="deleteConfirmUntil"
             v-model="deleteOption"
-            value="all_future"
+            value="this_and_future"
             class="text-point focus:ring-point"
           />
           <label for="deleteConfirmUntil" class="text-sm text-gray-700">이후 모든 일정 삭제</label>

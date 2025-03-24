@@ -160,8 +160,11 @@ const saveEvent = () => {
 
     // 종일 이벤트인 경우
     if (isAllDay.value) {
-      newEvent.start = date
-      newEvent.end = date
+      console.log('종일 이벤트: ', date)
+      // newEvent.start = date
+      // newEvent.end = date
+      newEvent.start = `${date}T00:00:00`
+      newEvent.end = `${date}T23:59:59`
     } else {
       // 시간이 있는 이벤트인 경우
       const startDateTime = `${date}T${startTime.value}:00`

@@ -437,13 +437,13 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
         console.log('이 일정만 삭제 시도')
         await calendarStore.deleteRecurringEventThisOnly(eventId)
         success = true
-      } else if (deleteOptions?.option === 'all_future') {
+      } else if (deleteOptions?.option === 'this_and_future') {
         console.log('이후 모든 일정 삭제 시도')
-        await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
+        await calendarStore.deleteRecurringEventsThisAndFuture(eventId)
         success = true
       } else if (deleteOptions?.option === 'all') {
         console.log('모든 반복 일정 삭제 시도')
-        await calendarStore.deleteRecurringEvents(eventId)
+        await calendarStore.deleteRecurringEventsAll(eventId)
         success = true
       }
     } else {

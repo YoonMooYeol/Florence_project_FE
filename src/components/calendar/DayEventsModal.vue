@@ -786,28 +786,18 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     if (isActuallyRecurring || isRecurring) {
       console.log('반복 일정 삭제:', deleteOptions?.option)
       
-      if (deleteOptions?.option === 'all_future') {
-        if (!deleteOptions.untilDate) {
-          // 자동으로 현재 날짜를 untilDate로 설정
-          if (selectedEvent.value && selectedEvent.value.start) {
-            deleteOptions.untilDate = typeof selectedEvent.value.start === 'string' && selectedEvent.value.start.includes('T') 
-              ? selectedEvent.value.start.split('T')[0] 
-              : selectedEvent.value.start
-            
-            console.log('이후 모든 일정 삭제: 자동으로 기준일 설정됨:', deleteOptions.untilDate)
-          } else {
-            alert('유지할 마지막 날짜를 선택해주세요.')
-            return
-          }
-        }
-        console.log('이후 모든 일정 삭제 시도 - 기준날짜:', deleteOptions.untilDate)
-        success = await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
-      } else if (deleteOptions?.option === 'this_only') {
+      if (deleteOptions?.option === 'this_only') {
+        // 이 일정만 삭제
         console.log('이 일정만 삭제 시도')
         success = await calendarStore.deleteRecurringEventThisOnly(eventId)
+      } else if (deleteOptions?.option === 'this_and_future') {
+        // 이 일정 및 이후의 모든 반복 일정 삭제
+        console.log('이 일정 및 이후 모든 반복 일정 삭제 시도')
+        success = await calendarStore.deleteRecurringEventsThisAndFuture(eventId)
       } else if (deleteOptions?.option === 'all') {
+        // 모든 반복 일정 삭제
         console.log('모든 반복 일정 삭제 시도')
-        success = await calendarStore.deleteRecurringEvents(eventId)
+        success = await calendarStore.deleteRecurringEventsAll(eventId)
       } else {
         console.warn('알 수 없는 삭제 옵션:', deleteOptions?.option)
         alert('삭제 옵션을 선택해주세요.')
@@ -913,7 +903,21 @@ const handleSaveEvent = async (eventData) => {
         // 반복 일정인 경우 특별한 API 사용
         const updateOption = eventData.updateOption || 'this_and_future'
         console.log(`반복 일정 수정 시도 - 옵션: ${updateOption}`)
-        savedEvent = await calendarStore.updateRecurringEvent(newEventData, updateOption)
+        
+        // savedEvent = await calendarStore.updateRecurringEvent(newEventData, updateOption)
+        // 수정 옵션에 따라 다른 API 호출
+        if (updateOption === 'this_only') {
+          savedEvent = await calendarStore.updateRecurringEventThisOnly(newEventData)
+        } else if (updateOption === 'this_and_future') {
+          savedEvent = await calendarStore.updateRecurringEventsThisAndFuture(newEventData)
+        } else if (updateOption === 'all') {
+          savedEvent = await calendarStore.updateRecurringEventsAll(newEventData)
+        } else {
+          console.warn('알 수 없는 수정 옵션:', updateOption)
+          alert('유효한 수정 옵션을 선택해주세요.')
+          return
+        }
+
       } else {
         // 일반 일정 수정
         console.log('일반 일정 수정 시도')
