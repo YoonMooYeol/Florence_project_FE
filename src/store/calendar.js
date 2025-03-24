@@ -664,9 +664,15 @@ export const useCalendarStore = defineStore('calendar', () => {
       }
       
       try {
-        // API 호출 (GET 메서드로 변경 - 기존 일기를 조회만 함)
-        const response = await api.get(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/${normalizedDate}/`)
-        
+        // // API 호출 (GET 메서드로 변경 - 기존 일기를 조회만 함)
+        // const response = await api.get(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/${normalizedDate}/`)
+        // API 호출
+        const response = await api.get(`calendars/baby-diaries/`, {
+          params: {
+            diary_date: normalizedDate
+          }
+        })
+
         // 응답 데이터 변환
         const diaryData = {
           id: response.data.diary_id,
