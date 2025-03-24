@@ -686,13 +686,17 @@ export const useCalendarStore = defineStore('calendar', () => {
         
         return diaryData
       } catch (err) {
-        // 404 오류는 일기가 없는 경우로 처리
+        // 404 오류는 일기가 없는 경우로 정상적인 상황으로 처리
         if (err.response && err.response.status === 404) {
-          console.log('해당 날짜의 태교일기가 없습니다:', normalizedDate)
+          console.info(`[태교일기] ${normalizedDate} 날짜에 태교일기가 없습니다. 이는 정상적인 상황입니다.`)
+          // 빈 일기 객체 반환 (id가 없음을 나타내기 위해 null이 아닌 빈 객체 사용)
+          const emptyDiary = { date: normalizedDate, content: '', photos: [] }
+          selectedBabyDiary.value = emptyDiary
+          return emptyDiary
+        } else {
+          console.error('[태교일기] 일기 조회 중 오류 발생:', err)
           selectedBabyDiary.value = null
           return null
-        } else {
-          throw err; // 다른 오류는 상위로 전달
         }
       }
     } catch (err) {
@@ -1261,11 +1265,22 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   function setPregnancyInfo (isPregnantStatus, nickname, id = null) {
+    console.log('[setPregnancyInfo] 임신 정보 설정:', isPregnantStatus, nickname, id)
     isPregnant.value = isPregnantStatus
+    
+    // 태명이 비어있는 경우 기본값 사용
+    if (!nickname || nickname.trim() === '') {
+      console.log('[setPregnancyInfo] 태명이 비어있어 기본값 사용')
+      babyNickname.value = '(태명)'
+    } else {
     babyNickname.value = nickname
+    }
+    
     if (id !== null) {
       pregnancyId.value = id
     }
+    
+    console.log('[setPregnancyInfo] 설정 결과:', isPregnant.value, babyNickname.value, pregnancyId.value)
   }
 
   function setPregnancyId (id) {
@@ -1274,18 +1289,22 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   async function initPregnancyInfo () {
     try {
-      // 로컬 스토리지나 세션 스토리지에서 임신 ID 확인
-      const storedPregnancyId = localStorage.getItem('pregnancyId') || sessionStorage.getItem('pregnancyId')
-      
-      // 임신 ID가 이미 스토어에 있는 경우 바로 사용
+      console.log('[initPregnancyInfo] 임신 정보 초기화 시작')
+      // 이미 임신 ID가 있으면 재사용
       if (pregnancyId.value) {
+        console.log('[initPregnancyInfo] 이미 스토어에 임신 ID 있음:', pregnancyId.value)
+        console.log('[initPregnancyInfo] 현재 태명:', babyNickname.value)
         return true
       }
+      
+      // 스토리지에 저장된 임신 ID
+      const storedPregnancyId = localStorage.getItem('pregnancyId') || sessionStorage.getItem('pregnancyId')
       
       // 스토리지에 임신 ID가 있는 경우
       if (storedPregnancyId) {
         try {
           // 임신 ID로 상세 정보 조회
+          console.log('[initPregnancyInfo] 저장된 임신 ID로 상세 정보 조회 시도:', storedPregnancyId)
           const detailResponse = await api.get(`/accounts/pregnancies/${storedPregnancyId}/`)
           
           if (detailResponse.data) {
@@ -1293,45 +1312,114 @@ export const useCalendarStore = defineStore('calendar', () => {
             // 임신 관련 정보 설정
             isPregnant.value = true
             
-            if (pregnancyData.baby_nickname) {
+            console.log('[initPregnancyInfo] 임신 상세 정보:', pregnancyData)
+            
+            // 태명 찾기 (여러 필드 순서대로 확인)
+            const savedNickname = localStorage.getItem('babyNickname') || sessionStorage.getItem('babyNickname')
+            
+            // 태명 우선순위: 저장된 태명 > API baby_name > API baby_nickname > API nickname
+            if (savedNickname && savedNickname !== '(태명)' && savedNickname !== '우리 아기') {
+              babyNickname.value = savedNickname
+              console.log('[initPregnancyInfo] 저장된 태명 사용:', babyNickname.value)
+            } else if (pregnancyData.baby_name) {
+              babyNickname.value = pregnancyData.baby_name
+              console.log('[initPregnancyInfo] 태명 설정 (baby_name):', babyNickname.value)
+            } else if (pregnancyData.baby_nickname) {
               babyNickname.value = pregnancyData.baby_nickname
+              console.log('[initPregnancyInfo] 태명 설정 (baby_nickname):', babyNickname.value)
             } else if (pregnancyData.nickname) {
               babyNickname.value = pregnancyData.nickname
+              console.log('[initPregnancyInfo] 태명 설정 (nickname):', babyNickname.value)
             } else {
-              babyNickname.value = '아기'
+              console.log('[initPregnancyInfo] 태명 없음, 사용자가 직접 설정해야 함')
+              if (!babyNickname.value) {
+                babyNickname.value = null
+              }
             }
             
-            pregnancyId.value = storedPregnancyId
+            // 태명이 있다면 스토리지에 저장
+            if (babyNickname.value && babyNickname.value !== '(태명)') {
+              localStorage.setItem('babyNickname', babyNickname.value)
+              sessionStorage.setItem('babyNickname', babyNickname.value)
+            }
+            
+            // 임신 ID 설정 (id와 pregnancy_id 필드 모두 확인)
+            if (pregnancyData.id) {
+              pregnancyId.value = pregnancyData.id
+              console.log('[initPregnancyInfo] 임신 ID 설정 (id):', pregnancyId.value)
+            } else if (pregnancyData.pregnancy_id) {
+              pregnancyId.value = pregnancyData.pregnancy_id
+              console.log('[initPregnancyInfo] 임신 ID 설정 (pregnancy_id):', pregnancyId.value)
+            }
+            
+            // 자동 로그인 여부에 따라 적절한 스토리지에 저장
+            const rememberMe = localStorage.getItem('rememberMe') === 'true'
+            if (rememberMe) {
+              localStorage.setItem('pregnancyId', pregnancyId.value)
+            } else {
+              sessionStorage.setItem('pregnancyId', pregnancyId.value)
+            }
+            
+            console.log('[initPregnancyInfo] 임신 정보 초기화 완료!')
+            console.log('[initPregnancyInfo] isPregnant:', isPregnant.value)
+            console.log('[initPregnancyInfo] babyNickname:', babyNickname.value)
+            console.log('[initPregnancyInfo] pregnancyId:', pregnancyId.value)
+            
             return true
           }
         } catch (detailErr) {
           // 저장된 ID가 유효하지 않은 경우, 스토리지에서 제거
+          console.error('[initPregnancyInfo] 임신 상세 정보 조회 실패:', detailErr)
           localStorage.removeItem('pregnancyId')
           sessionStorage.removeItem('pregnancyId')
         }
       }
       
       // 임신 정보 API 호출
+      console.log('[initPregnancyInfo] 임신 정보 목록 API 호출 시도')
       const response = await api.get('/accounts/pregnancies/')
+      console.log('[initPregnancyInfo] 임신 정보 API 응답:', response.data)
       
       if (response.data && response.data.length > 0) {
         const pregnancyData = response.data[0]
         isPregnant.value = true
         
-        // 베이비 닉네임 설정 (baby_nickname과 nickname 필드 모두 확인)
-        if (pregnancyData.baby_nickname) {
+        // 태명 찾기 (여러 필드 순서대로 확인)
+        const savedNickname = localStorage.getItem('babyNickname') || sessionStorage.getItem('babyNickname')
+        
+        // 태명 우선순위: 저장된 태명 > API baby_name > API baby_nickname > API nickname
+        if (savedNickname && savedNickname !== '(태명)' && savedNickname !== '우리 아기') {
+          babyNickname.value = savedNickname
+          console.log('[initPregnancyInfo] 저장된 태명 사용:', babyNickname.value)
+        } else if (pregnancyData.baby_name) {
+          babyNickname.value = pregnancyData.baby_name
+          console.log('[initPregnancyInfo] 태명 설정 (baby_name):', babyNickname.value)
+        } else if (pregnancyData.baby_nickname) {
           babyNickname.value = pregnancyData.baby_nickname
+          console.log('[initPregnancyInfo] 태명 설정 (baby_nickname):', babyNickname.value)
         } else if (pregnancyData.nickname) {
           babyNickname.value = pregnancyData.nickname
+          console.log('[initPregnancyInfo] 태명 설정 (nickname):', babyNickname.value)
         } else {
-          babyNickname.value = '아기'
+          console.log('[initPregnancyInfo] 태명 없음, 사용자가 직접 설정해야 함')
+          if (!babyNickname.value) {
+            babyNickname.value = null
+          }
+        }
+        
+        // 태명이 있다면 스토리지에 저장
+        if (babyNickname.value && babyNickname.value !== '(태명)') {
+          localStorage.setItem('babyNickname', babyNickname.value)
+          sessionStorage.setItem('babyNickname', babyNickname.value)
         }
         
         // 임신 ID 설정 (id와 pregnancy_id 필드 모두 확인)
         if (pregnancyData.id) {
           pregnancyId.value = pregnancyData.id
+          console.log('[initPregnancyInfo] 임신 ID 설정 (id):', pregnancyId.value)
         } else if (pregnancyData.pregnancy_id) {
           pregnancyId.value = pregnancyData.pregnancy_id
+          console.log('[initPregnancyInfo] 임신 ID 설정 (pregnancy_id):', pregnancyId.value)
         }
         
         // 자동 로그인 여부에 따라 적절한 스토리지에 저장
@@ -1342,24 +1430,39 @@ export const useCalendarStore = defineStore('calendar', () => {
           sessionStorage.setItem('pregnancyId', pregnancyId.value)
         }
         
+        console.log('[initPregnancyInfo] 임신 정보 초기화 완료!')
+        console.log('[initPregnancyInfo] isPregnant:', isPregnant.value)
+        console.log('[initPregnancyInfo] babyNickname:', babyNickname.value)
+        console.log('[initPregnancyInfo] pregnancyId:', pregnancyId.value)
+        
         return true
       } else {
+        console.log('[initPregnancyInfo] 임신 정보 없음')
         return false
       }
     } catch (err) {
-      console.error('임신 정보 초기화 오류:', err)
+      console.error('[initPregnancyInfo] 임신 정보 초기화 오류:', err)
       return false
     }
   }
 
   // 받침 유무에 따라 적절한 조사 선택 함수
   function getJosa (word, josa1, josa2) {
-    if (!word || word.length === 0) return josa1
+    // word가 없거나 빈 문자열인 경우 기본값 반환
+    if (!word || typeof word !== 'string' || word.trim() === '') {
+      console.log('[getJosa] 단어가 없어 기본 조사 사용:', josa1)
+      return josa1
+    }
 
     const charCode = word.charCodeAt(word.length - 1)
     if (charCode >= 0xAC00 && charCode <= 0xD7A3) {
-      return (charCode - 0xAC00) % 28 > 0 ? josa1 : josa2
+      // 한글인 경우 받침 유무에 따라 조사 선택
+      const hasJongseong = (charCode - 0xAC00) % 28 > 0
+      console.log('[getJosa] 한글 단어:', word, '받침 있음:', hasJongseong, '선택된 조사:', hasJongseong ? josa1 : josa2)
+      return hasJongseong ? josa1 : josa2
     }
+    // 한글이 아닌 경우 기본값 반환
+    console.log('[getJosa] 한글이 아닌 단어:', word, '기본 조사 사용:', josa1)
     return josa1
   }
 
@@ -1426,33 +1529,16 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   /**
-   * 특정 날짜에 태교일기가 있는지 확인합니다.
-   * @param {string} dateStr - 확인할 날짜 문자열
+   * 특정 날짜에 태교일기가 존재하는지 확인
+   * @param {string} dateStr YYYY-MM-DD 형식의 날짜 문자열
    * @returns {boolean} 태교일기 존재 여부
    */
   const hasBabyDiary = (dateStr) => {
-    try {
-      // 날짜 정규화
+    // 날짜 정규화
     const formattedDate = normalizeDate(dateStr)
-      
-      // 디버깅을 위한 로그
-      console.log(`hasBabyDiary 호출: 입력=${dateStr}, 정규화=${formattedDate}`)
-      
-      // 이전 코드에서는 simple.some을 사용했으나, 디버깅이 용이하도록 for문으로 변경
-      for (const diary of babyDiaries.value) {
-        if (diary.date === formattedDate && diary.id) {
-          console.log(`✅ 일기 찾음: ${diary.date} (ID: ${diary.id})`)
-          return true
-        }
-      }
-      
-      // 일치하는 일기가 없는 경우
-      console.log(`❌ 일기 없음: ${formattedDate}`)
-      return false
-    } catch (error) {
-      console.error('일기 확인 중 오류 발생:', error)
-      return false
-    }
+    
+    // babyDiaries 배열에서 해당 날짜의 일기가 있는지 확인
+    return babyDiaries.value.some(diary => diary.date === formattedDate && diary.id)
   }
 
   // 스토어 초기화 함수
