@@ -21,7 +21,8 @@ const userInfo = ref({
   babyNickname: '',
   highRisk: false,
   pregnancyId: null,
-  isFromRegistration: false
+  isFromRegistration: false,
+  isActive: true
 })
 
 // 로딩 상태 관리
@@ -96,7 +97,7 @@ const fetchPregnancyInfo = async () => {
       userInfo.value.highRisk = data.high_risk
       userInfo.value.pregnancyId = data.pregnancy_id
       userInfo.value.isFromRegistration = data.is_from_registration || false // 회원가입 시 등록 여부 설정
-
+      userInfo.value.isActive = data.is_active // is_active 상태 저장
       // 임신 상태 저장
       localStorage.setItem('isPregnant', 'true')
       sessionStorage.setItem('isPregnant', 'true')
@@ -244,13 +245,13 @@ const handleLogout = async () => {
         <div class="bg-white rounded-lg shadow-md p-6 mb-4">
           <div class="flex justify-between items-center mb-4">
             <!-- 임신 정보가 있을 때만 표시 -->
-            <h2 v-if="userInfo.isPregnant" class="text-lg font-bold text-dark-gray">
+            <h2 v-if="userInfo.isPregnant && !userInfo.isActive" class="text-lg font-bold text-dark-gray">
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
           </div>
 
           <div
-            v-if="userInfo.isPregnant"
+            v-if="userInfo.isPregnant && userInfo.isActive"
             class="space-y-4"
           >
             <div class="flex justify-between items-center">
