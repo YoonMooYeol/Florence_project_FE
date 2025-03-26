@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
@@ -8,11 +8,12 @@ import { handleError } from '@/utils/errorHandler'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import SvgIcon from '@jamescoyle/vue-icon'
-import { mdiBabyFaceOutline } from '@mdi/js'
+import { mdiBabyFaceOutline, mdiMenu } from '@mdi/js'
 import api from '@/utils/axios'
 
 const CONTEXT = 'Chat'
 const path = mdiBabyFaceOutline
+const menuIcon = mdiMenu
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
@@ -69,6 +70,19 @@ const babyName = ref('') // 태명
 const pregnancyWeek = ref(0) // 임신 주차
 const currentSearchQuery = ref('') // 현재 검색 쿼리 표시
 
+// 채팅방 관련 상태
+const todayChatRoom = ref(null) // 오늘 채팅방
+const chatRooms = ref([]) // 모든 채팅방 목록
+const isMenuOpen = ref(false) // 햄버거 메뉴 상태
+const selectedChatRoomId = ref(null) // 현재 선택된 채팅방 ID
+
+// 하루의 시작은 자정(0시)부터 그날 저녁 11시 59분 59초까지
+const getTodayKey = () => {
+  const now = new Date()
+  // 자정(0시)부터 저녁 11시 59분 59초까지를 하루로 간주
+  return now.toISOString().split('T')[0]
+}
+
 // 시작 시 초기화
 onMounted(async () => {
   try {
@@ -102,14 +116,24 @@ onMounted(async () => {
       return
     }
 
-    // 환영 메시지 추가
-    messages.value.push({
-      id: Date.now(),
-      sender: 'bot',
-      content: `안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`,
-      parsedContent: parseMarkdown(`안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`),
-      time: getCurrentTime()
-    })
+    // 채팅방 목록 가져오기
+    await getChatRooms()
+
+    // 오늘 채팅방 확인 및 생성
+    await checkTodayChatRoom()
+
+    // 메시지가 없을 경우만 환영 메시지 추가
+    if (messages.value.length === 0) {
+      messages.value.push({
+        id: Date.now(),
+        sender: 'bot',
+        content: `안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`,
+        parsedContent: parseMarkdown(`안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`),
+        time: getCurrentTime()
+      })
+      // 환영 메시지도 로컬 스토리지에 저장
+      saveMessagesToLocalStorage()
+    }
 
     // 메시지가 추가되면 스크롤을 맨 아래로 이동
     scrollToBottom()
@@ -157,6 +181,193 @@ const getPregnancyInfo = async () => {
   }
 }
 
+// 채팅방 목록 가져오기
+const getChatRooms = async () => {
+  try {
+    // 올바른 API 엔드포인트 사용
+    const response = await apiClient.get(`/llm/chat/rooms/?user_id=${userId.value}`)
+    if (response.data && Array.isArray(response.data)) {
+      // 생성일 기준 내림차순 정렬 (최신순)
+      chatRooms.value = response.data.sort((a, b) => {
+        return new Date(b.created_at) - new Date(a.created_at)
+      })
+      logger.info(CONTEXT, '채팅방 목록 로드 완료:', chatRooms.value.length)
+    }
+  } catch (error) {
+    logger.error(CONTEXT, '채팅방 목록 로드 실패:', error)
+  }
+}
+
+// 오늘 채팅방 확인 및 생성
+const checkTodayChatRoom = async () => {
+  // 현재 날짜의 키 가져오기 (새벽 3시 기준)
+  const todayKey = getTodayKey()
+  const today = new Date(todayKey + 'T00:00:00')
+  logger.info(CONTEXT, `현재 날짜 키: ${todayKey}`)
+  
+  // 오늘 날짜로 생성된 채팅방이 있는지 확인
+  let todayRoom = null
+  
+  for (const room of chatRooms.value) {
+    const roomDate = new Date(room.created_at)
+    
+    // 날짜 비교를 위해 시간을 제외한 날짜만 비교 (YYYY-MM-DD 형식)
+    const roomDateStr = roomDate.toISOString().split('T')[0]
+    
+    if (roomDateStr === todayKey) {
+      logger.info(CONTEXT, `오늘(${todayKey})의 채팅방 찾음: ${room.chat_id}, 생성일: ${roomDateStr}`)
+      todayRoom = room
+      break
+    }
+  }
+  
+  if (todayRoom) {
+    // 오늘 채팅방이 있으면 선택
+    logger.info(CONTEXT, `오늘의 채팅방 선택: ${todayRoom.chat_id}`)
+    todayChatRoom.value = todayRoom
+    selectedChatRoomId.value = todayRoom.chat_id
+    
+    // 채팅방 메시지 로딩
+    loadMessagesFromLocalStorage()
+  } else {
+    // 오늘 채팅방이 없으면 생성
+    logger.info(CONTEXT, '오늘의 채팅방이 없어 새로 생성합니다.')
+    await createChatRoom()
+  }
+}
+
+// 로컬 스토리지에 메시지 저장
+const saveMessagesToLocalStorage = () => {
+  if (selectedChatRoomId.value) {
+    const storageKey = `chat_messages_${selectedChatRoomId.value}`
+    localStorage.setItem(storageKey, JSON.stringify(messages.value))
+    logger.info(CONTEXT, `메시지 로컬 저장 완료: ${storageKey}, 메시지 수: ${messages.value.length}`)
+  }
+}
+
+// 로컬 스토리지에서 메시지 불러오기
+const loadMessagesFromLocalStorage = () => {
+  if (!selectedChatRoomId.value) {
+    logger.warn(CONTEXT, '선택된 채팅방 ID가 없어 메시지를 로드할 수 없습니다.')
+    messages.value = []
+    return
+  }
+  
+  const storageKey = `chat_messages_${selectedChatRoomId.value}`
+  const savedMessagesJson = localStorage.getItem(storageKey)
+  
+  if (savedMessagesJson) {
+    try {
+      const savedMessages = JSON.parse(savedMessagesJson)
+      if (Array.isArray(savedMessages) && savedMessages.length > 0) {
+        // 메시지를 id 기준으로 정렬 (id는 타임스탬프 기반이므로 시간순)
+        messages.value = savedMessages.sort((a, b) => a.id - b.id)
+        logger.info(CONTEXT, `메시지 로컬 로드 완료: ${selectedChatRoomId.value}, 메시지 수: ${messages.value.length}`)
+      } else {
+        logger.info(CONTEXT, `채팅방 ${selectedChatRoomId.value}에 저장된 메시지가 없거나 비어 있습니다.`)
+        messages.value = []
+      }
+    } catch (error) {
+      logger.error(CONTEXT, `메시지 로드 중 오류 발생: ${error.message}`)
+      messages.value = []
+    }
+  } else {
+    logger.info(CONTEXT, `채팅방 ${selectedChatRoomId.value}에 저장된 메시지가 없습니다.`)
+    messages.value = []
+  }
+}
+
+// 새 채팅방 생성
+const createChatRoom = async () => {
+  try {
+    // 이미 오늘의 채팅방이 있는지 다시 한번 확인
+    const todayKey = getTodayKey()
+    const today = new Date(todayKey + 'T00:00:00')
+    
+    let existingTodayRoom = null
+    for (const room of chatRooms.value) {
+      const roomDate = new Date(room.created_at)
+      const roomDateStr = roomDate.toISOString().split('T')[0]
+      
+      if (roomDateStr === todayKey) {
+        existingTodayRoom = room
+        break
+      }
+    }
+    
+    // 이미 오늘의 채팅방이 있으면 그것을 사용
+    if (existingTodayRoom) {
+      logger.info(CONTEXT, `이미 오늘의 채팅방이 있습니다: ${existingTodayRoom.chat_id}`)
+      todayChatRoom.value = existingTodayRoom
+      selectedChatRoomId.value = existingTodayRoom.chat_id
+      
+      // 현재 선택된 채팅방이 있고 그게 오늘 채팅방이 아니면 메시지 저장
+      if (selectedChatRoomId.value && selectedChatRoomId.value !== existingTodayRoom.chat_id && messages.value.length > 0) {
+        saveMessagesToLocalStorage()
+      }
+      
+      // 메시지 로드
+      loadMessagesFromLocalStorage()
+      return
+    }
+    
+    // 현재 채팅방이 있고 메시지가 있으면 저장
+    if (selectedChatRoomId.value && messages.value.length > 0) {
+      saveMessagesToLocalStorage()
+    }
+    
+    const formattedDate = today.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+    
+    // 올바른 API 엔드포인트 사용
+    const response = await apiClient.post('/llm/chat/rooms/', {
+      user_id: userId.value,
+      topic: `${babyName.value || '아이'}와의 대화 (${formattedDate})`
+    })
+    
+    if (response.data) {
+      todayChatRoom.value = response.data
+      selectedChatRoomId.value = response.data.chat_id
+      
+      // 새로 생성된 채팅방을 목록 최상단에 추가
+      chatRooms.value.unshift(response.data)
+      logger.info(CONTEXT, `새 채팅방 생성 완료: ${response.data.chat_id}`)
+      
+      // 새 채팅방이므로 메시지 초기화
+      messages.value = []
+    }
+  } catch (error) {
+    logger.error(CONTEXT, `채팅방 생성 실패: ${error.message}`)
+  }
+}
+
+// 다른 채팅방 선택
+const selectChatRoom = (chatRoomId) => {
+  if (selectedChatRoomId.value === chatRoomId) {
+    // 이미 선택된 채팅방이면 메뉴만 닫기
+    isMenuOpen.value = false
+    return
+  }
+  
+  // 이전 채팅방의 메시지 저장
+  if (selectedChatRoomId.value && messages.value.length > 0) {
+    saveMessagesToLocalStorage()
+  }
+  
+  // 새 채팅방 선택
+  logger.info(CONTEXT, `채팅방 선택: ${chatRoomId}`)
+  selectedChatRoomId.value = chatRoomId
+  
+  // 선택한 채팅방의 메시지 로드
+  loadMessagesFromLocalStorage()
+  
+  // 메뉴 닫기
+  isMenuOpen.value = false
+}
+
 // 상태 선언
 const isStreaming = ref(false)        // 스트리밍 진행 중인지 표시
 const streamedBotContent = ref('')    // 스트리밍 중간 누적(봇 응답)
@@ -167,7 +378,12 @@ async function submitStreamAnswer() {
   if (!userAnswer.value.trim() || isSubmitting.value) {
     return
   }
-  // 디바운스 etc. 필요하다면 isDebounced() 호출
+  
+  // 채팅방이 없으면 먼저 생성
+  if (!selectedChatRoomId.value) {
+    logger.warn(CONTEXT, '선택된 채팅방이 없어 새 채팅방을 생성합니다.')
+    await createChatRoom()
+  }
 
   isSubmitting.value = true
   isStreaming.value = true
@@ -194,6 +410,9 @@ async function submitStreamAnswer() {
   messages.value.push(userMessage)
   scrollToBottom()
 
+  // 로컬 스토리지에 메시지 저장
+  saveMessagesToLocalStorage()
+
   // 로딩(typing) 표시용 메시지 추가
   const loadingMessageId = Date.now() + 1
   messages.value.push({
@@ -203,6 +422,7 @@ async function submitStreamAnswer() {
     parsedContent: '', // 마크다운 파싱된 HTML 저장 필드 추가
     isLoading: true,
     isTyping: true,
+    isTypingComplete: false,
     time: getCurrentTime()
   })
   scrollToBottom()
@@ -213,14 +433,14 @@ async function submitStreamAnswer() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // 필요하다면 인증 토큰:
-        // 'Authorization': `Bearer ${토큰}`
+        Authorization: `Bearer ${localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')}`
       },
       body: JSON.stringify({
         user_id: userId.value,
         query_text: currentAnswer,
         baby_name: babyName.value || '태아',
-        pregnancy_week: pregnancyWeek.value || 0
+        pregnancy_week: pregnancyWeek.value || 0,
+        chat_id: selectedChatRoomId.value // 선택된 채팅방 ID 전달 (thread_id에서 변경)
       })
     })
 
@@ -281,6 +501,15 @@ async function submitStreamAnswer() {
             updateBotMessage(loadingMessageId, accumulatedText)
             await nextTick()
             scrollToBottom()
+            
+            // 메시지 완료 후 로컬 스토리지에 저장
+            saveMessagesToLocalStorage()
+            
+            // 메시지 완료 처리
+            const botMsg = messages.value.find(m => m.id === loadingMessageId)
+            if (botMsg) {
+              botMsg.isTypingComplete = true
+            }
           }
         }
       }
@@ -288,6 +517,15 @@ async function submitStreamAnswer() {
   } catch (error) {
     console.error('submitStreamAnswer error:', error)
     errorMessage.value = '스트리밍 도중 오류가 발생했습니다.'
+    
+    // 에러 발생 시 로딩 메시지 제거 
+    const errorIndex = messages.value.findIndex(m => m.id === loadingMessageId)
+    if (errorIndex !== -1) {
+      messages.value.splice(errorIndex, 1)
+    }
+    
+    // 로컬 스토리지에 저장
+    saveMessagesToLocalStorage()
   } finally {
     // 로딩/타이핑 해제
     isSubmitting.value = false
@@ -298,6 +536,7 @@ async function submitStreamAnswer() {
     if (botMsg) {
       botMsg.isLoading = false
       botMsg.isTyping = false
+      botMsg.isTypingComplete = true
     }
 
     scrollToBottom()
@@ -404,24 +643,174 @@ const parseMarkdown = (text) => {
     return text // 오류 발생 시 원본 텍스트 반환
   }
 }
+
+// 채팅방 이름 포맷팅 (간단한 형태로 변경)
+const formatChatRoomName = (room) => {
+  // 날짜 포맷팅
+  const date = new Date(room.created_at)
+  const formatter = new Intl.DateTimeFormat('ko-KR', {
+    month: 'short',
+    day: 'numeric'
+  })
+  const formattedDate = formatter.format(date)
+  
+  // 주제가 있으면 주제 사용, 없으면 날짜만 표시
+  if (room.topic) {
+    // 주제에서 첫 10자만 가져오고 나머지는 '...'으로 표시
+    const shortTopic = room.topic.length > 15 ? room.topic.substring(0, 15) + '...' : room.topic
+    return shortTopic
+  }
+  
+  // 기본 이름: 사용자 이름과 날짜 표시
+  return `${room.user_name || '사용자'}님의 대화`
+}
+
+// 햄버거 메뉴 토글
+const toggleMenu = () => {
+  isMenuOpen.value = !isMenuOpen.value
+}
+
+// 선택된 채팅방 ID가 변경될 때마다 메시지 로드
+watch(selectedChatRoomId, () => {
+  loadMessagesFromLocalStorage()
+})
+
+// 새 채팅 버튼 클릭 핸들러
+const createNewChat = async () => {
+  try {
+    // 새 채팅방 생성
+    await createChatRoom()
+    
+    // 메뉴 닫기
+    isMenuOpen.value = false
+    
+    // 메시지 초기화 (환영 메시지 추가)
+    if (messages.value.length === 0) {
+      messages.value.push({
+        id: Date.now(),
+        sender: 'bot',
+        content: `안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`,
+        parsedContent: parseMarkdown(`안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`),
+        time: getCurrentTime()
+      })
+      // 환영 메시지도 로컬 스토리지에 저장
+      saveMessagesToLocalStorage()
+    }
+    
+    // 스크롤을 맨 아래로 이동
+    scrollToBottom()
+  } catch (error) {
+    logger.error(CONTEXT, `새 채팅방 생성 실패: ${error.message}`)
+  }
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-ivory flex flex-col">
-    <!-- 헤더 -->
-    <div class="bg-white p-4 shadow-md flex items-center justify-center fixed top-0 left-0 right-0 z-20">
+    <!-- 헤더 (햄버거 메뉴 추가) -->
+    <div class="bg-white p-4 shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-20">
+      <button
+        class="p-2 rounded-full hover:bg-gray-100 focus:outline-none"
+        @click="toggleMenu"
+      >
+        <svg-icon
+          type="mdi"
+          :path="menuIcon"
+          :size="24"
+          :fill="'#353535'"
+        />
+      </button>
+      
       <h1 class="text-xl font-bold text-center text-dark-gray">
         플로렌스
       </h1>
+      
+      <!-- 빈 요소로 균형 맞추기 -->
+      <div class="w-[24px]"></div>
+    </div>
+
+    <!-- 햄버거 메뉴 (슬라이드 사이드 바) -->
+    <div
+      v-if="isMenuOpen"
+      class="fixed inset-0 z-30 flex"
+      @click.self="isMenuOpen = false"
+    >
+      <!-- 오버레이 -->
+      <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+      
+      <!-- 사이드바 - ChatGPT 스타일 -->
+      <div class="relative w-4/5 max-w-[300px] bg-white h-full flex flex-col overflow-hidden shadow-xl animate-slide-in">
+        <!-- 헤더 -->
+        <div class="p-4 bg-point-yellow flex justify-between items-center">
+          <h2 class="text-lg font-bold text-dark-gray">채팅 기록</h2>
+          <button 
+            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-yellow-400 transition-colors"
+            aria-label="메뉴 닫기"
+            @click="isMenuOpen = false"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              class="h-6 w-6 text-dark-gray" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+
+        
+        <!-- 채팅방 목록 (스크롤 가능) -->
+        <div class="flex-1 overflow-y-auto">
+          <div class="p-2 space-y-1">
+            <!-- 채팅방이 있는 경우 -->
+            <div v-if="chatRooms.length > 0">
+              <button
+                v-for="room in chatRooms"
+                :key="room.chat_id"
+                class="w-full text-left py-2 px-3 rounded-md hover:bg-gray-100 transition-colors flex items-center"
+                :class="{ 'bg-gray-100 font-bold': selectedChatRoomId === room.chat_id }"
+                @click="selectChatRoom(room.chat_id)"
+              >
+                <!-- 채팅 아이콘 -->
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 mr-3 text-gray-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                  <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+                </svg>
+                
+                <div class="flex-1 truncate">
+                  <div class="text-dark-gray text-sm font-medium">{{ formatChatRoomName(room) }}</div>
+                  <div class="text-xs text-gray-500">{{ new Date(room.created_at).toLocaleDateString() }}</div>
+                </div>
+              </button>
+            </div>
+            
+            <!-- 채팅방이 없을 경우 메시지 -->
+            <div
+              v-else
+              class="py-4 text-center text-gray-500"
+            >
+              채팅 기록이 없습니다.
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 에러 메시지 -->
-    <!-- <div
+    <div
       v-if="errorMessage"
       class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-2 mt-14"
     >
       <p>{{ errorMessage }}</p>
-    </div> -->
+    </div>
 
     <!-- 대화 메시지 영역 -->
     <div
@@ -453,7 +842,8 @@ const parseMarkdown = (text) => {
                 class="bg-white p-3 rounded-lg shadow-sm markdown-content"
                 :class="{
                   'loading-message': message.isLoading,
-                  'typing-message': message.isTyping
+                  'typing-message': message.isTyping,
+                  'typing-complete': message.isTypingComplete
                 }"
               >
                 <!-- 마크다운 렌더링 -->
@@ -691,6 +1081,16 @@ textarea {
   animation: pulse-width 2s ease-in-out infinite;
 }
 
+/* 사이드바 애니메이션 */
+@keyframes slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
 /* 마크다운 콘텐츠 스타일 */
 :deep(.markdown-content) {
   line-height: 1.6;
@@ -795,7 +1195,7 @@ textarea {
 }
 
 /* 타이핑 중인 메시지에 커서 효과 추가 */
-.typing-message :deep(p:last-child::after) {
+.typing-message:not(.loading-message) :deep(p:last-child::after) {
   content: "";
   display: inline-block;
   width: 6px;
@@ -804,6 +1204,11 @@ textarea {
   animation: cursor-blink 0.8s infinite;
   margin-left: 2px;
   vertical-align: middle;
+}
+
+/* 메시지가 완료되면 커서를 보이지 않게 함 */
+.typing-message.typing-complete :deep(p:last-child::after) {
+  display: none;
 }
 
 @keyframes cursor-blink {
