@@ -162,7 +162,7 @@ router.beforeEach((to, from, next) => {
     token = sessionStorage.getItem('accessToken')
     if (token) {
       console.log('세션 스토리지에서 토큰 발견, 로컬 스토리지에 복사')
-      localStorage.setItem('accessToken', token)
+      // localStorage.setItem('accessToken', token)
     }
   }
   

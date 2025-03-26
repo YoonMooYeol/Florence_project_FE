@@ -19,7 +19,7 @@ export const issueToken = async (username, password) => {
       throw new Error('토큰이 응답에 없습니다.');
     }
     // 로컬 스토리지에 토큰 저장 (또는 다른 스토리지 사용 가능)
-    localStorage.setItem('access_token', token);
+    // localStorage.setItem('access_token', token);
     return token;
   } catch (error) {
     console.error('토큰 발급 실패:', error);
