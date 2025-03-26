@@ -121,6 +121,13 @@ onMounted(async () => {
 
     // 오늘 채팅방 확인 및 생성
     await checkTodayChatRoom()
+    
+    // 현재 시간 기준으로 채팅방이 없으면 강제로 생성
+    // 이 부분은 기존 로직으로 처리되어야 하지만, 혹시 모를 상황을 대비해 추가
+    if (!selectedChatRoomId.value) {
+      logger.warn(CONTEXT, '선택된 채팅방이 없어 강제로 새 채팅방을 생성합니다.')
+      await createChatRoom()
+    }
 
     // 메시지가 없을 경우만 환영 메시지 추가
     if (messages.value.length === 0) {
@@ -200,19 +207,24 @@ const getChatRooms = async () => {
 
 // 오늘 채팅방 확인 및 생성
 const checkTodayChatRoom = async () => {
-  // 현재 날짜의 키 가져오기 (새벽 3시 기준)
+  // 현재 날짜의 키 가져오기 (자정 0시 기준)
   const todayKey = getTodayKey()
   const today = new Date(todayKey + 'T00:00:00')
-  logger.info(CONTEXT, `현재 날짜 키: ${todayKey}`)
+  const now = new Date()
+  logger.info(CONTEXT, `현재 시간: ${now.toLocaleString()}, 현재 시간(시): ${now.getHours()}, 오늘 날짜 키: ${todayKey}`)
   
   // 오늘 날짜로 생성된 채팅방이 있는지 확인
   let todayRoom = null
   
+  // 모든 채팅방 정보 로깅
+  logger.info(CONTEXT, `채팅방 목록 수: ${chatRooms.value.length}`)
+  
   for (const room of chatRooms.value) {
     const roomDate = new Date(room.created_at)
-    
-    // 날짜 비교를 위해 시간을 제외한 날짜만 비교 (YYYY-MM-DD 형식)
     const roomDateStr = roomDate.toISOString().split('T')[0]
+    
+    // 각 채팅방의 날짜 정보를 자세히 로깅
+    logger.info(CONTEXT, `채팅방 ID: ${room.chat_id}, 생성일: ${room.created_at}, 날짜키: ${roomDateStr}`)
     
     if (roomDateStr === todayKey) {
       logger.info(CONTEXT, `오늘(${todayKey})의 채팅방 찾음: ${room.chat_id}, 생성일: ${roomDateStr}`)
@@ -283,13 +295,23 @@ const createChatRoom = async () => {
     // 이미 오늘의 채팅방이 있는지 다시 한번 확인
     const todayKey = getTodayKey()
     const today = new Date(todayKey + 'T00:00:00')
+    const now = new Date()
+    logger.info(CONTEXT, `채팅방 생성 - 현재 시간: ${now.toLocaleString()}, 현재 시간(시): ${now.getHours()}, 오늘 날짜 키: ${todayKey}`)
     
     let existingTodayRoom = null
+    
+    // 모든 채팅방 정보 로깅
+    logger.info(CONTEXT, `채팅방 생성 전 채팅방 목록 수: ${chatRooms.value.length}`)
+    
     for (const room of chatRooms.value) {
       const roomDate = new Date(room.created_at)
       const roomDateStr = roomDate.toISOString().split('T')[0]
       
+      // 각 채팅방의 날짜 정보를 자세히 로깅
+      logger.info(CONTEXT, `채팅방 ID: ${room.chat_id}, 생성일: ${room.created_at}, 날짜키: ${roomDateStr}`)
+      
       if (roomDateStr === todayKey) {
+        logger.info(CONTEXT, `이미 오늘(${todayKey})의 채팅방 존재: ${room.chat_id}, 생성일: ${roomDateStr}`)
         existingTodayRoom = room
         break
       }
@@ -687,35 +709,6 @@ const toggleMenu = () => {
 watch(selectedChatRoomId, () => {
   loadMessagesFromLocalStorage()
 })
-
-// 새 채팅 버튼 클릭 핸들러
-const createNewChat = async () => {
-  try {
-    // 새 채팅방 생성
-    await createChatRoom()
-    
-    // 메뉴 닫기
-    isMenuOpen.value = false
-    
-    // 메시지 초기화 (환영 메시지 추가)
-    if (messages.value.length === 0) {
-      messages.value.push({
-        id: Date.now(),
-        sender: 'bot',
-        content: `안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`,
-        parsedContent: parseMarkdown(`안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`),
-        time: getCurrentTime()
-      })
-      // 환영 메시지도 로컬 스토리지에 저장
-      saveMessagesToLocalStorage()
-    }
-    
-    // 스크롤을 맨 아래로 이동
-    scrollToBottom()
-  } catch (error) {
-    logger.error(CONTEXT, `새 채팅방 생성 실패: ${error.message}`)
-  }
-}
 </script>
 
 <template>
@@ -818,12 +811,12 @@ const createNewChat = async () => {
     </div>
 
     <!-- 에러 메시지 -->
-    <div
+    <!-- <div
       v-if="errorMessage"
       class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-2 mt-14"
     >
       <p>{{ errorMessage }}</p>
-    </div>
+    </div> -->
 
     <!-- 대화 메시지 영역 -->
     <div
