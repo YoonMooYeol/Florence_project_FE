@@ -21,7 +21,8 @@ const userInfo = ref({
   babyNickname: '',
   highRisk: false,
   pregnancyId: null,
-  isFromRegistration: false
+  isFromRegistration: false,
+  image: ''
 })
 
 // 로딩 상태 관리
@@ -49,6 +50,7 @@ const fetchUserInfo = async () => {
     userInfo.value.email = response.data.email || ''
     userInfo.value.phone = response.data.phone || ''
     userInfo.value.gender = response.data.gender || ''
+    userInfo.value.image = response.data.image || ''
 
     // 로컬 스토리지 및 세션 스토리지에 사용자 정보 저장
     if (localStorage.getItem('rememberMe') === 'true') {
@@ -216,8 +218,17 @@ const handleLogout = async () => {
     >
       <div class="bg-white rounded-lg shadow-md p-6 mb-4">
         <div class="flex items-center mb-4">
-          <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
+          <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4 relative overflow-hidden">
+            <!-- 프로필 이미지가 있을 경우 표시 -->
+            <img
+              v-if="userInfo.image"
+              :src="`${userInfo.image}?t=${Date.now()}`"
+              alt="프로필 사진"
+              class="absolute inset-0 w-full h-full object-cover rounded-full"
+            />
+            <!-- 기본 아이콘 -->
             <svg
+              v-else
               xmlns="http://www.w3.org/2000/svg"
               class="h-10 w-10 text-gray-500"
               viewBox="0 0 20 20"
