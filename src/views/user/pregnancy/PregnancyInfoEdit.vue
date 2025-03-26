@@ -17,7 +17,8 @@ const pregnancyInfo = ref({
   highRisk: false,
   isPregnant: false,
   pregnancyId: null,
-  isFromRegistration: false // 회원가입 시 등록 여부
+  isFromRegistration: false, // 회원가입 시 등록 여부
+  isActive: true // 활성화 여부
 })
 
 // "모름" 상태 관리
@@ -57,7 +58,8 @@ const fetchPregnancyInfo = async () => {
         highRisk: data.high_risk,
         isPregnant: true,
         pregnancyId: data.pregnancy_id,
-        isFromRegistration: data.is_from_registration || false // 회원가입 시 등록 여부
+        isFromRegistration: data.is_from_registration || false, // 회원가입 시 등록 여부
+        isActive: data.is_active // is_active 상태 저장
       }
 
       // 수정 모드 초기값 설정: 항상 true(수정 모드)로 시작
@@ -157,25 +159,22 @@ const savePregnancyInfo = async () => {
       due_date: pregnancyInfo.value.dueDate,
       current_week: pregnancyInfo.value.currentWeek,
       high_risk: pregnancyInfo.value.highRisk,
-      is_from_registration: pregnancyInfo.value.isFromRegistration
+      is_active: true
+      // is_active는 여기서 관리하지 않음 (삭제 버튼으로 처리)
+      // is_from_registration: pregnancyInfo.value.isFromRegistration // 이 필드가 필요하다면 유지
     }
 
-    if (pregnancyInfo.value.isPregnant) {
-      if (pregnancyInfo.value.pregnancyId) {
-        // 기존 임신 정보 업데이트
-        response = await api.put(`/accounts/pregnancies/${pregnancyInfo.value.pregnancyId}/`, requestData)
-      } else {
-        // 새 임신 정보 생성
-        response = await api.post('/accounts/pregnancies/', requestData)
-        pregnancyInfo.value.pregnancyId = response.data.pregnancy_id
-      }
+    // isPregnant 상태는 이제 UI 표시용 또는 다른 로직용으로만 사용될 수 있음
+    // 저장 시 isPregnant 값 자체를 보내지 않거나, 백엔드에서 is_active와 연동되지 않도록 처리 필요
+    // 여기서는 isPregnant 값에 따라 생성/수정만 하도록 유지
+
+    if (pregnancyInfo.value.pregnancyId) {
+      // 기존 임신 정보 업데이트
+      response = await api.put(`/accounts/pregnancies/${pregnancyInfo.value.pregnancyId}/`, requestData)
     } else {
-      // 임신 정보 삭제 (isPregnant가 false일 때)
-      if (pregnancyInfo.value.pregnancyId) {
-        await api.delete(`/accounts/pregnancies/${pregnancyInfo.value.pregnancyId}/`)
-        pregnancyInfo.value.pregnancyId = null // 삭제 후 ID 초기화
-      }
-      // isPregnant가 false이고 ID가 없는 경우는 아무 작업도 하지 않음
+      // 새 임신 정보 생성 (is_active는 기본값 True로 생성될 것으로 가정)
+      response = await api.post('/accounts/pregnancies/', requestData)
+      pregnancyInfo.value.pregnancyId = response.data.pregnancy_id
     }
 
     // 저장 성공 메시지
@@ -184,10 +183,48 @@ const savePregnancyInfo = async () => {
     // 프로필 페이지로 이동
     router.push('/profile')
 
-    // 임신 정보 새로고침 (페이지 이동 전에 필요하다면 유지, 이동 후 Profile 페이지에서 새로 로드하므로 주석 처리 가능)
-    // await fetchPregnancyInfo()
   } catch (error) {
     errorMessage.value = error.response?.data?.detail || '임신 정보 저장 중 오류가 발생했습니다.'
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// 임신 정보 삭제 (비활성화) 함수 수정
+const deletePregnancyInfo = async () => {
+  if (!pregnancyInfo.value.pregnancyId) {
+    alert('삭제할 임신 정보가 없습니다.')
+    return
+  }
+
+  // 사용자 확인
+  if (!confirm('정말로 임신 정보를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    return
+  }
+
+  isSubmitting.value = true
+  errorMessage.value = ''
+
+  try {
+    // PATCH 요청으로 모든 필드 초기화 및 is_active를 false로 설정
+    const resetData = {
+      baby_name: null,        // 태명 초기화
+      due_date: null,         // 출산예정일 초기화
+      current_week: null,     // 임신 주차 초기화
+      high_risk: false,       // 고위험 임신 여부 false로 설정
+      is_active: false        // 비활성화
+    }
+
+    await api.put(`/accounts/pregnancies/${pregnancyInfo.value.pregnancyId}/`, resetData)
+
+    // 성공 메시지
+    alert('임신 정보가 삭제되었습니다.')
+
+    // 프로필 페이지로 이동
+    router.push('/profile')
+
+  } catch (error) {
+    errorMessage.value = error.response?.data?.detail || '임신 정보 삭제 중 오류가 발생했습니다.'
   } finally {
     isSubmitting.value = false
   }
@@ -490,14 +527,25 @@ watch(() => lastPeriodDate.value, () => {
       </div>
 
       <!-- 버튼 영역 -->
-      <div v-if="isEditMode" class="flex flex-col">
+      <div v-if="isEditMode" class="flex flex-col space-y-3">
         <button
           class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
           :disabled="isSubmitting"
           @click="savePregnancyInfo"
         >
           <span v-if="isSubmitting">처리 중...</span>
-          <span v-else>수정하기</span>
+          <span v-else>저장하기</span>
+        </button>
+
+        <!-- 임신 정보 삭제 버튼 조건 수정 (pregnancyId 존재 여부만 확인) -->
+        <button
+          v-if="pregnancyInfo.pregnancyId && pregnancyInfo.isActive"
+          class=""
+          :disabled="isSubmitting"
+          @click="deletePregnancyInfo"
+        >
+          <span v-if="isSubmitting">_</span>
+          <span v-else>임신 정보 삭제</span>
         </button>
       </div>
     </div>

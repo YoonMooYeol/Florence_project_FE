@@ -1000,10 +1000,10 @@ onMounted(async () => {
   console.log('DayEventsModal - 임신 상태(isPregnant):', calendarStore.isPregnant)
   console.log('DayEventsModal - 태명(babyNickname):', calendarStore.babyNickname)
   
-  // 태명이 없을 경우에만 기본값 설정
+  // 태명이 없으면 '그리움'으로 설정 (앞서 null인 경우 store에서 '그리움'으로 설정된 경우가 많겠지만, 이중 확인)
   if (!calendarStore.babyNickname) {
-    console.log('DayEventsModal - 태명이 설정되지 않아 기본값 사용')
-    calendarStore.babyNickname = '(태명)'
+    console.log('DayEventsModal - 태명이 없어 기본값 설정')
+    calendarStore.babyNickname = '그리움'
   }
   
   // 기본 탭을 일정으로 설정
@@ -1013,7 +1013,7 @@ onMounted(async () => {
 // 태명과 조사를 안전하게 표시하는 계산된 속성 추가
 const babyTabLabel = computed(() => {
   // 태명이 없거나 null인 경우 '(태명)'을 사용
-  const nickname = calendarStore.babyNickname || '(태명)'
+  const nickname = calendarStore.babyNickname || '그리움'
   const josa = calendarStore.getJosa(nickname, '과', '와')
   console.log('태명 탭 레이블 계산:', nickname, josa)
   return `${nickname}${josa}의 하루`
@@ -1068,7 +1068,7 @@ const babyTabLabel = computed(() => {
           오늘의 하루
         </button>
         <button
-          v-if="calendarStore.isPregnant"
+          v-if="calendarStore.pregnancyId"
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
           :class="activeTab === 'baby' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
           data-tab="baby"
