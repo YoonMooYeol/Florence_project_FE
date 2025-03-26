@@ -33,11 +33,12 @@ const props = defineProps({
 // 필요한 상태 변수들
 const isClickable = ref(false)
 const diaryContent = ref('')
-const activeTab = ref('schedule') // 초기 활성 탭을 '일정' 탭으로 되돌림
+const activeTab = ref('schedule')
 const showDiaryModal = ref(false)
 const showEventModal = ref(false)
 const showEventDetailModal = ref(false)
 const selectedEvent = ref(null)
+const showBirthdayPhoto = ref(true) // 출산예정일 다음날 사진 표시 여부
 
 // 모달이 열렸을 때 props 변화 감지 및 처리
 watch(() => props.show, async (newValue) => {
@@ -1018,6 +1019,11 @@ const babyTabLabel = computed(() => {
   console.log('태명 탭 레이블 계산:', nickname, josa)
   return `${nickname}${josa}의 하루`
 })
+
+// 출산예정일 다음날 사진 닫기 함수
+const closeBirthdayPhoto = () => {
+  showBirthdayPhoto.value = false
+}
 </script>
 
 <template>
@@ -1142,6 +1148,46 @@ const babyTabLabel = computed(() => {
           v-if="activeTab === 'baby'"
           class="space-y-4"
         >
+          <!-- 출산예정일 다음날 사진 -->
+          <div v-if="showBirthdayPhoto && babyDiary && babyDiary.photos && babyDiary.photos.length > 0" class="relative">
+            <button
+              class="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-colors"
+              @click="closeBirthdayPhoto"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <div class="grid grid-cols-1 gap-4">
+              <div
+                v-for="photo in babyDiary.photos"
+                :key="photo.id"
+                class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
+                style="aspect-ratio: 16/9; height: 180px;"
+              >
+                <img
+                  :src="getThumbnailUrl(photo.image)"
+                  :alt="'태교일기 사진'"
+                  class="w-full h-full object-cover"
+                  loading="eager"
+                  @error="handleImageError($event)"
+                  @load="handleImageLoad($event, photo)"
+                >
+              </div>
+            </div>
+          </div>
+
           <div
             v-if="babyDiary && babyDiary.id"
             class="space-y-6"
