@@ -700,8 +700,8 @@ const getThumbnailUrl = (imageUrl) => {
 
 // 이미지 로드 오류 처리 함수 개선
 function handleImageError(event) {
-  // fallback 이미지 URL (실제 사용 중인 기본 이미지 경로로 수정하세요)
-  const fallback = '/assets/default-diary-thumbnail.png';
+  // fallback 이미지 URL (실제 사용 중인 기본 이미지 경로로 수정)
+  const fallback = '/images/photo_placeholder.png';
   // 만약 이미 fallback 이미지가 설정되어 있다면 중복 처리하지 않음
   if (event.target.src === fallback) {
     console.log('이미 기본 이미지로 설정되어 있습니다.');
@@ -1143,7 +1143,7 @@ const babyTabLabel = computed(() => {
           class="space-y-4"
         >
           <div
-            v-if="babyDiary && babyDiary.id && babyDiary.content"
+            v-if="babyDiary && babyDiary.id"
             class="space-y-6"
           >
             <!-- 사진 갤러리 -->
@@ -1155,9 +1155,9 @@ const babyTabLabel = computed(() => {
                 <button
                   v-if="canUploadMorePhotos"
                   @click="fileInput.click()"
-                  class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs hover:bg-blue-600 transition-colors"
+                  class="px-2 py-0.5 bg-[#A4E49B] text-dark-gray rounded-[30px] text-xl hover:bg-[#A4E49B] transition-colors font-bold text-center"
                 >
-                  사진 추가
+                ➕
                 </button>
               </div>
               
@@ -1236,16 +1236,6 @@ const babyTabLabel = computed(() => {
                 </div>
               </div>
               
-              <!-- 사진이 없고 추가할 수 있는 경우 사진 추가 버튼 표시 -->
-              <div v-else-if="canUploadMorePhotos" class="flex justify-center my-4">
-                <button
-                  @click="fileInput.click()"
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  사진 등록하기
-                </button>
-              </div>
-              
               <!-- 업로드 중 표시 -->
               <div v-if="isUploading" class="flex justify-center my-2">
                 <div class="text-blue-500 text-sm flex items-center">
@@ -1256,23 +1246,23 @@ const babyTabLabel = computed(() => {
                   사진 업로드 중...
                 </div>
               </div>
-            </div>
 
-            <!-- 일기 내용 -->
-            <div class="bg-white p-4 rounded-lg shadow">
-              <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
-                {{ babyDiary.content }}
-              </p>
-            </div>
-            
-            <!-- 일기 작성/수정 버튼 -->
-            <div class="flex space-x-2">
-              <button
-                class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
-                @click="openDiaryModal('edit')"
-              >
-                일기 수정
-              </button>
+              <!-- 일기 내용이 있는 경우에만 표시 -->
+              <div v-if="babyDiary.content" class="bg-white p-4 rounded-lg shadow">
+                <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
+                  {{ babyDiary.content }}
+                </p>
+              </div>
+              
+              <!-- 일기 작성/수정 버튼 -->
+              <div class="flex space-x-2">
+                <button
+                  class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                  @click="openDiaryModal(babyDiary.content ? 'edit' : 'create')"
+                >
+                  {{ babyDiary.content ? '일기 수정' : '기록하기' }}
+                </button>
+              </div>
             </div>
           </div>
           <div
@@ -1289,13 +1279,11 @@ const babyTabLabel = computed(() => {
               >
                 기록하기
               </button>
-              
-              <!-- 일기가 없는 경우에도 사진 등록 버튼 표시 -->
               <button
                 @click="fileInput.click()"
-                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                class="px-4 py-2 bg-[#A4E49B] text-dark-gray rounded-lg hover:bg-[#A4E49B] transition-colors font-bold"
               >
-                사진 등록하기
+                사진등록
               </button>
             </div>
           </div>

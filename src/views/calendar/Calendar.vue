@@ -312,6 +312,9 @@ onMounted(async () => {
     // 캘린더 새로고침 이벤트 리스너 추가
     window.addEventListener('calendar-needs-refresh', handleCalendarRefresh)
     
+    // 출산 예정일 체크
+    await calendarStore.checkDueDate()
+    
   } catch (error) {
     logger.error(CONTEXT, '캘린더 마운트 중 오류 발생:', error)
     handleError(error, CONTEXT)
@@ -653,6 +656,11 @@ const handleCalendarRefresh = async (event) => {
           {{ day }}
         </span>
       </div>
+    </div>
+
+    <!-- 출산 예정일 이후 오버레이 -->
+    <div v-if="calendarStore.isAfterDueDate" class="after-due-date-overlay">
+      <img src="/src/assets/images/after_due_date.png" alt="출산 예정일 이후" class="after-due-date-image" />
     </div>
 
     <!-- 캘린더 -->
@@ -1444,5 +1452,29 @@ body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top a.fc-daygrid-day-n
   left: 5px;
   top: 2px;
   text-align: left;
+}
+
+.after-due-date-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.after-due-date-image {
+  max-width: 80%;
+  max-height: 80vh;
+  object-fit: contain;
+}
+
+.calendar-content {
+  position: relative;
+  z-index: 1;
 }
 </style>
