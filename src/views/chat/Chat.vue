@@ -136,7 +136,7 @@ onMounted(async () => {
     }
 
     // 메시지가 추가되면 스크롤을 맨 아래로 이동
-    scrollToBottom()
+    instantScrollToBottom()
   } catch (error) {
     handleError(error, CONTEXT)
   }
@@ -583,6 +583,19 @@ const scrollToBottom = () => {
       }
     }
   }, 50) // 스크롤 타이밍을 늘려 DOM 업데이트 후 스크롤이 적용되도록 함
+}
+
+// 새로 추가: 초기 로딩 시 스크롤을 즉시 아래로 이동하는 함수
+const instantScrollToBottom = () => {
+  setTimeout(() => {
+    const container = chatContainer.value || document.querySelector('.chat-messages')
+    if (container) {
+      const prevScrollBehavior = container.style.scrollBehavior;
+      container.style.scrollBehavior = 'auto';
+      container.scrollTop = container.scrollHeight;
+      container.style.scrollBehavior = prevScrollBehavior || 'smooth';
+    }
+  }, 0)
 }
 
 // 메시지 전송 함수 (엔터키 처리)
