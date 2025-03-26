@@ -76,15 +76,10 @@ const chatRooms = ref([]) // 모든 채팅방 목록
 const isMenuOpen = ref(false) // 햄버거 메뉴 상태
 const selectedChatRoomId = ref(null) // 현재 선택된 채팅방 ID
 
-// 하루의 시작은 새벽 3시부터 다음날 새벽 2시 59분 59초까지
+// 하루의 시작은 자정(0시)부터 그날 저녁 11시 59분 59초까지
 const getTodayKey = () => {
   const now = new Date()
-  // 현재 시간이 새벽 3시 이전이면 전날 날짜 사용
-  if (now.getHours() < 3) {
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
-    return yesterday.toISOString().split('T')[0]
-  }
+  // 자정(0시)부터 저녁 11시 59분 59초까지를 하루로 간주
   return now.toISOString().split('T')[0]
 }
 
@@ -207,22 +202,24 @@ const getChatRooms = async () => {
 const checkTodayChatRoom = async () => {
   // 현재 날짜의 키 가져오기 (새벽 3시 기준)
   const todayKey = getTodayKey()
+  const today = new Date(todayKey + 'T00:00:00')
   logger.info(CONTEXT, `현재 날짜 키: ${todayKey}`)
   
   // 오늘 날짜로 생성된 채팅방이 있는지 확인
-  const todayRoom = chatRooms.value.find(room => {
+  let todayRoom = null
+  
+  for (const room of chatRooms.value) {
     const roomDate = new Date(room.created_at)
-    // YYYY-MM-DD 형식으로 변환
+    
+    // 날짜 비교를 위해 시간을 제외한 날짜만 비교 (YYYY-MM-DD 형식)
     const roomDateStr = roomDate.toISOString().split('T')[0]
-    const isToday = roomDateStr === todayKey
     
-    // 로깅 추가
-    if (isToday) {
-      logger.info(CONTEXT, `오늘의 채팅방 찾음: ${room.chat_id}, 생성일: ${roomDate.toISOString()}`)
+    if (roomDateStr === todayKey) {
+      logger.info(CONTEXT, `오늘(${todayKey})의 채팅방 찾음: ${room.chat_id}, 생성일: ${roomDateStr}`)
+      todayRoom = room
+      break
     }
-    
-    return isToday
-  })
+  }
   
   if (todayRoom) {
     // 오늘 채팅방이 있으면 선택
@@ -283,12 +280,42 @@ const loadMessagesFromLocalStorage = () => {
 // 새 채팅방 생성
 const createChatRoom = async () => {
   try {
+    // 이미 오늘의 채팅방이 있는지 다시 한번 확인
+    const todayKey = getTodayKey()
+    const today = new Date(todayKey + 'T00:00:00')
+    
+    let existingTodayRoom = null
+    for (const room of chatRooms.value) {
+      const roomDate = new Date(room.created_at)
+      const roomDateStr = roomDate.toISOString().split('T')[0]
+      
+      if (roomDateStr === todayKey) {
+        existingTodayRoom = room
+        break
+      }
+    }
+    
+    // 이미 오늘의 채팅방이 있으면 그것을 사용
+    if (existingTodayRoom) {
+      logger.info(CONTEXT, `이미 오늘의 채팅방이 있습니다: ${existingTodayRoom.chat_id}`)
+      todayChatRoom.value = existingTodayRoom
+      selectedChatRoomId.value = existingTodayRoom.chat_id
+      
+      // 현재 선택된 채팅방이 있고 그게 오늘 채팅방이 아니면 메시지 저장
+      if (selectedChatRoomId.value && selectedChatRoomId.value !== existingTodayRoom.chat_id && messages.value.length > 0) {
+        saveMessagesToLocalStorage()
+      }
+      
+      // 메시지 로드
+      loadMessagesFromLocalStorage()
+      return
+    }
+    
     // 현재 채팅방이 있고 메시지가 있으면 저장
     if (selectedChatRoomId.value && messages.value.length > 0) {
       saveMessagesToLocalStorage()
     }
     
-    const today = new Date()
     const formattedDate = today.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'long',
@@ -395,6 +422,7 @@ async function submitStreamAnswer() {
     parsedContent: '', // 마크다운 파싱된 HTML 저장 필드 추가
     isLoading: true,
     isTyping: true,
+    isTypingComplete: false,
     time: getCurrentTime()
   })
   scrollToBottom()
@@ -476,6 +504,12 @@ async function submitStreamAnswer() {
             
             // 메시지 완료 후 로컬 스토리지에 저장
             saveMessagesToLocalStorage()
+            
+            // 메시지 완료 처리
+            const botMsg = messages.value.find(m => m.id === loadingMessageId)
+            if (botMsg) {
+              botMsg.isTypingComplete = true
+            }
           }
         }
       }
@@ -502,6 +536,7 @@ async function submitStreamAnswer() {
     if (botMsg) {
       botMsg.isLoading = false
       botMsg.isTyping = false
+      botMsg.isTypingComplete = true
     }
 
     scrollToBottom()
@@ -627,7 +662,7 @@ const formatChatRoomName = (room) => {
   }
   
   // 기본 이름: 사용자 이름과 날짜 표시
-  return `${room.user_name || '사용자'}님의 대화 (${formattedDate})`
+  return `${room.user_name || '사용자'}님의 대화`
 }
 
 // 햄버거 메뉴 토글
@@ -780,7 +815,7 @@ const createNewChat = async () => {
     <!-- 대화 메시지 영역 -->
     <div
       ref="chatContainer"
-      class="flex-1 p-4 overflow-y-auto chat-messages"
+      class="flex-2 p-4 overflow-y-auto chat-messages"
     >
       <div class="flex flex-col space-y-4">
         <div
@@ -807,7 +842,8 @@ const createNewChat = async () => {
                 class="bg-white p-3 rounded-lg shadow-sm markdown-content"
                 :class="{
                   'loading-message': message.isLoading,
-                  'typing-message': message.isTyping
+                  'typing-message': message.isTyping,
+                  'typing-complete': message.isTypingComplete
                 }"
               >
                 <!-- 마크다운 렌더링 -->
@@ -1159,7 +1195,7 @@ textarea {
 }
 
 /* 타이핑 중인 메시지에 커서 효과 추가 */
-.typing-message :deep(p:last-child::after) {
+.typing-message:not(.loading-message) :deep(p:last-child::after) {
   content: "";
   display: inline-block;
   width: 6px;
@@ -1168,6 +1204,11 @@ textarea {
   animation: cursor-blink 0.8s infinite;
   margin-left: 2px;
   vertical-align: middle;
+}
+
+/* 메시지가 완료되면 커서를 보이지 않게 함 */
+.typing-message.typing-complete :deep(p:last-child::after) {
+  display: none;
 }
 
 @keyframes cursor-blink {
