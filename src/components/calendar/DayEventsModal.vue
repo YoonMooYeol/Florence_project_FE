@@ -786,18 +786,28 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     if (isActuallyRecurring || isRecurring) {
       console.log('반복 일정 삭제:', deleteOptions?.option)
       
-      if (deleteOptions?.option === 'this_only') {
-        // 이 일정만 삭제
+      if (deleteOptions?.option === 'all_future') {
+        if (!deleteOptions.untilDate) {
+          // 자동으로 현재 날짜를 untilDate로 설정
+          if (selectedEvent.value && selectedEvent.value.start) {
+            deleteOptions.untilDate = typeof selectedEvent.value.start === 'string' && selectedEvent.value.start.includes('T') 
+              ? selectedEvent.value.start.split('T')[0] 
+              : selectedEvent.value.start
+            
+            console.log('이후 모든 일정 삭제: 자동으로 기준일 설정됨:', deleteOptions.untilDate)
+          } else {
+            alert('유지할 마지막 날짜를 선택해주세요.')
+            return
+          }
+        }
+        console.log('이후 모든 일정 삭제 시도 - 기준날짜:', deleteOptions.untilDate)
+        success = await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
+      } else if (deleteOptions?.option === 'this_only') {
         console.log('이 일정만 삭제 시도')
         success = await calendarStore.deleteRecurringEventThisOnly(eventId)
-      } else if (deleteOptions?.option === 'this_and_future') {
-        // 이 일정 및 이후의 모든 반복 일정 삭제
-        console.log('이 일정 및 이후 모든 반복 일정 삭제 시도')
-        success = await calendarStore.deleteRecurringEventsThisAndFuture(eventId)
       } else if (deleteOptions?.option === 'all') {
-        // 모든 반복 일정 삭제
         console.log('모든 반복 일정 삭제 시도')
-        success = await calendarStore.deleteRecurringEventsAll(eventId)
+        success = await calendarStore.deleteRecurringEvents(eventId)
       } else {
         console.warn('알 수 없는 삭제 옵션:', deleteOptions?.option)
         alert('삭제 옵션을 선택해주세요.')
@@ -903,21 +913,7 @@ const handleSaveEvent = async (eventData) => {
         // 반복 일정인 경우 특별한 API 사용
         const updateOption = eventData.updateOption || 'this_and_future'
         console.log(`반복 일정 수정 시도 - 옵션: ${updateOption}`)
-        
-        // savedEvent = await calendarStore.updateRecurringEvent(newEventData, updateOption)
-        // 수정 옵션에 따라 다른 API 호출
-        if (updateOption === 'this_only') {
-          savedEvent = await calendarStore.updateRecurringEventThisOnly(newEventData)
-        } else if (updateOption === 'this_and_future') {
-          savedEvent = await calendarStore.updateRecurringEventsThisAndFuture(newEventData)
-        } else if (updateOption === 'all') {
-          savedEvent = await calendarStore.updateRecurringEventsAll(newEventData)
-        } else {
-          console.warn('알 수 없는 수정 옵션:', updateOption)
-          alert('유효한 수정 옵션을 선택해주세요.')
-          return
-        }
-
+        savedEvent = await calendarStore.updateRecurringEvent(newEventData, updateOption)
       } else {
         // 일반 일정 수정
         console.log('일반 일정 수정 시도')
@@ -1151,14 +1147,21 @@ const babyTabLabel = computed(() => {
             class="space-y-6"
           >
             <!-- 사진 갤러리 -->
-            <div
-              v-if="babyDiary.photos && babyDiary.photos.length > 0"
-              class="space-y-3"
-            >
-              <h4 class="text-sm font-medium text-gray-600">
-                태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
-              </h4>
-              <div class="grid grid-cols-1 gap-4">
+            <div class="space-y-3">
+              <div class="flex justify-between items-center">
+                <h4 class="text-sm font-medium text-gray-600">
+                  태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
+                </h4>
+                <button
+                  v-if="canUploadMorePhotos"
+                  @click="fileInput.click()"
+                  class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs hover:bg-blue-600 transition-colors"
+                >
+                  사진 추가
+                </button>
+              </div>
+              
+              <div v-if="babyDiary.photos && babyDiary.photos.length > 0" class="grid grid-cols-1 gap-4">
                 <div
                   v-for="photo in babyDiary.photos"
                   :key="photo.id"
@@ -1232,6 +1235,27 @@ const babyTabLabel = computed(() => {
                   </div>
                 </div>
               </div>
+              
+              <!-- 사진이 없고 추가할 수 있는 경우 사진 추가 버튼 표시 -->
+              <div v-else-if="canUploadMorePhotos" class="flex justify-center my-4">
+                <button
+                  @click="fileInput.click()"
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  사진 등록하기
+                </button>
+              </div>
+              
+              <!-- 업로드 중 표시 -->
+              <div v-if="isUploading" class="flex justify-center my-2">
+                <div class="text-blue-500 text-sm flex items-center">
+                  <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  사진 업로드 중...
+                </div>
+              </div>
             </div>
 
             <!-- 일기 내용 -->
@@ -1258,12 +1282,20 @@ const babyTabLabel = computed(() => {
             <p class="text-gray-500">
               기록된 일기가 없습니다.
             </p>
-            <div class="flex justify-center mt-4">
+            <div class="flex flex-col items-center space-y-3 mt-4">
               <button
                 class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
                 @click="openDiaryModal('create')"
               >
                 기록하기
+              </button>
+              
+              <!-- 일기가 없는 경우에도 사진 등록 버튼 표시 -->
+              <button
+                @click="fileInput.click()"
+                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                사진 등록하기
               </button>
             </div>
           </div>

@@ -3,8 +3,10 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
+import { useAuthStore } from '@/store/auth'
 
 const router = useRouter()
+const authStore = useAuthStore() // Auth 스토어 추가
 
 // 사용자 정보
 const userInfo = ref({
@@ -15,6 +17,10 @@ const userInfo = ref({
   gender: '',
   image: '' // 프로필 이미지 URL 추가
 })
+
+// 회원 탈퇴 관련 상태
+const showWithdrawalConfirm = ref(false)
+const isWithdrawing = ref(false)
 
 // 오류 메시지 객체
 const errors = reactive({
@@ -219,11 +225,39 @@ const goBack = () => {
 // 컴포넌트 마운트 시 사용자 정보 불러오기
 onMounted(fetchUserInfo)
 
+// 프로필 사진 관련 상태와 기능
 const fileInput = ref(null);
+const showProfilePhotoModal = ref(false);
+const isViewingPhoto = ref(false); // 사진 보기 모드 상태 추가
+
+const openProfilePhotoModal = () => {
+  showProfilePhotoModal.value = true;
+  isViewingPhoto.value = false; // 모달 열 때 기본 모드로 설정
+};
+
+const closeProfilePhotoModal = () => {
+  showProfilePhotoModal.value = false;
+  isViewingPhoto.value = false; // 모달 닫을 때 상태 초기화
+};
+
 const triggerFileInput = () => {
   if (fileInput.value) {
     fileInput.value.click();
   }
+};
+
+// 프로필 사진 보기 함수 수정
+const viewProfilePhoto = () => {
+  if (userInfo.value.image) {
+    isViewingPhoto.value = true; // 사진 보기 모드로 전환
+  } else {
+    alert('등록된 프로필 사진이 없습니다.');
+  }
+};
+
+// 사진 보기 모드에서 버튼 모드로 돌아가기
+const backToButtons = () => {
+  isViewingPhoto.value = false;
 };
 
 const handleProfilePicChange = async (event) => {
@@ -289,26 +323,6 @@ const handleProfilePicChange = async (event) => {
   };
 };
 
-
-const showProfilePhotoModal = ref(false);
-const openProfilePhotoModal = () => {
-  // 일시적으로 모달 열기 기능 비활성화
-  // showProfilePhotoModal.value = true;
-};
-const closeProfilePhotoModal = () => {
-  showProfilePhotoModal.value = false;
-};
-const viewProfilePhoto = () => {
-  if (userInfo.value.image) {
-    const imageUrl = userInfo.value.image.startsWith('http')
-      ? userInfo.value.image
-      : `${import.meta.env.VITE_API_BASE_URL}${userInfo.value.image}`;
-    window.open(imageUrl, '_blank');
-  } else {
-    alert('등록된 프로필 사진이 없습니다.');
-  }
-};
-
 const registerOrUpdateProfilePhoto = () => {
   if (fileInput.value) {
     fileInput.value.click();
@@ -321,6 +335,7 @@ const deleteProfilePhoto = () => {
       .then(() => {
         userInfo.value.image = null; // 또는 ''
         alert('프로필 사진이 삭제되었습니다.');
+        closeProfilePhotoModal(); // 모달 자동으로 닫기
       })
       .catch(() => {
         alert('프로필 사진 삭제 실패');
@@ -328,6 +343,44 @@ const deleteProfilePhoto = () => {
   }
 };
 
+// 회원 탈퇴 함수 (버튼 클릭 시 호출)
+const showWithdrawalDialog = () => {
+  showWithdrawalConfirm.value = true
+}
+
+// 회원 탈퇴 확인
+const confirmWithdrawal = async () => {
+  isWithdrawing.value = true
+  
+  try {
+    // TODO: 실제 API가 구현되면 아래 주석을 해제하고 구현
+    // await api.delete('/accounts/users/me/')
+    console.log('회원 탈퇴 API 호출 (아직 구현되지 않음)')
+    
+    // 로그아웃 처리
+    authStore.logout()
+    
+    // 로컬 스토리지 및 세션 스토리지 정리
+    localStorage.clear()
+    sessionStorage.clear()
+    
+    alert('회원 탈퇴가 완료되었습니다. 그동안 서비스를 이용해 주셔서 감사합니다.')
+    
+    // 로그인 페이지로 이동
+    router.push('/login')
+  } catch (error) {
+    alert('회원 탈퇴 중 오류가 발생했습니다. 다시 시도해 주세요.')
+    console.error('회원 탈퇴 오류:', error)
+  } finally {
+    isWithdrawing.value = false
+    showWithdrawalConfirm.value = false
+  }
+}
+
+// 회원 탈퇴 취소
+const cancelWithdrawal = () => {
+  showWithdrawalConfirm.value = false
+}
 
 </script>
 
@@ -419,30 +472,51 @@ const deleteProfilePhoto = () => {
   </div>
 
   <!-- 설명 텍스트 (선택사항) -->
-  <p v-if="false" class="text-sm text-gray-500">
-    프로필 사진을 클릭하여 수정하세요
+  <p class="text-sm text-gray-500 cursor-pointer hover:underline" @click="openProfilePhotoModal">
+    프로필 사진 변경
   </p>
 </div>
 
-<!-- 프로필 이미지 수정 모달 -->
-<transition name="fade">
-  <div v-if="showProfilePhotoModal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-    <div class="bg-white rounded-xl shadow-lg p-5 w-64 space-y-3">
-      <button @click="viewProfilePhoto" class="w-full bg-gray-100 py-2 rounded-md hover:bg-gray-200">
-        프로필 사진 조회
-      </button>
-      <button @click="registerOrUpdateProfilePhoto" class="w-full bg-gray-100 py-2 rounded-md hover:bg-gray-200">
-        프로필 사진 수정
-      </button>
-      <button @click="deleteProfilePhoto" class="w-full bg-red-100 text-red-600 py-2 rounded-md hover:bg-red-200">
-        프로필 사진 삭제
-      </button>
-      <button @click="closeProfilePhotoModal" class="text-sm text-gray-400 hover:text-gray-600 w-full py-1">
-        닫기
+<!-- 프로필 사진 수정 모달 -->
+<div v-if="showProfilePhotoModal" class="fixed inset-0 flex items-start justify-center pt-20 bg-black bg-opacity-50 z-50">
+  <div class="bg-white p-4 rounded-lg shadow-lg" :class="{ 'w-64': !isViewingPhoto, 'w-80': isViewingPhoto }">
+    <div class="flex justify-between items-center mb-3 relative">
+      <div class="w-5"></div> <!-- 왼쪽 여백용 더미 요소 -->
+      <h2 class="text-lg font-bold text-center flex-1">프로필</h2>
+      <button 
+        @click="closeProfilePhotoModal" 
+        class="text-gray-500 hover:text-gray-700"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
       </button>
     </div>
+    
+    <!-- 사진 보기 모드 -->
+    <div v-if="isViewingPhoto" class="flex flex-col items-center space-y-3">
+      <div class="w-64 h-64 overflow-hidden rounded-lg">
+        <img 
+          :src="`${userInfo.image}?t=${Date.now()}`" 
+          alt="프로필 사진" 
+          class="w-full h-full object-cover"
+        />
+      </div>
+      <button @click="backToButtons" class="mt-2 text-blue-500 hover:text-blue-700 font-medium">
+        돌아가기
+      </button>
+    </div>
+    
+    <!-- 버튼 모드 -->
+    <div v-else class="flex flex-col space-y-2">
+      <button @click="viewProfilePhoto" class="p-2 bg-blue-200 text-white rounded-[10px]">프로필 사진 보기</button>
+      <button @click="registerOrUpdateProfilePhoto" class="p-2 bg-yellow-300 text-white rounded-[10px]">
+        {{ userInfo.image ? '프로필 사진 수정' : '프로필 사진 등록' }}
+      </button>
+      <button @click="deleteProfilePhoto" class="p-2 bg-red-200 text-white rounded-[10px]">프로필 사진 삭제</button>
+    </div>
   </div>
-</transition>
+</div>
 
 
 
@@ -544,7 +618,7 @@ const deleteProfilePhoto = () => {
         <!-- 수정 버튼 -->
         <div class="flex justify-center mt-6">
           <button
-            class="w-full p-2 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
+            class="w-full p-2 bg-base-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
             :disabled="isSubmitting"
             @click="saveUserInfo"
           >
@@ -553,20 +627,46 @@ const deleteProfilePhoto = () => {
           </button>
         </div>
       </div>
+      
+      <!-- 회원 탈퇴 버튼 (흰박스 바로 밑) -->
+      <div class="flex justify-center mt-3 mb-10">
+        <button
+          type="button"
+          class="text-gray-400 hover:underline text-sm font-medium"
+          @click="showWithdrawalDialog"
+        >
+          회원 탈퇴
+        </button>
+      </div>
     </div>
 
-    <!-- 프로필 사진 모달 팝업 -->
-    <div v-if="showProfilePhotoModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white p-6 rounded-lg shadow-lg w-96">
-        <h2 class="text-lg font-bold mb-4 text-center">프로필 편집</h2>
-        <div class="flex flex-col space-y-2">
-          <button @click="viewProfilePhoto" class="p-2 bg-blue-200 text-white rounded-[10px]">프로필 사진 보기</button>
-          <button v-if="false" @click="registerOrUpdateProfilePhoto" class="p-2 bg-yellow-300 text-white rounded-[10px]">
-            {{ userInfo.image ? '프로필 사진 수정' : '프로필 사진 등록' }}
+    <!-- 회원 탈퇴 확인 모달 -->
+    <div
+      v-if="showWithdrawalConfirm"
+      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+    >
+      <div class="bg-white p-6 rounded-lg shadow-lg w-80">
+        <h3 class="text-lg font-bold text-dark-gray mb-3 text-center">회원 탈퇴</h3>
+        <p class="text-sm text-gray-600 mb-4 text-center">
+          회원 탈퇴 시 계정과 모든 데이터가 삭제되며, 복구가 불가능합니다. 정말 탈퇴하시겠습니까?
+        </p>
+        <div class="flex justify-center space-x-4">
+          <button
+            class="px-4 py-2 bg-gray-200 rounded-md text-dark-gray font-medium hover:bg-gray-300"
+            :disabled="isWithdrawing"
+            @click="cancelWithdrawal"
+          >
+            아니오
           </button>
-          <button v-if="false" @click="deleteProfilePhoto" class="p-2 bg-red-200 text-white rounded-[10px]">프로필 사진 삭제</button>
+          <button
+            class="px-4 py-2 bg-red-500 rounded-md text-white font-medium hover:bg-red-600"
+            :disabled="isWithdrawing"
+            @click="confirmWithdrawal"
+          >
+            <span v-if="isWithdrawing">처리 중...</span>
+            <span v-else>예</span>
+          </button>
         </div>
-        <button @click="closeProfilePhotoModal" class="mt-4 text-gray-500 hover:text-gray-700 block mx-auto rounded-[10px] font-bold">닫기</button>
       </div>
     </div>
 
