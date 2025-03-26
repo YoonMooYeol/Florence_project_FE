@@ -60,8 +60,8 @@ const fetchPregnancyInfo = async () => {
         isFromRegistration: data.is_from_registration || false // 회원가입 시 등록 여부
       }
 
-      // 수정 모드 초기값 설정: 항상 false(보기 모드)로 시작
-      isEditMode.value = false
+      // 수정 모드 초기값 설정: 항상 true(수정 모드)로 시작
+      isEditMode.value = true
     } else {
       // 임신 정보가 없는 경우
       pregnancyInfo.value.isPregnant = false
@@ -69,12 +69,14 @@ const fetchPregnancyInfo = async () => {
     }
   } catch (error) {
     errorMessage.value = error.response?.data?.detail || '임신 정보를 불러오는 중 오류가 발생했습니다.'
+    // 오류 발생 시에도 입력 폼을 보여주기 위해 수정 모드로 설정할 수 있습니다.
+    isEditMode.value = true;
   } finally {
     isLoading.value = false
   }
 }
 
-// 수정 모드 활성화 함수
+// 수정 모드 활성화 함수 (이제 필요 없을 수 있지만, 다른 로직에서 사용될 수 있으므로 유지)
 const enableEditMode = () => {
   isEditMode.value = true
 }
@@ -82,6 +84,7 @@ const enableEditMode = () => {
 // 컴포넌트 마운트 시 임신 정보 불러오기
 onMounted(async () => {
   await fetchPregnancyInfo()
+  // fetchPregnancyInfo 내부에서 isEditMode를 true로 설정하므로 여기서 별도 설정 불필요
 })
 
 // 임신 여부 변경 시 처리
@@ -352,7 +355,7 @@ watch(() => lastPeriodDate.value, () => {
       </div>
 
       <!-- 수정 모드이거나 임신정보가 없는 경우 편집 폼 표시 -->
-      <div v-if="isEditMode || !pregnancyInfo.isPregnant" class="bg-white rounded-lg shadow-md p-6 mb-4">
+      <div v-if="isEditMode" class="bg-white rounded-lg shadow-md p-6 mb-4">
         <div class="mb-6 text-center">
           <div class="w-20 h-20 bg-base-yellow rounded-full flex items-center justify-center mx-auto mb-4">
             <svg-icon
@@ -486,7 +489,7 @@ watch(() => lastPeriodDate.value, () => {
           @click="savePregnancyInfo"
         >
           <span v-if="isSubmitting">처리 중...</span>
-          <span v-else>저장하기</span>
+          <span v-else>수정하기</span>
         </button>
       </div>
     </div>
