@@ -544,12 +544,12 @@ const deleteProfilePhoto = () => {
         <!-- 수정 버튼 -->
         <div class="flex justify-center mt-6">
           <button
-            class="w-full p-2 bg-point-yellow rounded-lg shadow-md text-center text-dark-gray font-bold"
+            class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 font-bold"
             :disabled="isSubmitting"
             @click="saveUserInfo"
           >
             <span v-if="isSubmitting">처리 중...</span>
-            <span v-else>수정</span>
+            <span v-else>수정하기</span>
           </button>
         </div>
       </div>
