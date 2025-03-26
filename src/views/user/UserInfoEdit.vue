@@ -354,8 +354,8 @@ const confirmWithdrawal = async () => {
   
   try {
     // TODO: 실제 API가 구현되면 아래 주석을 해제하고 구현
-    // await api.delete('/accounts/users/me/')
-    console.log('회원 탈퇴 API 호출 (아직 구현되지 않음)')
+    await api.delete('/accounts/users/me/delete-account/')
+    
     
     // 로그아웃 처리
     authStore.logout()
