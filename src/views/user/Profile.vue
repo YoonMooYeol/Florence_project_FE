@@ -179,6 +179,12 @@ const handleLogout = async () => {
     router.push('/login')
   }
 }
+
+//준비중인 기능 안내
+const test =  () => {
+  alert('준비중인 기능입니다.')
+}
+
 </script>
 
 <template>
@@ -341,7 +347,10 @@ const handleLogout = async () => {
             <span class="text-dark-gray">임신 정보 관리</span>
           </button>
 
-          <button class="w-full p-4 text-left flex items-center">
+          <button
+            class="w-full p-4 text-left flex items-center"
+            @click="test"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5 mr-3 text-gray-500"
@@ -357,7 +366,10 @@ const handleLogout = async () => {
             <span class="text-dark-gray">공지사항</span>
           </button>
 
-          <button class="w-full p-4 text-left flex items-center">
+          <button
+            class="w-full p-4 text-left flex items-center"
+            @click="test"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5 mr-3 text-gray-500"
@@ -373,7 +385,10 @@ const handleLogout = async () => {
             <span class="text-dark-gray">자주 묻는 질문</span>
           </button>
 
-          <button class="w-full p-4 text-left flex items-center">
+          <button
+            class="w-full p-4 text-left flex items-center"
+            @click="test"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5 mr-3 text-gray-500"
