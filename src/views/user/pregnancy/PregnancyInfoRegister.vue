@@ -238,7 +238,7 @@ const skipForNow = () => {
                 type="checkbox"
                 class="w-5 h-5 text-point-yellow border-gray-300 rounded focus:ring-point-yellow mr-3"
               >
-              <span class="text-dark-gray font-medium">임신 중입니다</span>
+              <span class="text-dark-gray font-medium">본인/배우자가 임신 중입니다</span>
             </label>
           </div>
           

@@ -718,7 +718,6 @@ const handleVerificationCancel = () => {
 
         <!-- 임신 여부 (여성인 경우만 표시) -->
         <div
-          v-if="formData.gender === 'female'"
           class="mb-4"
         >
           <label class="flex items-center">
@@ -727,7 +726,7 @@ const handleVerificationCancel = () => {
               type="checkbox"
               class="w-4 h-4 text-point-yellow border-gray-300 rounded focus:ring-point-yellow"
             >
-            <span class="ml-2 text-dark-gray">임신 중</span>
+            <span class="ml-2 text-dark-gray">본인/배우자가 임신 중입니다</span>
           </label>
         </div>
 
