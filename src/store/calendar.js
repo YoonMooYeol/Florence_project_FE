@@ -1212,12 +1212,12 @@ export const useCalendarStore = defineStore('calendar', () => {
     console.log('[setPregnancyInfo] 임신 정보 설정:', isPregnantStatus, nickname, id)
     isPregnant.value = isPregnantStatus
     
-    // 태명이 비어있는 경우 기본값 사용
+    // 태명이 비어있는 경우 "그리움"으로 설정
     if (!nickname || nickname.trim() === '') {
-      console.log('[setPregnancyInfo] 태명이 비어있어 기본값 사용')
-      babyNickname.value = '(태명)'
+      console.log('[setPregnancyInfo] 태명이 비어있어 "그리움"으로 설정')
+      babyNickname.value = '그리움'
     } else {
-    babyNickname.value = nickname
+      babyNickname.value = nickname
     }
     
     if (id !== null) {
@@ -1239,7 +1239,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       const prevBabyNickname = babyNickname.value
       
       // 모든 태명 관련 값 초기화
-      babyNickname.value = null
+      babyNickname.value = '그리움' // 기본값을 '그리움'으로 설정
       
       // 이미 임신 ID가 있으면 재사용
       if (pregnancyId.value) {
@@ -1297,7 +1297,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         console.log('[initPregnancyInfo] 임신 정보 없음')
         // 임신 정보가 없는 경우 초기화
         isPregnant.value = false
-        babyNickname.value = null
+        babyNickname.value = '그리움' // 임신 정보가 없어도 태명은 '그리움'으로 설정
         pregnancyId.value = null
         
         // 태명 관련 스토리지 정보 삭제
@@ -1308,6 +1308,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       }
     } catch (err) {
       console.error('[initPregnancyInfo] 임신 정보 초기화 오류:', err)
+      // 오류 발생 시에도 기본 태명 설정
+      babyNickname.value = '그리움'
       return false
     }
   }
@@ -1317,7 +1319,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     if (!pregnancyData) return
     
     // 임신 관련 정보 설정
-    isPregnant.value = true
+    isPregnant.value = pregnancyData.is_active !== undefined ? pregnancyData.is_active : true
     
     console.log('[updatePregnancyInfo] 임신 상세 정보:', pregnancyData)
     
@@ -1332,8 +1334,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       babyNickname.value = pregnancyData.nickname
       console.log('[updatePregnancyInfo] 태명 설정 (nickname):', babyNickname.value)
     } else {
-      console.log('[updatePregnancyInfo] 태명 없음, 사용자가 직접 설정해야 함')
-      babyNickname.value = null
+      console.log('[updatePregnancyInfo] 태명 없음, "그리움"으로 설정')
+      babyNickname.value = '그리움'
     }
     
     // 태명이 있다면 스토리지에 저장
@@ -1359,10 +1361,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     const rememberMe = localStorage.getItem('rememberMe') === 'true'
     if (rememberMe) {
       localStorage.setItem('pregnancyId', pregnancyId.value)
-      localStorage.setItem('isPregnant', 'true')
+      localStorage.setItem('isPregnant', isPregnant.value.toString())
     } else {
       sessionStorage.setItem('pregnancyId', pregnancyId.value)
-      sessionStorage.setItem('isPregnant', 'true')
+      sessionStorage.setItem('isPregnant', isPregnant.value.toString())
     }
   }
 
