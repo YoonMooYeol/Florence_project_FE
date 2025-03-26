@@ -168,6 +168,19 @@ const handleLogout = async () => {
   try {
     // auth 스토어의 로그아웃 함수 호출
     await authStore.logout()
+    
+    // 로컬 스토리지의 모든 관련 데이터 삭제
+    localStorage.clear() // 전체 로컬 스토리지 데이터 삭제
+    
+    // 또는 개별 항목 명시적 삭제
+    // localStorage.removeItem('userId')
+    // localStorage.removeItem('userName')
+    // localStorage.removeItem('userEmail')
+    // localStorage.removeItem('isPregnant')
+    // localStorage.removeItem('rememberMe')
+    
+    // 세션 스토리지도 삭제
+    sessionStorage.clear()
 
     // 로그아웃 메시지 표시
     alert('로그아웃 되었습니다.')
