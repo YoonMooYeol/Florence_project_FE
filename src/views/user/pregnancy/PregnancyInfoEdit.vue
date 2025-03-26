@@ -170,17 +170,22 @@ const savePregnancyInfo = async () => {
         pregnancyInfo.value.pregnancyId = response.data.pregnancy_id
       }
     } else {
-      // 임신 정보 삭제
+      // 임신 정보 삭제 (isPregnant가 false일 때)
       if (pregnancyInfo.value.pregnancyId) {
         await api.delete(`/accounts/pregnancies/${pregnancyInfo.value.pregnancyId}/`)
+        pregnancyInfo.value.pregnancyId = null // 삭제 후 ID 초기화
       }
+      // isPregnant가 false이고 ID가 없는 경우는 아무 작업도 하지 않음
     }
 
     // 저장 성공 메시지
     alert('임신 정보가 성공적으로 저장되었습니다.')
 
-    // 임신 정보 새로고침
-    await fetchPregnancyInfo()
+    // 프로필 페이지로 이동
+    router.push('/profile')
+
+    // 임신 정보 새로고침 (페이지 이동 전에 필요하다면 유지, 이동 후 Profile 페이지에서 새로 로드하므로 주석 처리 가능)
+    // await fetchPregnancyInfo()
   } catch (error) {
     errorMessage.value = error.response?.data?.detail || '임신 정보 저장 중 오류가 발생했습니다.'
   } finally {
@@ -190,7 +195,10 @@ const savePregnancyInfo = async () => {
 
 // 뒤로 가기
 const goBack = () => {
-  router.go(-1)
+  // 뒤로 가기 대신 프로필 페이지로 이동하도록 변경할 수도 있습니다.
+  router.push('/profile')
+  // 또는 기존처럼 router.go(-1) 유지
+  // router.go(-1)
 }
 
 // 출산까지 남은 일수 계산
