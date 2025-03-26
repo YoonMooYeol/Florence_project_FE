@@ -165,6 +165,9 @@ const skipForNow = () => {
     router.push('/calendar')
   }
 }
+
+// 고위험 임신 정보 모달
+const showHighRiskInfoModal = ref(false)
 </script>
 
 <template>
@@ -408,8 +411,10 @@ const skipForNow = () => {
               >
               <span class="text-dark-gray font-medium">고위험 임신입니다</span>
             </label>
-            <p class="text-xs text-gray-500 mt-2 text-center">
-              고위험 임신인 경우 체크해 주세요. 맞춤형 정보를 제공해 드립니다.
+            <p class="text-xs text-gray-500 mt-2 text-center flex justify-center items-center">
+              <span class="underline cursor-pointer text-blue-500" @click="showHighRiskInfoModal = true">
+                고위험 임신이란?
+              </span>
             </p>
           </div>
           
@@ -441,6 +446,67 @@ const skipForNow = () => {
         >
           나중에 입력하기
         </button>
+      </div>
+    </div>
+
+    <!-- 고위험 임신 정보 모달 -->
+    <div v-if="showHighRiskInfoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold text-dark-gray">고위험 임신 기준</h3>
+          <button @click="showHighRiskInfoModal = false" class="text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div class="text-sm text-gray-700">
+          <h4 class="font-bold mb-2 text-md">1. 산모의 건강 상태에 따른 고위험 임신 기준</h4>
+          <ul class="list-disc pl-5 mb-4 space-y-1">
+            <li>만 35세 이상(고령 임신) 또는 만 18세 이하</li>
+            <li>고혈압, 당뇨병, 심장병, 신장병, 간 질환 등 만성질환</li>
+            <li>갑상선 질환(갑상선 기능 항진증/저하증)</li>
+            <li>자궁기형(쌍각자궁, 자궁중격 등) 또는 자궁근종</li>
+            <li>자궁경부무력증(조기진통 위험)</li>
+            <li>자간전증(임신 중독증) 병력</li>
+            <li>자가면역질환(루푸스, 류마티스 관절염 등)</li>
+            <li>비만(BMI 30 이상) 또는 저체중(BMI 18.5 이하)</li>
+            <li>혈액응고 장애(항인지질증후군 등)</li>
+            <li>유전적 질환(다운증후군, 혈우병 가족력 등)</li>
+          </ul>
+          
+          <h4 class="font-bold mb-2 text-md">2. 임신 과정에서의 위험 요인</h4>
+          <ul class="list-disc pl-5 mb-4 space-y-1">
+            <li>다태 임신(쌍둥이, 세쌍둥이 등)</li>
+            <li>과거 유산, 조산 또는 사산 경험</li>
+            <li>태반 이상(전치태반, 태반 조기 박리)</li>
+            <li>양수 이상(양수 과다증 또는 양수 과소증)</li>
+            <li>자궁 내 성장 지연(IUGR)</li>
+            <li>임신성 당뇨, 임신성 고혈압</li>
+            <li>조기진통(임신 37주 이전 진통 발생)</li>
+            <li>태아 기형 또는 유전 질환 진단</li>
+          </ul>
+          
+          <h4 class="font-bold mb-2 text-md">3. 외부 환경 및 생활습관 요인</h4>
+          <ul class="list-disc pl-5 mb-4 space-y-1">
+            <li>흡연, 음주, 약물 복용</li>
+            <li>심한 스트레스, 과로, 영양 불균형</li>
+            <li>산재(산업재해) 위험이 높은 직업(야간 근무, 유해 물질 노출 등)</li>
+          </ul>
+          
+          <p class="text-xs text-gray-500 mt-4">
+            고위험 임신으로 체크하시면 맞춤형 정보를 제공해 드립니다. 위의 조건에 해당되신다면 체크해 주세요.
+          </p>
+        </div>
+        
+        <div class="mt-4 flex justify-end">
+          <button 
+            @click="showHighRiskInfoModal = false" 
+            class="px-4 py-2 bg-point-yellow rounded-md text-dark-gray font-medium shadow-sm hover:bg-yellow-400">
+            확인
+          </button>
+        </div>
       </div>
     </div>
   </div>
