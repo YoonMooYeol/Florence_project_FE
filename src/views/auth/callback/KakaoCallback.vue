@@ -34,10 +34,10 @@ onMounted(() => {
       authStore.setRefreshToken(refresh)
 
       // 브라우저 스토리지에 직접 저장 (이중 보장)
-      // localStorage.setItem('accessToken', token)
-      // localStorage.setItem('refreshToken', refresh)
-      // sessionStorage.setItem('accessToken', token)
-      // sessionStorage.setItem('refreshToken', refresh)
+      localStorage.setItem('accessToken', token)
+      localStorage.setItem('refreshToken', refresh)
+      sessionStorage.setItem('accessToken', token)
+      sessionStorage.setItem('refreshToken', refresh)
 
       // 사용자 정보 저장
       localStorage.setItem('userId', userId)
