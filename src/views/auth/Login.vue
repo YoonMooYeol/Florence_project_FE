@@ -252,11 +252,19 @@ const goToRegister = () => {
 
 // 아이디 찾기 페이지로 이동
 const goToFindId = () => {
+  // 유효성 검사 메시지 초기화
+  errors.email = ''
+  errors.password = ''
+  errors.form = ''
   router.push('/find-id')
 }
 
 // 비밀번호 찾기 페이지로 이동
 const goToFindPassword = () => {
+  // 유효성 검사 메시지 초기화
+  errors.email = ''
+  errors.password = ''
+  errors.form = ''
   router.push('/find-password')
 }
 
@@ -406,6 +414,7 @@ const goToFindPassword = () => {
           <!-- 링크 모음 -->
           <div class="flex justify-center items-center space-x-4 mt-4 text-sm">
             <button
+              type="button"
               class="text-dark-gray hover:underline"
               @click="goToFindId"
             >
@@ -413,6 +422,7 @@ const goToFindPassword = () => {
             </button>
             <span class="text-gray-400">|</span>
             <button
+              type="button"
               class="text-dark-gray hover:underline"
               @click="goToFindPassword"
             >
@@ -420,6 +430,7 @@ const goToFindPassword = () => {
             </button>
             <span class="text-gray-400">|</span>
             <button
+              type="button"
               class="text-point-yellow hover:text-yellow-600"
               @click="goToRegister"
             >

@@ -21,7 +21,9 @@ const userInfo = ref({
   babyNickname: '',
   highRisk: false,
   pregnancyId: null,
-  isFromRegistration: false
+  isFromRegistration: false,
+  isActive: true,
+  image: ''
 })
 
 // 로딩 상태 관리
@@ -49,6 +51,7 @@ const fetchUserInfo = async () => {
     userInfo.value.email = response.data.email || ''
     userInfo.value.phone = response.data.phone || ''
     userInfo.value.gender = response.data.gender || ''
+    userInfo.value.image = response.data.image || ''
 
     // 로컬 스토리지 및 세션 스토리지에 사용자 정보 저장
     if (localStorage.getItem('rememberMe') === 'true') {
@@ -96,7 +99,7 @@ const fetchPregnancyInfo = async () => {
       userInfo.value.highRisk = data.high_risk
       userInfo.value.pregnancyId = data.pregnancy_id
       userInfo.value.isFromRegistration = data.is_from_registration || false // 회원가입 시 등록 여부 설정
-
+      userInfo.value.isActive = data.is_active // is_active 상태 저장
       // 임신 상태 저장
       localStorage.setItem('isPregnant', 'true')
       sessionStorage.setItem('isPregnant', 'true')
@@ -165,6 +168,19 @@ const handleLogout = async () => {
   try {
     // auth 스토어의 로그아웃 함수 호출
     await authStore.logout()
+    
+    // 로컬 스토리지의 모든 관련 데이터 삭제
+    localStorage.clear() // 전체 로컬 스토리지 데이터 삭제
+    
+    // 또는 개별 항목 명시적 삭제
+    // localStorage.removeItem('userId')
+    // localStorage.removeItem('userName')
+    // localStorage.removeItem('userEmail')
+    // localStorage.removeItem('isPregnant')
+    // localStorage.removeItem('rememberMe')
+    
+    // 세션 스토리지도 삭제
+    sessionStorage.clear()
 
     // 로그아웃 메시지 표시
     alert('로그아웃 되었습니다.')
@@ -222,8 +238,17 @@ const test =  () => {
     >
       <div class="bg-white rounded-lg shadow-md p-6 mb-4">
         <div class="flex items-center mb-4">
-          <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4">
+          <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4 relative overflow-hidden">
+            <!-- 프로필 이미지가 있을 경우 표시 -->
+            <img
+              v-if="userInfo.image"
+              :src="`${userInfo.image}?t=${Date.now()}`"
+              alt="프로필 사진"
+              class="absolute inset-0 w-full h-full object-cover rounded-full"
+            />
+            <!-- 기본 아이콘 -->
             <svg
+              v-else
               xmlns="http://www.w3.org/2000/svg"
               class="h-10 w-10 text-gray-500"
               viewBox="0 0 20 20"
@@ -250,13 +275,13 @@ const test =  () => {
         <div class="bg-white rounded-lg shadow-md p-6 mb-4">
           <div class="flex justify-between items-center mb-4">
             <!-- 임신 정보가 있을 때만 표시 -->
-            <h2 v-if="userInfo.isPregnant" class="text-lg font-bold text-dark-gray">
+            <h2 v-if="userInfo.isPregnant && userInfo.isActive" class="text-lg font-bold text-dark-gray">
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
           </div>
 
           <div
-            v-if="userInfo.isPregnant"
+            v-if="userInfo.isPregnant && userInfo.isActive"
             class="space-y-4"
           >
             <div class="flex justify-between items-center">
