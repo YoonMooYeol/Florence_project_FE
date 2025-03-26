@@ -181,6 +181,7 @@ const handleLogout = async () => {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('rememberMe')
+    localStorage.removeItem('naverLoginState')
     
     // 세션 스토리지도 삭제
     sessionStorage.clear()
