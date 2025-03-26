@@ -13,14 +13,6 @@
       <p class="text-center text-gray-500">
         {{ selectedDate }} 날짜에 대한 요약 정보가 없습니다.
       </p>
-      <button 
-        v-if="canCreateSummary"
-        @click="generateSummary" 
-        class="generate-btn"
-        :disabled="generatingSummary"
-      >
-        {{ generatingSummary ? '요약 생성 중...' : '요약 생성하기' }}
-      </button>
     </div>
     
     <div v-else class="summary-content">
@@ -57,8 +49,6 @@ const emit = defineEmits(['openFullSummary'])
 const summary = ref(null)
 const loading = ref(false)
 const error = ref(null)
-const generatingSummary = ref(false)
-const canCreateSummary = ref(true)
 
 // 포맷된 날짜 표시
 const formattedDate = computed(() => {
@@ -98,40 +88,6 @@ const fetchSummary = async () => {
   }
 }
 
-// LLM 요약 생성하기
-const generateSummary = async () => {
-  if (!props.selectedDate || generatingSummary.value) return
-  
-  generatingSummary.value = true
-  error.value = null
-  
-  try {
-    const response = await api.post('/calendars/conversation-summaries/auto_summarize/', {
-      summary_date: props.selectedDate
-    })
-    
-    // 생성된 요약 정보 설정
-    summary.value = response.data
-    
-  } catch (err) {
-    console.error('요약 생성 오류:', err)
-    
-    if (err.response && err.response.data && err.response.data.error) {
-      // 서버에서 반환한 오류 메시지 표시
-      error.value = err.response.data.error
-      
-      // 데이터가 없는 경우 버튼 비활성화
-      if (err.response.status === 404) {
-        canCreateSummary.value = false
-      }
-    } else {
-      error.value = '요약을 생성하는 중 오류가 발생했습니다.'
-    }
-  } finally {
-    generatingSummary.value = false
-  }
-}
-
 // 전체 요약 모달 열기
 const openFullSummary = () => {
   if (summary.value) {
@@ -143,7 +99,6 @@ const openFullSummary = () => {
 watch(() => props.selectedDate, (newDate) => {
   if (newDate) {
     fetchSummary()
-    canCreateSummary.value = true
   }
 })
 
@@ -186,27 +141,6 @@ onMounted(() => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-.generate-btn {
-  background-color: #ffd600;
-  color: #353535;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  margin-top: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.generate-btn:hover:not(:disabled) {
-  background-color: #ffed90;
-}
-
-.generate-btn:disabled {
-  background-color: #e0e0e0;
-  cursor: not-allowed;
 }
 
 .summary-header {
