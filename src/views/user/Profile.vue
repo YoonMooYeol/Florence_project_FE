@@ -275,13 +275,13 @@ const test =  () => {
         <div class="bg-white rounded-lg shadow-md p-6 mb-4">
           <div class="flex justify-between items-center mb-4">
             <!-- 임신 정보가 있을 때만 표시 -->
-            <h2 v-if="userInfo.isPregnant && userInfo.isActive" class="text-lg font-bold text-dark-gray">
+            <h2 v-if="userInfo.isPregnant" class="text-lg font-bold text-dark-gray">
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
           </div>
 
           <div
-            v-if="userInfo.isPregnant && userInfo.isActive"
+            v-if="userInfo.isPregnant"
             class="space-y-4"
           >
             <div class="flex justify-between items-center">
