@@ -566,7 +566,7 @@ const handleVerificationCancel = () => {
           <label
             for="name"
             class="block mb-2 text-sm font-medium text-dark-gray"
-          >닉네임</label>
+          >이름</label>
           <input
             id="name"
             v-model="formData.name"
