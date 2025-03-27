@@ -33,12 +33,12 @@ const closeModal = () => {
   emit('close')
 }
 
-const deleteSummary = () => {
-  if (props.summary && props.summary.summary_id) {
-    console.log('LLM 요약 삭제 버튼 클릭:', props.summary.summary_id)
-    emit('delete', props.summary.summary_id)
-  }
-}
+// const deleteSummary = () => {
+//   if (props.summary && props.summary.summary_id) {
+//     console.log('LLM 요약 삭제 버튼 클릭:', props.summary.summary_id)
+//     emit('delete', props.summary.summary_id)
+//   }
+// }
 </script>
 
 <template>
@@ -111,7 +111,7 @@ const deleteSummary = () => {
         </div>
       </div>
 
-      <!-- 모달 푸터 -->
+      <!-- 모달 푸터
       <div class="px-6 py-4 bg-white border-t border-gray-200 flex justify-end">
         <button
           class="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
@@ -119,7 +119,7 @@ const deleteSummary = () => {
         >
           삭제
         </button>
-      </div>
+      </div> -->
     </div>
   </div>
 </template>
