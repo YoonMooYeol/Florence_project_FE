@@ -39,13 +39,27 @@ const showEventModal = ref(false)
 const showEventDetailModal = ref(false)
 const selectedEvent = ref(null)
 const showBirthdayPhoto = ref(true) // 출산예정일 다음날 사진 표시 여부
+const showPhotoModal = ref(false)
+const selectedPhotoForView = ref(null)
+
+// 큰 이미지를 보는 모달 열기
+function openPhotoModal(photo) {
+  selectedPhotoForView.value = photo
+  showPhotoModal.value = true
+}
+
+// 모달 닫기
+function closePhotoModal() {
+  showPhotoModal.value = false
+  selectedPhotoForView.value = null
+}
 
 // 모달이 열렸을 때 props 변화 감지 및 처리
 watch(() => props.show, async (newValue) => {
   if (newValue) {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
     // 모달이 열리면 항상 '일정' 탭으로 설정
-    activeTab.value = 'schedule'
+    // activeTab.value = 'schedule'
     
     // 모달이 열리면 클릭 방지 설정 (300ms 동안)
     isClickable.value = false
@@ -344,7 +358,6 @@ const canUploadMorePhotos = computed(() => {
 
 // 파일 선택 이벤트 핸들러
 const handleFileSelect = async (event) => {
-  event.preventDefault()
   console.log('파일 선택 이벤트 발생')
 
   // FileList 객체 로깅
@@ -482,7 +495,7 @@ const uploadPhotoToDiary = async (diaryId) => {
     }))
     
     // 페이지 새로고침
-    window.location.reload()
+    // window.location.reload()
   } catch (error) {
     console.error('사진 업로드 실패:', error.response || error)
 
@@ -557,7 +570,7 @@ const updatePhoto = async (photoId, file) => {
     }))
     
     // 페이지 새로고침
-    window.location.reload()
+    // window.location.reload()
   } catch (error) {
     console.error('사진 업데이트 실패:', error)
     let errorMessage = '사진 업데이트에 실패했습니다.'
@@ -600,7 +613,7 @@ const deletePhoto = async (photoId) => {
     }))
     
     // 페이지 새로고침
-    window.location.reload()
+    // window.location.reload()
     } catch (error) {
     console.error('사진 삭제 실패:', error)
     let errorMessage = '사진 삭제에 실패했습니다.'
@@ -667,42 +680,47 @@ watch(diaryContent, () => {
   }
 })
 
-// 썸네일 URL로 변환하는 함수 개선
+// 썸네일 URL로 변환하는 함수
 const getThumbnailUrl = (imageUrl) => {
-  // 이미지 URL이 없으면 기본 이미지 경로 반환
-  if (!imageUrl) return '/images/photo_placeholder.png'
-  
-  // 이미 캐시 방지 파라미터가 있는지 확인
+  // 1) 기본 placeholder
+  if (!imageUrl) {
+    return '/images/photo_placeholder.png'
+  }
+
+  // 2) 캐시 파라미터가 이미 붙어 있는지 확인
   if (imageUrl.includes('_cache=')) {
     return imageUrl
   }
 
-  // 이미지 URL 캐시 방지 및 무작위 쿼리 파라미터 추가
-  const randomParam = new Date().getTime()
+  // 3) env에서 미디어용 주소 불러오기 (뒤에 / 있으면 제거)
+  const baseMediaUrl = (import.meta.env.VITE_MEDIA_BASE_URL || '').replace(/\/$/, '')
 
-  // 이미지 URL이 상대 경로인 경우 절대 경로로 변환
+  // 4) 만약 imageUrl이 절대 경로(http로 시작)라면 그대로 사용,
+  //    아니라면 baseMediaUrl과 합쳐줌 (예: /media/... => http://127.0.0.1:8000/media/...)
   let fullUrl = imageUrl
-  // localhost 또는 127.0.0.1 포함 체크
-  if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/media')) {
-    fullUrl = window.location.origin + imageUrl
+  if (!imageUrl.startsWith('http')) {
+    // /로 시작하지 않으면 앞에 / 붙여서 "/media/..." 형태 만들기
+    if (!imageUrl.startsWith('/')) {
+      fullUrl = '/' + imageUrl
+    }
+    fullUrl = baseMediaUrl + fullUrl
   }
-  
-  // 썸네일 경로가 포함된 경우 원본 이미지 경로로 변환
+
+  // 5) _thumbnail → 원본으로 교체 (사용 중이라면 필요)
   if (fullUrl.includes('_thumbnail')) {
     fullUrl = fullUrl.replace('_thumbnail', '')
   }
 
-  // URL에 이미 쿼리 파라미터가 있는지 확인
+  // 6) 캐시 방지 파라미터 추가
+  const randomParam = Date.now()
   const separator = fullUrl.includes('?') ? '&' : '?'
-
-  // 캐시 방지를 위한 타임스탬프 추가
   return `${fullUrl}${separator}_cache=${randomParam}`
 }
 
 // 이미지 로드 오류 처리 함수 개선
 function handleImageError(event) {
   // fallback 이미지 URL (실제 사용 중인 기본 이미지 경로로 수정)
-  const fallback = '/images/photo_placeholder.png';
+  const fallback = '/src/assets/images/photo_placeholder.png';
   // 만약 이미 fallback 이미지가 설정되어 있다면 중복 처리하지 않음
   if (event.target.src === fallback) {
     console.log('이미 기본 이미지로 설정되어 있습니다.');
@@ -1144,19 +1162,16 @@ const closeBirthdayPhoto = () => {
         </div>
 
         <!-- 아기와의 하루 탭 -->
-        <div
-          v-if="activeTab === 'baby'"
-          class="space-y-4"
-        >
+        <div v-if="activeTab === 'baby'" class="space-y-4">
           <!-- 출산예정일 다음날 사진 -->
-          <div v-if="showBirthdayPhoto && babyDiary && babyDiary.photos && babyDiary.photos.length > 0" class="relative">
+          <div v-if="showBirthdayPhoto && babyDiary && babyDiary.photos && babyDiary.photos.length > 0" class="relative bg-white rounded-lg shadow-md p-6 mb-6">
             <button
-              class="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-colors"
+              class="absolute top-4 right-4 z-10 bg-gray-800 text-white rounded-full p-2 shadow-md hover:bg-gray-700 transition-colors"
               @click="closeBirthdayPhoto"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4"
+                class="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -1169,12 +1184,12 @@ const closeBirthdayPhoto = () => {
                 />
               </svg>
             </button>
-            <div class="grid grid-cols-1 gap-4">
+            <div class="grid grid-cols-1 gap-6">
               <div
                 v-for="photo in babyDiary.photos"
                 :key="photo.id"
                 class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
-                style="aspect-ratio: 16/9; height: 180px;"
+                style="aspect-ratio: 16/9; height: 300px;"
               >
                 <img
                   :src="getThumbnailUrl(photo.image)"
@@ -1185,152 +1200,6 @@ const closeBirthdayPhoto = () => {
                   @load="handleImageLoad($event, photo)"
                 >
               </div>
-            </div>
-          </div>
-
-          <div
-            v-if="babyDiary && babyDiary.id"
-            class="space-y-6"
-          >
-            <!-- 사진 갤러리 -->
-            <div class="space-y-3">
-              <div class="flex justify-between items-center">
-                <h4 class="text-sm font-medium text-gray-600">
-                  태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
-                </h4>
-                <button
-                  v-if="canUploadMorePhotos"
-                  @click="fileInput.click()"
-                  class="px-2 py-0.5 bg-[#A4E49B] text-dark-gray rounded-[30px] text-xl hover:bg-[#A4E49B] transition-colors font-bold text-center"
-                >
-                ➕
-                </button>
-              </div>
-              
-              <div v-if="babyDiary.photos && babyDiary.photos.length > 0" class="grid grid-cols-1 gap-4">
-                <div
-                  v-for="photo in babyDiary.photos"
-                  :key="photo.id"
-                  class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
-                  style="aspect-ratio: 16/9; height: 180px;"
-                >
-                  <img
-                    :src="getThumbnailUrl(photo.image)"
-                    :alt="'태교일기 사진'"
-                    class="w-full h-full object-cover"
-                    loading="eager"
-                    @error="handleImageError($event)"
-                    @load="handleImageLoad($event, photo)"
-                  >
-
-                  <!-- 마우스 오버 효과 -->
-                  <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-200" />
-
-                  <!-- 버튼 -->
-                  <div class="absolute top-1 right-1 flex space-x-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <button
-                      class="bg-blue-500 text-white rounded-full p-1.5 shadow-md"
-                      title="사진 수정"
-                      @click.prevent.stop="openUpdatePhoto(photo.id)"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                    </button>
-
-                    <button
-                      class="bg-red-500 text-white rounded-full p-1.5 shadow-md"
-                      title="사진 삭제"
-                      @click.prevent.stop="deletePhoto(photo.id)"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div
-                    v-if="isUpdating && selectedPhotoId === photo.id"
-                    class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20"
-                  >
-                    <div class="text-white text-sm">
-                      업데이트 중...
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 업로드 중 표시 -->
-              <div v-if="isUploading" class="flex justify-center my-2">
-                <div class="text-blue-500 text-sm flex items-center">
-                  <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  사진 업로드 중...
-                </div>
-              </div>
-
-              <!-- 일기 내용이 있는 경우에만 표시 -->
-              <div v-if="babyDiary.content" class="bg-white p-4 rounded-lg shadow">
-                <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
-                  {{ babyDiary.content }}
-                </p>
-              </div>
-              
-              <!-- 일기 작성/수정 버튼 -->
-              <div class="flex space-x-2">
-                <button
-                  class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-                  @click="openDiaryModal(babyDiary.content ? 'edit' : 'create')"
-                >
-                  {{ babyDiary.content ? '일기 수정' : '기록하기' }}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div
-            v-else
-            class="text-center py-4"
-          >
-            <p class="text-gray-500">
-              기록된 일기가 없습니다.
-            </p>
-            <div class="flex flex-col items-center space-y-3 mt-4">
-              <button
-                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
-                @click="openDiaryModal('create')"
-              >
-                기록하기
-              </button>
-              <button
-                @click="fileInput.click()"
-                class="px-4 py-2 bg-[#A4E49B] text-dark-gray rounded-lg hover:bg-[#A4E49B] transition-colors font-bold"
-              >
-                사진등록
-              </button>
             </div>
           </div>
         </div>
