@@ -70,9 +70,9 @@ export const useCalendarStore = defineStore('calendar', () => {
           description: event.description,
           event_day: event.event_day,
           // start: event.event_day, // event_day를 start로 매핑
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+          backgroundColor: '#FFD600',
+          borderColor: '#FFD600',
+          textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
@@ -141,9 +141,9 @@ export const useCalendarStore = defineStore('calendar', () => {
           description: event.description,
           event_day: event.event_day,
           // start: event.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+          backgroundColor: '#FFD600',
+          borderColor: '#FFD600',
+          textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
@@ -198,9 +198,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         description: response.data.description,
         event_day: response.data.event_day,
         // start: response.data.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -326,9 +326,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         description: response.data.description,
         event_day: response.data.event_day,
         // start: response.data.event_day, // event_day를 start로 매핑
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -441,9 +441,9 @@ export const useCalendarStore = defineStore('calendar', () => {
         description: response.data.description,
         event_day: response.data.event_day,
         // start: response.data.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
@@ -469,7 +469,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // UI 업데이트를 위해 로컬 상태 업데이트
       const index = events.value.findIndex(e => e.id === eventId);
-    if (index !== -1) {
+      if (index !== -1) {
         events.value[index] = mappedEvent;
       }
       
@@ -493,7 +493,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 로컬 상태에서도 해당 이벤트 제거 (UI 업데이트를 위함)
       const index = events.value.findIndex(e => e.id === eventId);
-    if (index !== -1) {
+      if (index !== -1) {
         events.value.splice(index, 1);
       }
       
@@ -551,10 +551,10 @@ export const useCalendarStore = defineStore('calendar', () => {
         content: diary.content,
         photos: Array.isArray(diary.photos) 
           ? diary.photos.map(photo => ({
-              id: photo.photo_id, // photo_id를 id로 매핑
-              image: photo.image,
-              created_at: photo.created_at
-            }))
+            id: photo.photo_id, // photo_id를 id로 매핑
+            image: photo.image,
+            created_at: photo.created_at
+          }))
           : []
       }))
       
@@ -605,7 +605,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         // // API 호출 (GET 메서드로 변경 - 기존 일기를 조회만 함)
         // const response = await api.get(`calendars/baby-diaries/pregnancy/${pregnancyId.value}/${normalizedDate}/`)
         // API 호출
-        const response = await api.get(`calendars/baby-diaries/`, {
+        const response = await api.get('calendars/baby-diaries/', {
           params: {
             diary_date: normalizedDate
           }
@@ -618,10 +618,10 @@ export const useCalendarStore = defineStore('calendar', () => {
           content: response.data.content,
           photos: Array.isArray(response.data.photos) 
             ? response.data.photos.map(photo => ({
-                id: photo.photo_id,
-                image: photo.image,
-                created_at: photo.created_at
-              }))
+              id: photo.photo_id,
+              image: photo.image,
+              created_at: photo.created_at
+            }))
             : []
         }
         
@@ -691,7 +691,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         try {
           // 일기 id로 content 업데이트
           const updateResponse = await api.put(`calendars/baby-diaries/${response.data.diary_id}/diary/`, {
-            content: content
+            content
           })
           
           // 업데이트된 content 사용
@@ -709,7 +709,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       const newDiaryData = {
         id: response.data.diary_id,
         date: response.data.diary_date,
-        content: diaryContent || content || '',  // API 응답 content, 사용자 입력 content 순으로 사용
+        content: diaryContent || content || '', // API 응답 content, 사용자 입력 content 순으로 사용
         photos: response.data.photos || []
       }
       
@@ -732,16 +732,16 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
   
   // 태교일기 수정
-  async function updateBabyDiary(diaryId, content, ) {
+  async function updateBabyDiary(diaryId, content) {
     try {
       // API 호출 - diary_id로 접근
       const response = await api.put(`calendars/baby-diaries/${diaryId}/diary/`, {
-        content: content
+        content
       })
       
       // 로컬 상태 업데이트
       const index = babyDiaries.value.findIndex(d => d.id === diaryId)
-    if (index !== -1) {
+      if (index !== -1) {
         babyDiaries.value[index] = {
           id: response.data.diary_id,
           date: response.data.diary_date,
@@ -776,8 +776,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 로컬 상태 업데이트
       const index = babyDiaries.value.findIndex(d => d.id === diaryId)
-    if (index !== -1) {
-      babyDiaries.value.splice(index, 1)
+      if (index !== -1) {
+        babyDiaries.value.splice(index, 1)
       }
       
       // 선택된 태교일기가 삭제된 일기와 같다면 초기화
@@ -810,7 +810,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       formData.append('category', 'diary') // 필수 카테고리 필드 추가
 
       // 디버깅 정보
-      for (let [key, value] of formData.entries()) {
+      for (const [key, value] of formData.entries()) {
         if (value instanceof File) {
           console.log(`FormData: ${key} = File(${value.name}, ${value.type}, ${value.size} bytes)`)
         } else {
@@ -859,7 +859,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         }]
       }
 
-      console.log(`처리된 사진 데이터:`, newPhotos)
+      console.log('처리된 사진 데이터:', newPhotos)
 
       const babyDiary = babyDiaries.value.find(diary => diary.id === diaryId)
       if (babyDiary) {
@@ -949,7 +949,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       // 변경: 모든 헤더에 토큰 추가
       const config = {
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
           ...getAuthHeaders()
         }
       }
@@ -962,11 +962,11 @@ export const useCalendarStore = defineStore('calendar', () => {
 
       const mappedPhotos = Array.isArray(response.data) 
         ? response.data.map(photo => ({
-            id: photo.photo_id,
-            image: photo.image,
-            image_thumbnail: photo.image_thumbnail || photo.image,
-            created_at: photo.created_at
-          }))
+          id: photo.photo_id,
+          image: photo.image,
+          image_thumbnail: photo.image_thumbnail || photo.image,
+          created_at: photo.created_at
+        }))
         : []
 
       console.log(`매핑된 사진 데이터 개수: ${mappedPhotos.length}`)
@@ -1020,7 +1020,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       formData.append('image', newPhotoFile)
       formData.append('category', 'diary') // 필수 카테고리 필드 추가
 
-      for (let [key, value] of formData.entries()) {
+      for (const [key, value] of formData.entries()) {
         if (value instanceof File) {
           console.log(`FormData: ${key} = File(${value.name}, ${value.type}, ${value.size} bytes)`)
         } else {
@@ -1134,7 +1134,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       return true
     } catch (error) {
       console.error('LLM 요약 삭제 실패:', error)
-    return false
+      return false
     }
   }
 
@@ -1252,7 +1252,7 @@ export const useCalendarStore = defineStore('calendar', () => {
           if (detailResponse.data) {
             updatePregnancyInfo(detailResponse.data)
           }
-    } catch (err) {
+        } catch (err) {
           console.error('[initPregnancyInfo] 기존 임신 ID로 정보 조회 실패:', err)
           // 에러 발생 시 임신 ID 초기화
           pregnancyId.value = null
@@ -1292,7 +1292,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (response.data && response.data.length > 0) {
         // 서버에서 가져온 임신 정보로 업데이트
         updatePregnancyInfo(response.data[0])
-      return true
+        return true
       } else {
         console.log('[initPregnancyInfo] 임신 정보 없음')
         // 임신 정보가 없는 경우 초기화
@@ -1319,7 +1319,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     if (!pregnancyData) return
     
     // 임신 관련 정보 설정
-    isPregnant.value = pregnancyData.is_active !== undefined ? pregnancyData.is_active : true
+    isPregnant.value = true
     
     console.log('[updatePregnancyInfo] 임신 상세 정보:', pregnancyData)
     
@@ -1361,10 +1361,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     const rememberMe = localStorage.getItem('rememberMe') === 'true'
     if (rememberMe) {
       localStorage.setItem('pregnancyId', pregnancyId.value)
-      localStorage.setItem('isPregnant', isPregnant.value.toString())
+      localStorage.setItem('isPregnant', 'true')
     } else {
       sessionStorage.setItem('pregnancyId', pregnancyId.value)
-      sessionStorage.setItem('isPregnant', isPregnant.value.toString())
+      sessionStorage.setItem('isPregnant', 'true')
     }
   }
 
@@ -1630,7 +1630,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // UI 업데이트를 위해 로컬 상태 업데이트
       const index = events.value.findIndex(e => e.id === eventData.id);
-    if (index !== -1) {
+      if (index !== -1) {
         events.value[index] = updatedEvent;
       }
       
@@ -1720,8 +1720,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       isLoading.value = false;
     }
   }
-
-
 
   return {
     // 상태
