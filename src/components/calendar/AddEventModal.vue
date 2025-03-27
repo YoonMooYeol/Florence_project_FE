@@ -143,9 +143,9 @@ const saveEvent = () => {
     return
   }
 
-  // 시작 시간이 종료 시간보다 늦은 경우 검증
-  if (!isAllDay.value && startTime.value >= endTime.value) {
-    alert('종료 시간은 시작 시간보다 늦어야 합니다.')
+  // 시작 시간이 종료 시간보다 이른 경우 검증
+  if (!isAllDay.value && startTime.value > endTime.value) {
+    alert('종료 시간이 시작 시간 이후여야 합니다.')
     return
   }
 

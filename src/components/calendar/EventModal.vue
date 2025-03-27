@@ -251,8 +251,24 @@ const confirmDelete = async () => {
     return;
   }
   
+  // 삭제 범위에 따른 확인 메시지 설정
+  let confirmMessage = '이 일정을 삭제하시겠습니까?';
+  if (isRecurringEvent.value) {
+    if (updateOption.value === 'this_only') {
+      confirmMessage = '이 일정만 삭제하시겠습니까?';
+    } else if (updateOption.value === 'this_and_future') {
+      confirmMessage = '이 일정 및 이후 모든 반복 일정을 삭제하시겠습니까?';
+    } else if (updateOption.value === 'all') {
+      confirmMessage = '모든 반복 일정을 삭제하시겠습니까?';
+    }
+  }
+  
+  if (!confirm(confirmMessage)) {
+    return;
+  }
+  
   // 이벤트 ID와 반복 여부 전달
-  emit('delete', props.event.id, isRecurringEvent.value, { option: 'this_only' })
+  emit('delete', props.event.id, isRecurringEvent.value, { option: updateOption.value })
   showDeleteConfirm.value = false
   emit('close')
 }
@@ -423,7 +439,7 @@ const cancelDelete = () => {
         
         <!-- 반복 일정 수정 시 옵션 선택 UI -->
         <div v-if="props.event && isRecurringEvent" class="space-y-3 mt-3 p-3 bg-gray-50 rounded-lg">
-          <h4 class="font-medium text-gray-700">반복 일정 수정 범위</h4>
+          <h4 class="font-medium text-gray-700">적용 범위</h4>
           
           <div class="flex items-center space-x-2">
             <input
@@ -433,10 +449,10 @@ const cancelDelete = () => {
               value="this_only"
               class="text-point focus:ring-point"
             />
-            <label for="updateThisOnly" class="text-sm text-gray-700">이 일정만 수정</label>
+            <label for="updateThisOnly" class="text-sm text-gray-700">이 일정만</label>
           </div>
           
-          <!-- <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2">
             <input
               type="radio"
               id="updateThisAndFuture"
@@ -444,9 +460,9 @@ const cancelDelete = () => {
               value="this_and_future"
               class="text-point focus:ring-point"
             />
-            <label for="updateThisAndFuture" class="text-sm text-gray-700">이후 모든 일정 수정</label>
-          </div> -->
-<!--           
+            <label for="updateThisAndFuture" class="text-sm text-gray-700">이후 모든 일정</label>
+          </div>
+                 
           <div class="flex items-center space-x-2">
             <input
               type="radio"
@@ -455,8 +471,8 @@ const cancelDelete = () => {
               value="all"
               class="text-point focus:ring-point"
             />
-            <label for="updateAll" class="text-sm text-gray-700">모든 반복 일정 수정</label>
-          </div> -->
+            <label for="updateAll" class="text-sm text-gray-700">모든 반복 일정</label>
+          </div>
         </div>
 
         <!-- 모달 푸터 -->
