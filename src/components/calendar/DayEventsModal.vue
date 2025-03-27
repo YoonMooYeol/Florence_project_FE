@@ -154,37 +154,20 @@ const viewEvent = async (event) => {
       }
     }
     
-    // 날짜 형식 표준화 - 항상 ISO 형식으로 제공
-    if (mergedEvent.start && !mergedEvent.start.includes('T') && !mergedEvent.allDay) {
-      // 시간 정보가 없는 경우 기본 시간 추가 (09:00)
-      mergedEvent.start = `${mergedEvent.start}T09:00:00`
-    }
-    
-    if (mergedEvent.end && !mergedEvent.end.includes('T') && !mergedEvent.allDay) {
-      // 시간 정보가 없는 경우 기본 시간 추가 (10:00)
-      mergedEvent.end = `${mergedEvent.end}T10:00:00`
-    }
-    
     // 로깅
     console.log('서버에서 가져온 최신 이벤트:', updatedEvent)
     console.log('최종 이벤트 데이터:', mergedEvent)
     
     // 업데이트된 이벤트 정보로 selectedEvent 설정
     selectedEvent.value = mergedEvent
-    
-    // 약간의 지연 후 모달 열기 (Vue의 반응성이 적용될 시간 확보)
-    setTimeout(() => {
-      // 이벤트 상세 모달 대신 바로 수정 모달 열기
-      showEventModal.value = true
-    }, 50)
   } catch (error) {
     console.error('이벤트 데이터 가져오기 실패:', error)
     // 오류 발생 시 원본 이벤트 데이터 사용
     selectedEvent.value = event
-    
-    // 이벤트 상세 모달 대신 바로 수정 모달 열기
-    showEventModal.value = true
   }
+  
+  // 이벤트 상세 모달 열기
+  showEventDetailModal.value = true
 }
 
 // 반복 주기 텍스트 변환 함수
@@ -859,13 +842,8 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     if (success) {
       console.log('일정 삭제 성공!')
       
-      // 열려있는 모달 닫기
-      if (showEventDetailModal.value) {
-        showEventDetailModal.value = false
-      }
-      if (showEventModal.value) {
-        showEventModal.value = false
-      }
+      // 일정 상세 모달 먼저 닫기
+      showEventDetailModal.value = false
       
       // 일일 이벤트 모달 닫기
       emit('close')
@@ -937,16 +915,9 @@ const handleSaveEvent = async (eventData) => {
     }
 
     if (!eventData.allDay) {
-      // 시간 정보 처리 개선
-      if (eventData.start && !eventData.start.includes('T')) {
-        // T가 포함되어 있지 않은 경우에만 시간 추가
-        newEventData.start = `${eventData.start}T${eventData.startTime}`
-      }
-      
-      if (eventData.end && !eventData.end.includes('T')) {
-        // T가 포함되어 있지 않은 경우에만 시간 추가
-        newEventData.end = `${eventData.end}T${eventData.endTime}`
-      }
+      // 시간 정보가 있는 경우 start와 end에 시간 포함
+      newEventData.start = `${eventData.start}T${eventData.startTime}`
+      newEventData.end = `${eventData.end}T${eventData.endTime}`
     }
 
     console.log('저장할 이벤트 데이터:', newEventData)
@@ -1048,10 +1019,10 @@ onMounted(async () => {
   console.log('DayEventsModal - 임신 상태(isPregnant):', calendarStore.isPregnant)
   console.log('DayEventsModal - 태명(babyNickname):', calendarStore.babyNickname)
   
-  // 태명이 없으면 '그리움'으로 설정 (앞서 null인 경우 store에서 '그리움'으로 설정된 경우가 많겠지만, 이중 확인)
+  // 태명이 없을 경우에만 기본값 설정
   if (!calendarStore.babyNickname) {
-    console.log('DayEventsModal - 태명이 없어 기본값 설정')
-    calendarStore.babyNickname = '그리움'
+    console.log('DayEventsModal - 태명이 설정되지 않아 기본값 사용')
+    calendarStore.babyNickname = '(태명)'
   }
   
   // 기본 탭을 일정으로 설정
@@ -1061,7 +1032,7 @@ onMounted(async () => {
 // 태명과 조사를 안전하게 표시하는 계산된 속성 추가
 const babyTabLabel = computed(() => {
   // 태명이 없거나 null인 경우 '(태명)'을 사용
-  const nickname = calendarStore.babyNickname || '그리움'
+  const nickname = calendarStore.babyNickname || '(태명)'
   const josa = calendarStore.getJosa(nickname, '과', '와')
   console.log('태명 탭 레이블 계산:', nickname, josa)
   return `${nickname}${josa}의 하루`
@@ -1121,7 +1092,7 @@ const closeBirthdayPhoto = () => {
           오늘의 하루
         </button>
         <button
-          v-if="calendarStore.pregnancyId"
+          v-if="calendarStore.isPregnant"
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
           :class="activeTab === 'baby' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
           data-tab="baby"
@@ -1192,49 +1163,159 @@ const closeBirthdayPhoto = () => {
 
         <!-- 아기와의 하루 탭 -->
         <div v-if="activeTab === 'baby'" class="space-y-4">
-          <!-- 출산예정일 다음날 사진 -->
-          <div v-if="showBirthdayPhoto && babyDiary && babyDiary.photos && babyDiary.photos.length > 0" class="relative bg-white rounded-lg shadow-md p-6 mb-6">
-            <button
-              class="absolute top-4 right-4 z-10 bg-gray-800 text-white rounded-full p-2 shadow-md hover:bg-gray-700 transition-colors"
-              @click="closeBirthdayPhoto"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-            <div class="grid grid-cols-1 gap-6">
-              <div
-                v-for="photo in babyDiary.photos"
-                :key="photo.id"
-                class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
-                style="aspect-ratio: 16/9; height: 300px;"
-              >
-                <img
-                  :src="getThumbnailUrl(photo.image)"
-                  :alt="'태교일기 사진'"
-                  class="w-full h-full object-cover"
-                  loading="eager"
-                  @error="handleImageError($event)"
-                  @load="handleImageLoad($event, photo)"
+          <!-- 아래 하나의 섹션에서 사진 모두 관리 -->
+          <div v-if="babyDiary && babyDiary.id" class="space-y-6 relative">
+
+
+            <!-- 태교일기 사진 -->
+            <div class="space-y-3">
+              <div class="flex justify-between items-center">
+                <h4 class="text-sm font-medium text-gray-600">
+                  태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
+                </h4>
+                <button
+                  v-if="canUploadMorePhotos"
+                  @click="fileInput.click()"
+                  class="px-2 py-0.5 bg-[#A4E49B] text-dark-gray rounded-[30px] text-xl hover:bg-[#A4E49B] transition-colors font-bold text-center"
                 >
+                  ➕
+                </button>
               </div>
+
+              <div v-if="babyDiary.photos && babyDiary.photos.length > 0" class="grid grid-cols-1 gap-4">
+                <div
+                  v-for="photo in babyDiary.photos"
+                  :key="photo.id"
+                  class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
+                  style="aspect-ratio: 16/9; height: 180px;"
+                >
+                  <img
+                    :src="getThumbnailUrl(photo.image)"
+                    :alt="'태교일기 사진'"
+                    class="w-full h-full object-cover cursor-pointer"
+                    loading="eager"
+                    @error="handleImageError($event)"
+                    @load="handleImageLoad($event, photo)"
+                    @dblclick="openPhotoModal(photo)"
+                  >
+                  <!-- 마우스 오버 효과 -->
+                  <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-200
+          pointer-events-none" />
+                  <!-- 수정/삭제 버튼들 -->
+                  <div class="absolute top-1 right-1 flex space-x-1 z-10 opacity-0 group-hover:opacity-100 
+          transition-opacity duration-200
+          pointer-events-none group-hover:pointer-events-auto">
+                    <button
+                      class="bg-blue-500 text-white rounded-full p-1.5 shadow-md"
+                      title="사진 수정"
+                      @click.prevent.stop="openUpdatePhoto(photo.id)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                           viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                      </svg>
+                    </button>
+                    <button
+                      class="bg-red-500 text-white rounded-full p-1.5 shadow-md"
+                      title="사진 삭제"
+                      @click.prevent.stop="deletePhoto(photo.id)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                           viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <!-- 업데이트 중 -->
+                  <div
+                    v-if="isUpdating && selectedPhotoId === photo.id"
+                    class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20"
+                  >
+                    <div class="text-white text-sm">
+                      업데이트 중...
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 큰 이미지 모달 -->
+                <div v-if="showPhotoModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+                  <!-- 배경 클릭 시 닫기 -->
+                  <div class="absolute inset-0" @click="closePhotoModal" />
+                  <div class="relative bg-white p-4 rounded shadow-md z-10 max-w-4xl w-full max-h-[90vh] overflow-auto">
+                    <!-- 닫기 버튼 -->
+                    <button
+                      class="absolute top-2 right-2 bg-gray-100 rounded-full p-1.5 text-gray-600 hover:bg-gray-200"
+                      @click="closePhotoModal"
+                    >
+                      ✕
+                    </button>
+                    <!-- 원본 이미지 표시 -->
+                    <img
+                      v-if="selectedPhotoForView"
+                      :src="getThumbnailUrl(selectedPhotoForView.image)"
+                      alt="원본 이미지"
+                      class="block max-w-full h-auto m-auto"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- 업로드 중 표시 -->
+              <div v-if="isUploading" class="flex justify-center my-2">
+                <div class="text-blue-500 text-sm flex items-center">
+                  <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg"
+                       fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                            stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  사진 업로드 중...
+                </div>
+              </div>
+
+              <!-- 일기 내용 -->
+              <div v-if="babyDiary.content" class="bg-white p-4 rounded-lg shadow">
+                <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
+                  {{ babyDiary.content }}
+                </p>
+              </div>
+
+              <!-- 일기 작성/수정 버튼 -->
+              <div class="flex space-x-2">
+                <button
+                  class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                  @click="openDiaryModal(babyDiary.content ? 'edit' : 'create')"
+                >
+                  {{ babyDiary.content ? '일기 수정' : '기록하기' }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-center py-4">
+            <p class="text-gray-500">기록된 일기가 없습니다.</p>
+            <div class="flex flex-col items-center space-y-3 mt-4">
+              <button
+                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                @click="openDiaryModal('create')"
+              >
+                기록하기
+              </button>
+              <button
+                @click="fileInput.click()"
+                class="px-4 py-2 bg-[#A4E49B] text-dark-gray rounded-lg hover:bg-[#A4E49B] transition-colors font-bold"
+              >
+                사진등록
+              </button>
             </div>
           </div>
         </div>
       </div>
-          </div>
-        </div>
+    </div>
+  </div>
 
   <!-- 태교일기 작성 모달 -->
   <div
@@ -1295,7 +1376,6 @@ const closeBirthdayPhoto = () => {
   >
 
   <!-- 일정 상세 모달 -->
-  <!-- 직접 표시 대신 필요한 경우에만 프로그래밍 방식으로 호출
   <EventDetailModal
     v-if="showEventDetailModal"
     :show="showEventDetailModal"
@@ -1304,7 +1384,6 @@ const closeBirthdayPhoto = () => {
     @delete="handleDeleteEvent"
     @edit="handleEditEvent"
   />
-  -->
   
   <!-- 일정 등록/수정 모달 -->
   <EventModal
@@ -1314,7 +1393,6 @@ const closeBirthdayPhoto = () => {
     :date="date"
     @close="showEventModal = false"
     @save="handleSaveEvent"
-    @delete="handleDeleteEvent"
   />
 </template>
 
