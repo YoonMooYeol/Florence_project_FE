@@ -1242,7 +1242,7 @@ const babyTabLabel = computed(() => {
                   @click="fileInput.click()"
                   class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
-                  사진 등록하기
+                  사진 등록하기(기능 구현중)
                 </button>
               </div>
               
@@ -1295,7 +1295,7 @@ const babyTabLabel = computed(() => {
                 @click="fileInput.click()"
                 class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
-                사진 등록하기
+                사진 등록하기(기능 구현중)
               </button>
             </div>
           </div>
