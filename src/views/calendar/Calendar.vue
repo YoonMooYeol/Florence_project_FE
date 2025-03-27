@@ -48,6 +48,72 @@ const popupActive = computed(() => {
          modalManager.showDiaryTypeModal.value
 })
 
+// 축하 화면 표시 상태 관리
+const showCongratulation = ref(false)
+
+// 컴포넌트 마운트 시 로컬 스토리지 확인
+onMounted(() => {
+  const hideForever = localStorage.getItem('hideCongratulation')
+  showCongratulation.value = !hideForever
+})
+
+// 다시 보지 않기 함수
+const neverShowAgain = () => {
+  localStorage.setItem('hideCongratulation', 'true')
+  showCongratulation.value = false
+}
+
+// 축하 화면 닫기 함수
+const closeCongratulation = () => {
+  showCongratulation.value = false
+}
+
+// 축하 화면 저장 함수
+const saveCongratulation = async () => {
+  try {
+    // 이미지 요소 가져오기
+    const imgElement = document.querySelector('.after-due-date-image')
+    if (!imgElement) {
+      throw new Error('이미지를 찾을 수 없습니다.')
+    }
+
+    // Canvas 생성
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    
+    // Canvas 크기 설정
+    canvas.width = imgElement.naturalWidth
+    canvas.height = imgElement.naturalHeight
+    
+    // 이미지를 Canvas에 그리기
+    ctx.drawImage(imgElement, 0, 0)
+    
+    // Canvas를 Blob으로 변환
+    canvas.toBlob((blob) => {
+      // Blob URL 생성
+      const url = window.URL.createObjectURL(blob)
+      
+      // 다운로드 링크 생성
+      const link = document.createElement('a')
+      link.href = url
+      link.download = '축하해요.png'
+      
+      // 링크 클릭하여 다운로드
+      document.body.appendChild(link)
+      link.click()
+      
+      // 정리
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      alert('이미지가 저장되었습니다!')
+    }, 'image/png')
+  } catch (error) {
+    console.error('이미지 저장 중 오류 발생:', error)
+    alert('이미지 저장에 실패했습니다.')
+  }
+}
+
 // 날짜 클릭 핸들러
 const handleDateClick = (info) => {
   try {
@@ -311,6 +377,9 @@ onMounted(async () => {
     
     // 캘린더 새로고침 이벤트 리스너 추가
     window.addEventListener('calendar-needs-refresh', handleCalendarRefresh)
+    
+    // 출산 예정일 체크
+    await calendarStore.checkDueDate()
     
   } catch (error) {
     logger.error(CONTEXT, '캘린더 마운트 중 오류 발생:', error)
@@ -652,6 +721,57 @@ const handleCalendarRefresh = async (event) => {
         >
           {{ day }}
         </span>
+      </div>
+    </div>
+
+    <!-- 출산 예정일 이후 오버레이 -->
+    <div v-if="calendarStore.isAfterDueDate && showCongratulation" class="after-due-date-overlay">
+      <div class="bg-white rounded-lg p-8 shadow-lg relative w-[90%] max-w-4xl flex flex-col items-center justify-center">
+        <!-- X 버튼 -->
+        <button 
+          @click="closeCongratulation"
+          class="absolute top-2 right-2 z-8 bg-red-300 text-white rounded-full p-0.5 hover:bg-red-400 transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+
+        <!-- 축하 이미지 컨테이너 -->
+        <div class="w-full h-full flex items-center justify-center overflow-hidden">
+          <img 
+            src="/src/assets/images/Congratulation.png" 
+            alt="출산 예정일 이후" 
+            class="after-due-date-image" 
+          />
+        </div>
+        
+        <!-- 저장하기 버튼 -->
+        <button
+          @click="saveCongratulation"
+          class="mt-4 px-5 py-1 bg-red-300 text-white rounded-lg hover:bg-red-400 transition-colors font-bold text-l"
+        >
+          저장하기
+        </button>
+        
+        <!-- 다시 보지 않기 버튼 -->
+        <button
+          @click="neverShowAgain"
+          class="mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          다시 보지 않기
+        </button>
       </div>
     </div>
 
@@ -1444,5 +1564,44 @@ body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top a.fc-daygrid-day-n
   left: 5px;
   top: 2px;
   text-align: left;
+}
+
+.after-due-date-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.after-due-date-image {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(80vh - 100px); /* 버튼 공간 확보 */
+  object-fit: contain;
+}
+
+/* 반응형 스타일 */
+@media screen and (max-width: 768px) {
+  .after-due-date-image {
+    max-height: calc(70vh - 80px);
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .after-due-date-image {
+    max-height: calc(85vh - 120px);
+  }
+}
+
+.calendar-content {
+  position: relative;
+  z-index: 1;
 }
 </style>

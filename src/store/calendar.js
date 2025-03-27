@@ -10,6 +10,7 @@ import api from '@/utils/axios'
 export const useCalendarStore = defineStore('calendar', () => {
   // 상태 (state)
   const events = ref([]) // 로컬 스토리지에서 읽지 않고 빈 배열로 초기화
+  const isAfterDueDate = ref(false) // 출산 예정일 이후 여부
 
   // LLM 대화 요약 데이터
   const llmSummaries = ref([])
@@ -245,40 +246,26 @@ export const useCalendarStore = defineStore('calendar', () => {
     try {
       console.log('일정 추가 시작:', newEvent)
       
-      // pregnancy ID 확인
-      if (!newEvent.pregnancy) {
-        try {
-          const pregnancyResponse = await api.get('/accounts/pregnancies/');
-          
-          // 임신 정보가 있는 경우 첫 번째 항목의 ID 사용
-          if (pregnancyResponse.data && pregnancyResponse.data.length > 0) {
-            // 임신 ID와 상태 업데이트
-            newEvent.pregnancy = pregnancyResponse.data[0].id;
-            setPregnancyInfo(true, pregnancyResponse.data[0].baby_nickname, pregnancyResponse.data[0].id);
-          }
-        } catch (pregnancyError) {
-          // 임신 정보 조회 실패시에도 일정 등록은 계속 진행
-        }
-      }
-
-      console.log('addEvent에 전달된 데이터:', newEvent);
+      // pregnancy ID 확인 및 제거
+      const { pregnancy, ...eventDataWithoutPregnancy } = newEvent
+      
+      console.log('addEvent에 전달된 데이터:', eventDataWithoutPregnancy);
       
       // API 요청 형식에 맞게 데이터 변환
       const apiPayload = {
-        title: newEvent.title,
-        pregnancy: newEvent.pregnancy
+        title: eventDataWithoutPregnancy.title
       };
       
       // event_day 필드 결정 (start 필드를 먼저 확인하고, 없으면 event_day 확인)
-      if (newEvent.start) {
+      if (eventDataWithoutPregnancy.start) {
         // start가 ISO 문자열 형식(YYYY-MM-DDT...)이면 날짜 부분만 추출
-        if (typeof newEvent.start === 'string' && newEvent.start.includes('T')) {
-          apiPayload.event_day = newEvent.start.split('T')[0];
+        if (typeof eventDataWithoutPregnancy.start === 'string' && eventDataWithoutPregnancy.start.includes('T')) {
+          apiPayload.event_day = eventDataWithoutPregnancy.start.split('T')[0];
         } else {
-          apiPayload.event_day = normalizeDate(newEvent.start);
+          apiPayload.event_day = normalizeDate(eventDataWithoutPregnancy.start);
         }
-      } else if (newEvent.event_day) {
-        apiPayload.event_day = normalizeDate(newEvent.event_day);
+      } else if (eventDataWithoutPregnancy.event_day) {
+        apiPayload.event_day = normalizeDate(eventDataWithoutPregnancy.event_day);
       } else {
         // 둘 다 없으면 오늘 날짜 사용
         apiPayload.event_day = normalizeDate(new Date());
@@ -287,29 +274,29 @@ export const useCalendarStore = defineStore('calendar', () => {
       console.log('변환된 API 페이로드:', apiPayload);
       
       // 설명 필드가 있으면 추가
-      if (newEvent.description) {
-        apiPayload.description = newEvent.description;
+      if (eventDataWithoutPregnancy.description) {
+        apiPayload.description = eventDataWithoutPregnancy.description;
       }
       
       // 시작 시간 정보가 있으면 추가
-      if (newEvent.start && typeof newEvent.start === 'string' && newEvent.start.includes('T')) {
-        apiPayload.start_time = newEvent.start.split('T')[1];
+      if (eventDataWithoutPregnancy.start && typeof eventDataWithoutPregnancy.start === 'string' && eventDataWithoutPregnancy.start.includes('T')) {
+        apiPayload.start_time = eventDataWithoutPregnancy.start.split('T')[1];
       }
       
       // 종료 시간 정보가 있으면 추가
-      if (newEvent.end && typeof newEvent.end === 'string' && newEvent.end.includes('T')) {
-        apiPayload.end_time = newEvent.end.split('T')[1];
+      if (eventDataWithoutPregnancy.end && typeof eventDataWithoutPregnancy.end === 'string' && eventDataWithoutPregnancy.end.includes('T')) {
+        apiPayload.end_time = eventDataWithoutPregnancy.end.split('T')[1];
       }
       
       // 반복 일정 정보가 있으면 추가
-      if (newEvent.recurring && newEvent.recurring !== 'none') {
+      if (eventDataWithoutPregnancy.recurring && eventDataWithoutPregnancy.recurring !== 'none') {
         apiPayload.is_recurring = true;
-        apiPayload.recurrence_pattern = newEvent.recurring;
+        apiPayload.recurrence_pattern = eventDataWithoutPregnancy.recurring;
       }
       
       // 이벤트 타입 정보가 있으면 추가
-      if (newEvent.event_type) {
-        apiPayload.event_type = newEvent.event_type;
+      if (eventDataWithoutPregnancy.event_type) {
+        apiPayload.event_type = eventDataWithoutPregnancy.event_type;
       } else {
         apiPayload.event_type = 'other'; // 기본값
       }
@@ -325,12 +312,10 @@ export const useCalendarStore = defineStore('calendar', () => {
         end: response.data.event_day + (response.data.event_time ? `T${response.data.event_time}` : ''),
         description: response.data.description,
         event_day: response.data.event_day,
-        // start: response.data.event_day, // event_day를 start로 매핑
       backgroundColor: '#FFD600',
       borderColor: '#FFD600',
       textColor: '#353535',
         display: 'block',
-        pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
         recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
         created_at: response.data.created_at,
@@ -358,7 +343,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       return mappedEvent;
     } catch (err) {
       error.value = err.message || '일정 추가에 실패했습니다.';
-      
       throw err;
     } finally {
       isLoading.value = false;
@@ -808,6 +792,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       const formData = new FormData()
       formData.append('image', photoFile)
       formData.append('category', 'diary') // 필수 카테고리 필드 추가
+      formData.append('diary_id', diaryId) // 일기 ID 추가
 
       // 디버깅 정보
       for (let [key, value] of formData.entries()) {
@@ -1721,7 +1706,48 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
+  // 회원 탈퇴
+  const deleteAccount = async () => {
+    try {
+      // 1. 회원 탈퇴 API 호출
+      const response = await api.delete('/v1/accounts/users/me/delete-account/')
+      console.log('회원 탈퇴 성공:', response.data)
 
+      // 2. 로컬 상태 초기화
+      $reset()
+
+      // 3. 로컬/세션 스토리지 초기화
+      localStorage.clear()
+      sessionStorage.clear()
+
+      return response.data
+    } catch (error) {
+      console.error('회원 탈퇴 실패:', error)
+      throw error
+    }
+  }
+
+  // 출산 예정일 체크 함수
+  async function checkDueDate() {
+    try {
+      const response = await api.get('/accounts/pregnancies/')
+      if (response.data && response.data.length > 0) {
+        const pregnancy = response.data[0]
+        const dueDate = new Date(pregnancy.due_date)
+        const today = new Date()
+        
+        // 출산 예정일 다음날인지 확인
+        const isAfterDue = today > dueDate
+        isAfterDueDate.value = isAfterDue
+        
+        return isAfterDue
+      }
+      return false
+    } catch (error) {
+      console.error('출산 예정일 확인 실패:', error)
+      return false
+    }
+  }
 
   return {
     // 상태
@@ -1739,6 +1765,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     pregnancyId,
     isLoading,
     error,
+    isAfterDueDate,
 
     // 액션
     fetchEvents,
@@ -1771,10 +1798,11 @@ export const useCalendarStore = defineStore('calendar', () => {
     $reset,
     fetchLLMSummaries,
     deleteLLMSummary,
-    // updateRecurringEvent,
     updateRecurringEventThisOnly,
     updateRecurringEventsThisAndFuture,
     updateRecurringEventsAll,
+    deleteAccount,
+    checkDueDate,
 
     // 게터
     eventsForSelectedDate,
