@@ -139,20 +139,37 @@ const viewEvent = async (event) => {
       }
     }
     
+    // 날짜 형식 표준화 - 항상 ISO 형식으로 제공
+    if (mergedEvent.start && !mergedEvent.start.includes('T') && !mergedEvent.allDay) {
+      // 시간 정보가 없는 경우 기본 시간 추가 (09:00)
+      mergedEvent.start = `${mergedEvent.start}T09:00:00`
+    }
+    
+    if (mergedEvent.end && !mergedEvent.end.includes('T') && !mergedEvent.allDay) {
+      // 시간 정보가 없는 경우 기본 시간 추가 (10:00)
+      mergedEvent.end = `${mergedEvent.end}T10:00:00`
+    }
+    
     // 로깅
     console.log('서버에서 가져온 최신 이벤트:', updatedEvent)
     console.log('최종 이벤트 데이터:', mergedEvent)
     
     // 업데이트된 이벤트 정보로 selectedEvent 설정
     selectedEvent.value = mergedEvent
+    
+    // 약간의 지연 후 모달 열기 (Vue의 반응성이 적용될 시간 확보)
+    setTimeout(() => {
+      // 이벤트 상세 모달 대신 바로 수정 모달 열기
+      showEventModal.value = true
+    }, 50)
   } catch (error) {
     console.error('이벤트 데이터 가져오기 실패:', error)
     // 오류 발생 시 원본 이벤트 데이터 사용
     selectedEvent.value = event
+    
+    // 이벤트 상세 모달 대신 바로 수정 모달 열기
+    showEventModal.value = true
   }
-  
-  // 이벤트 상세 모달 열기
-  showEventDetailModal.value = true
 }
 
 // 반복 주기 텍스트 변환 함수
@@ -813,8 +830,13 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     if (success) {
       console.log('일정 삭제 성공!')
       
-      // 일정 상세 모달 먼저 닫기
-      showEventDetailModal.value = false
+      // 열려있는 모달 닫기
+      if (showEventDetailModal.value) {
+        showEventDetailModal.value = false
+      }
+      if (showEventModal.value) {
+        showEventModal.value = false
+      }
       
       // 일일 이벤트 모달 닫기
       emit('close')
@@ -886,9 +908,16 @@ const handleSaveEvent = async (eventData) => {
     }
 
     if (!eventData.allDay) {
-      // 시간 정보가 있는 경우 start와 end에 시간 포함
-      newEventData.start = `${eventData.start}T${eventData.startTime}`
-      newEventData.end = `${eventData.end}T${eventData.endTime}`
+      // 시간 정보 처리 개선
+      if (eventData.start && !eventData.start.includes('T')) {
+        // T가 포함되어 있지 않은 경우에만 시간 추가
+        newEventData.start = `${eventData.start}T${eventData.startTime}`
+      }
+      
+      if (eventData.end && !eventData.end.includes('T')) {
+        // T가 포함되어 있지 않은 경우에만 시간 추가
+        newEventData.end = `${eventData.end}T${eventData.endTime}`
+      }
     }
 
     console.log('저장할 이벤트 데이터:', newEventData)
@@ -1331,6 +1360,7 @@ const babyTabLabel = computed(() => {
   >
 
   <!-- 일정 상세 모달 -->
+  <!-- 직접 표시 대신 필요한 경우에만 프로그래밍 방식으로 호출
   <EventDetailModal
     v-if="showEventDetailModal"
     :show="showEventDetailModal"
@@ -1339,6 +1369,7 @@ const babyTabLabel = computed(() => {
     @delete="handleDeleteEvent"
     @edit="handleEditEvent"
   />
+  -->
   
   <!-- 일정 등록/수정 모달 -->
   <EventModal
@@ -1348,6 +1379,7 @@ const babyTabLabel = computed(() => {
     :date="date"
     @close="showEventModal = false"
     @save="handleSaveEvent"
+    @delete="handleDeleteEvent"
   />
 </template>
 

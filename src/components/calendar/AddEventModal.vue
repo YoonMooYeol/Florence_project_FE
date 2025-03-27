@@ -24,6 +24,7 @@ const notification = ref('none')
 const memo = ref('')
 const isRecurring = ref(false)
 const recurrenceType = ref('none')
+const eventColor = ref('#FFD600')  // 기본 색상 추가
 
 // 드롭다운 상태
 const showStartTimeDropdown = ref(false)
@@ -35,6 +36,20 @@ const timeOptions = Array.from({ length: 48 }, (_, i) => {
   const minute = (i % 2) * 30
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
 })
+
+// 색상 옵션 정의
+const colorOptions = [
+  { value: '#FFD600', label: '노랑' },
+  { value: '#FF6B6B', label: '빨강' },
+  { value: '#4ECDC4', label: '청록' },
+  { value: '#45B7D1', label: '하늘' },
+  { value: '#96CEB4', label: '민트' },
+  { value: '#FFEEAD', label: '연한 노랑' },
+  { value: '#D4A5A5', label: '연한 빨강' },
+  { value: '#9B59B6', label: '보라' },
+  { value: '#3498DB', label: '파랑' },
+  { value: '#2ECC71', label: '초록' }
+]
 
 // 드롭다운 토글 함수
 const toggleStartTimeDropdown = () => {
@@ -101,6 +116,7 @@ const resetForm = () => {
   memo.value = ''
   isRecurring.value = false
   recurrenceType.value = 'none'
+  eventColor.value = '#FFD600'  // 색상 초기화 추가
 }
 
 // 반복 주기 텍스트 가져오기
@@ -148,14 +164,15 @@ const saveEvent = () => {
       title: `${recurringText}${title.value}`,
       allDay: isAllDay.value,
       description: memo.value,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
+      backgroundColor: eventColor.value,  // 선택된 색상 적용
+      borderColor: eventColor.value,      // 선택된 색상 적용
       textColor: '#353535',
       display: 'block',
       recurring: isRecurring.value ? recurrenceType.value : 'none',
       event_time: isAllDay.value ? null : startTime.value,
       startTime: startTime.value,
-      endTime: endTime.value
+      endTime: endTime.value,
+      event_color: eventColor.value  // 색상 정보 추가
     }
 
     // 종일 이벤트인 경우
@@ -411,6 +428,31 @@ const saveEvent = () => {
           </select>
         </div>
 
+        <!-- 색상 선택 -->
+        <div class="mb-2">
+          <label class="block text-dark-gray font-medium mb-2">일정 색상</label>
+          <div class="grid grid-cols-10 gap-1">
+            <div
+              v-for="color in colorOptions"
+              :key="color.value"
+              class="relative cursor-pointer"
+              @click="eventColor = color.value"
+            >
+              <div
+                class="w-full h-6 rounded-lg border-2 transition-all"
+                :style="{ backgroundColor: color.value }"
+                :class="{ 'border-point': eventColor === color.value }"
+              />
+              <div
+                class="absolute inset-0 flex items-center justify-center text-xs text-white font-medium"
+                v-if="eventColor === color.value"
+              >
+                ✓
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 메모 입력 -->
         <div class="mb-1">
           <label
@@ -468,5 +510,9 @@ select:focus option:checked {
 select option {
   max-height: 180px;
   overflow-y: auto;
+}
+
+.border-point {
+  border-color: #FFD600;
 }
 </style>

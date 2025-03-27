@@ -1014,37 +1014,43 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
 /* 이벤트 스타일 */
 .fc-daygrid-event {
   border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 0.8rem;
+  padding: 1px 4px;
+  font-size: 0.75rem;
   cursor: pointer;
-  margin-top: 2px;
-  margin-bottom: 2px;
-  margin-left: auto;
-  margin-right: auto;
-  width: 90%;
+  margin: 1px 0;
+  width: 100%;
   display: block;
-  text-align: center;
+  text-align: left;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   height: auto;
-  min-height: 22px;
-  background-color: #ffd600;
+  min-height: 20px;
+  background-color: var(--event-color, #ffd600);
   color: #353535;
   font-weight: 500;
-  border: none;
+  border: 1px solid var(--event-color, #ffd600);
+  white-space: normal;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* 이벤트 메인 콘텐츠 */
 .fc-event-main {
-  padding: 1px 3px;
+  padding: 1px 2px;
   display: block;
   text-align: center;
   color: #353535;
   overflow: hidden;
-  white-space: nowrap;
+  white-space: normal;
   text-overflow: ellipsis;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  height: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* 이벤트 컨테이너 */
@@ -1062,13 +1068,13 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
   margin-top: 2px;
   flex-grow: 1;
   width: 100%;
-  min-height: 25px;
+  min-height: 32px;
 }
 
 /* 종일 이벤트 */
 .fc-daygrid-block-event {
-  margin: 2px 0;
-  width: 90%;
+  margin: 1px 0;
+  width: 95%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -1076,9 +1082,9 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
 /* dot 이벤트 스타일 */
 .fc-daygrid-dot-event {
   display: block;
-  padding: 2px 6px;
-  background-color: #ffd600;
-  border-color: #ffd600;
+  padding: 2px 4px;
+  background-color: var(--event-color, #ffd600);
+  border-color: var(--event-color, #ffd600);
 }
 
 .fc-daygrid-dot-event .fc-event-title {
@@ -1086,11 +1092,17 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
   flex-grow: 1;
   display: block;
   color: #353535;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* 이벤트 "더보기" 링크 */
 .fc-daygrid-more-link {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: #3182ce;
   font-weight: 500;
   margin: 0 auto;
@@ -1100,7 +1112,7 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
 
 /* 커스텀 이벤트 콘텐츠 */
 .custom-event-content {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: #353535;
   text-align: center;
@@ -1108,8 +1120,11 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
   line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* 다른 월의 날짜 스타일 */
@@ -1120,22 +1135,28 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
 
 /* 반응형 설정 */
 @media screen and (max-width: 768px) {
-  .fc-daygrid-day {
-    min-height: 80px;
-  }
-  
-  .fc-daygrid-day-frame {
-    padding-top: 25px;
-    min-height: 80px;
-  }
-  
-  .fc-daygrid-day-top {
-    padding: 2px 0 0 2px;
-  }
-  
-  .fc-daygrid-day-number {
+  .fc-daygrid-event {
     font-size: 0.75rem;
-    margin-left: 3px;
+    min-height: 18px;
+    line-height: 1.2;
+    padding: 1px 3px;
+  }
+  
+  .fc-event-main {
+    font-size: 0.7rem;
+    padding: 0 1px;
+  }
+  
+  .fc-daygrid-dot-event .fc-event-title {
+    font-size: 0.7rem;
+  }
+  
+  .fc-daygrid-more-link {
+    font-size: 0.65rem;
+  }
+  
+  .custom-event-content {
+    font-size: 0.7rem;
   }
 }
 

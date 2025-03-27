@@ -69,16 +69,16 @@ export const useCalendarStore = defineStore('calendar', () => {
           title: event.title,
           description: event.description,
           event_day: event.event_day,
-          // start: event.event_day, // event_day를 start로 매핑
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+          backgroundColor: event.event_color || '#FFD600',
+          borderColor: event.event_color || '#FFD600',
+          textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
           recurring: event.is_recurring ? event.recurrence_pattern : 'none',
           created_at: event.created_at,
-          updated_at: event.updated_at
+          updated_at: event.updated_at,
+          event_color: event.event_color || '#FFD600'
         };
         
         // 시작 시간 정보가 있으면 start에 통합
@@ -140,16 +140,16 @@ export const useCalendarStore = defineStore('calendar', () => {
           title: event.title,
           description: event.description,
           event_day: event.event_day,
-          // start: event.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+          backgroundColor: event.event_color || '#FFD600',
+          borderColor: event.event_color || '#FFD600',
+          textColor: '#353535',
           display: 'block',
           pregnancy: event.pregnancy,
           event_type: event.event_type,
           recurring: event.is_recurring ? event.recurrence_pattern : 'none',
           created_at: event.created_at,
-          updated_at: event.updated_at
+          updated_at: event.updated_at,
+          event_color: event.event_color || '#FFD600'
         };
         
         // 시작 시간 정보가 있으면 start에 통합
@@ -197,16 +197,16 @@ export const useCalendarStore = defineStore('calendar', () => {
         title: response.data.title,
         description: response.data.description,
         event_day: response.data.event_day,
-        // start: response.data.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        backgroundColor: response.data.event_color || '#FFD600',
+        borderColor: response.data.event_color || '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
         recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
         created_at: response.data.created_at,
-        updated_at: response.data.updated_at
+        updated_at: response.data.updated_at,
+        event_color: response.data.event_color || '#FFD600'
       };
       
       // 시작 시간 정보가 있으면 start에 통합
@@ -314,6 +314,11 @@ export const useCalendarStore = defineStore('calendar', () => {
         apiPayload.event_type = 'other'; // 기본값
       }
       
+      // 이벤트 색상 정보가 있으면 추가
+      if (newEvent.event_color) {
+        apiPayload.event_color = newEvent.event_color;
+      }
+      
       // API 호출 (baseURL에 v1이 포함되어 있음)
       const response = await api.post('calendars/events/', apiPayload);
       
@@ -325,16 +330,16 @@ export const useCalendarStore = defineStore('calendar', () => {
         end: response.data.event_day + (response.data.event_time ? `T${response.data.event_time}` : ''),
         description: response.data.description,
         event_day: response.data.event_day,
-        // start: response.data.event_day, // event_day를 start로 매핑
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        backgroundColor: response.data.event_color || '#FFD600',
+        borderColor: response.data.event_color || '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
         recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
         created_at: response.data.created_at,
-        updated_at: response.data.updated_at
+        updated_at: response.data.updated_at,
+        event_color: response.data.event_color || '#FFD600'
       };
       
       // 시작 시간 정보가 있으면 start에 통합
@@ -427,6 +432,11 @@ export const useCalendarStore = defineStore('calendar', () => {
         apiPayload.event_type = updatedEvent.event_type;
       }
       
+      // 이벤트 색상 정보가 있으면 추가
+      if (updatedEvent.event_color) {
+        apiPayload.event_color = updatedEvent.event_color;
+      }
+      
       console.log('API 요청 데이터:', apiPayload)
       
       // API 호출
@@ -440,16 +450,16 @@ export const useCalendarStore = defineStore('calendar', () => {
         title: response.data.title,
         description: response.data.description,
         event_day: response.data.event_day,
-        // start: response.data.event_day,
-      backgroundColor: '#FFD600',
-      borderColor: '#FFD600',
-      textColor: '#353535',
+        backgroundColor: response.data.event_color || '#FFD600',
+        borderColor: response.data.event_color || '#FFD600',
+        textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
         event_type: response.data.event_type,
         recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
         created_at: response.data.created_at,
-        updated_at: response.data.updated_at
+        updated_at: response.data.updated_at,
+        event_color: response.data.event_color || '#FFD600'
       };
       
       // 시작 시간 정보가 있으면 start에 통합
@@ -1624,11 +1634,38 @@ export const useCalendarStore = defineStore('calendar', () => {
       });
       
       // 응답 데이터 매핑
-      const updatedEvent = mapEventResponse(response.data);
+      const updatedEvent = {
+        id: response.data.event_id || eventData.id,
+        title: response.data.title,
+        description: response.data.description,
+        event_day: response.data.event_day,
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
+        display: 'block',
+        pregnancy: response.data.pregnancy,
+        event_type: response.data.event_type,
+        recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
+        created_at: response.data.created_at,
+        updated_at: response.data.updated_at
+      };
+
+      // 시작/종료 시간 설정
+      if (response.data.start_time) {
+        updatedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
+      } else {
+        updatedEvent.start = response.data.event_day;
+      }
+      
+      if (response.data.end_time) {
+        updatedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
+      } else {
+        updatedEvent.end = response.data.event_day;
+      }
       
       // UI 업데이트를 위해 로컬 상태 업데이트
       const index = events.value.findIndex(e => e.id === eventData.id);
-    if (index !== -1) {
+      if (index !== -1) {
         events.value[index] = updatedEvent;
       }
       
@@ -1665,7 +1702,34 @@ export const useCalendarStore = defineStore('calendar', () => {
       });
       
       // 응답 데이터 매핑
-      const updatedEvent = mapEventResponse(response.data);
+      const updatedEvent = {
+        id: response.data.event_id || eventData.id,
+        title: response.data.title,
+        description: response.data.description,
+        event_day: response.data.event_day,
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
+        display: 'block',
+        pregnancy: response.data.pregnancy,
+        event_type: response.data.event_type,
+        recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
+        created_at: response.data.created_at,
+        updated_at: response.data.updated_at
+      };
+
+      // 시작/종료 시간 설정
+      if (response.data.start_time) {
+        updatedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
+      } else {
+        updatedEvent.start = response.data.event_day;
+      }
+      
+      if (response.data.end_time) {
+        updatedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
+      } else {
+        updatedEvent.end = response.data.event_day;
+      }
       
       // UI 업데이트를 위해 로컬 상태 업데이트
       // 여러 일정이 업데이트될 수 있으므로 전체 일정 새로고침이 필요할 수 있음
@@ -1704,7 +1768,34 @@ export const useCalendarStore = defineStore('calendar', () => {
       });
       
       // 응답 데이터 매핑
-      const updatedEvent = mapEventResponse(response.data);
+      const updatedEvent = {
+        id: response.data.event_id || eventData.id,
+        title: response.data.title,
+        description: response.data.description,
+        event_day: response.data.event_day,
+        backgroundColor: '#FFD600',
+        borderColor: '#FFD600',
+        textColor: '#353535',
+        display: 'block',
+        pregnancy: response.data.pregnancy,
+        event_type: response.data.event_type,
+        recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
+        created_at: response.data.created_at,
+        updated_at: response.data.updated_at
+      };
+
+      // 시작/종료 시간 설정
+      if (response.data.start_time) {
+        updatedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
+      } else {
+        updatedEvent.start = response.data.event_day;
+      }
+      
+      if (response.data.end_time) {
+        updatedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
+      } else {
+        updatedEvent.end = response.data.event_day;
+      }
       
       // UI 업데이트를 위해 로컬 상태 업데이트
       // 모든 반복 일정이 업데이트되므로 전체 일정 새로고침
@@ -1719,7 +1810,84 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-
+  /**
+   * 이벤트 데이터를 API 요청 형식에 맞게 변환하는 함수
+   * @param {Object} eventData - 변환할 이벤트 데이터
+   * @returns {Object} API 요청에 맞는 페이로드 객체
+   */
+  function prepareEventPayload(eventData) {
+    // API 요청 형식에 맞게 데이터 변환
+    const apiPayload = {
+      title: eventData.title
+    };
+    
+    // // 제목에서 반복 주기 태그 제거
+    // if (apiPayload.title) {
+    //   apiPayload.title = apiPayload.title.replace(/^\[(매일|매주|매월|매년)\]\s*/, '');
+    // }
+    
+    // pregnancy ID가 있으면 포함
+    if (eventData.pregnancy) {
+      apiPayload.pregnancy = eventData.pregnancy;
+    } else if (pregnancyId.value) {
+      apiPayload.pregnancy = pregnancyId.value;
+    }
+    
+    // event_day 필드 결정 (start 필드를 먼저 확인하고, 없으면 event_day 확인)
+    if (eventData.start) {
+      // start가 ISO 문자열 형식(YYYY-MM-DDT...)이면 날짜 부분만 추출
+      if (typeof eventData.start === 'string' && eventData.start.includes('T')) {
+        apiPayload.event_day = eventData.start.split('T')[0];
+      } else {
+        apiPayload.event_day = normalizeDate(eventData.start);
+      }
+    } else if (eventData.event_day) {
+      apiPayload.event_day = normalizeDate(eventData.event_day);
+    } else {
+      // 둘 다 없으면 오늘 날짜 사용
+      apiPayload.event_day = normalizeDate(new Date());
+    }
+    
+    // 설명 필드가 있으면 추가
+    if (eventData.description) {
+      apiPayload.description = eventData.description;
+    }
+    
+    // 시작 시간 정보가 있으면 추가
+    if (eventData.start && typeof eventData.start === 'string' && eventData.start.includes('T')) {
+      apiPayload.start_time = eventData.start.split('T')[1];
+    } else if (eventData.startTime) {
+      apiPayload.start_time = eventData.startTime;
+    }
+    
+    // 종료 시간 정보가 있으면 추가
+    if (eventData.end && typeof eventData.end === 'string' && eventData.end.includes('T')) {
+      apiPayload.end_time = eventData.end.split('T')[1];
+    } else if (eventData.endTime) {
+      apiPayload.end_time = eventData.endTime;
+    }
+    
+    // 반복 일정 정보가 있으면 추가
+    if (eventData.recurring && eventData.recurring !== 'none') {
+      apiPayload.is_recurring = true;
+      apiPayload.recurrence_pattern = eventData.recurring;
+    }
+    
+    // 이벤트 타입 정보가 있으면 추가
+    if (eventData.event_type) {
+      apiPayload.event_type = eventData.event_type;
+    } else {
+      apiPayload.event_type = 'other'; // 기본값
+    }
+    
+    // 종일 일정 여부 추가
+    if (eventData.allDay) {
+      apiPayload.all_day = true;
+    }
+    
+    console.log('prepareEventPayload로 변환된 API 페이로드:', apiPayload);
+    return apiPayload;
+  }
 
   return {
     // 상태
