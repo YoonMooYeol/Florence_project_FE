@@ -65,8 +65,10 @@ const lastSubmitTime = ref(0)
 const debounceTime = 1000 // 1초 디바운스
 const chatContainer = ref(null) // 채팅 컨테이너 ref 추가
 const userId = ref(null) // 사용자 ID 저장
+const address = ref('') // 주소
 const hasPregnancyInfo = ref(false) // 임신 정보 유무
 const babyName = ref('') // 태명
+const highRisk = ref(false) // 고위험 임신 여부
 const pregnancyWeek = ref(0) // 임신 주차
 const currentSearchQuery = ref('') // 현재 검색 쿼리 표시
 
@@ -150,21 +152,53 @@ onMounted(async () => {
 
     // 메시지가 없을 경우만 환영 메시지 추가
     if (messages.value.length === 0) {
+      // 기본 환영 메시지 구성
+      let welcomeMessageContent = `반갑습니다. AI 에이전트 플로렌스입니다.\n ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차군요!`
+
+      // highRisk가 true일 경우 메시지 앞에 추가
+      if (highRisk.value === true) {
+        welcomeMessageContent = `${welcomeMessageContent}\n\n현재 고위험 임신을 겪고 계시다고 들었어요. 걱정과 불안이 크실 수 있지만, 필요한 정보와 조언을 최대한 편하게 받아보실 수 있도록 도와드릴게요. `
+      }
+
+      // if (address.value !== null) {
+      //   welcomeMessageContent = `${welcomeMessageContent}\n\n${address.value} 주변에 있는 병원 정보를 알려드릴수도있습니다.`
+      // }
+
+      const randomQuestions = [
+        '요즘 몸 상태는 어떠세요? 특별히 불편하거나 걱정되는 증상이 있으신가요?',
+        '최근에 컨디션이 많이 변하셨나요? 어떤 점이 가장 신경 쓰이세요?',
+        '의사 선생님께 들은 주의사항 중 이해하기 어렵거나 궁금한 점이 있으신가요?',
+        '식사와 수분 섭취는 잘하고 계신가요? 혹시 드시기 힘든 음식이 있나요?',
+        '최근 운동을 하고 계시나요? 운동 횟수와 시간은 어땠나요?',
+        '최근 수면 시간은 어땠나요? 수면 패턴이 변했나요?',
+        '최근 스트레스 수준이 어땠나요? 스트레스 원인이 뭐예요?',
+        '최근 피로감이 많이 있으신가요?',
+        '최근 몸에 부담을 주는 행동이 있나요?',
+        '최근 체중 변화가 있나요?',
+        '휴식은 충분히 취하고 계신가요? 혹시 잠을 자는 데 어려움이 있으신가요?',
+        '최근에 스트레스나 불안감을 느끼신 적이 있나요? 도움이 될 만한 방법을 찾아볼까요?',
+        '가족이나 주변 분들의 도움을 잘 받고 계신가요? 혹시 도움이 더 필요하신가요?',
+        '운동이나 가벼운 활동은 무리 없이 하고 계신가요? 안전한 운동 방법을 알고 싶으신가요?',
+        '출산 준비에 대한 고민이 많으실 것 같아요. 궁금한 점이 있으면 함께 알아볼까요?'
+      ]
+      const randomQuestion = randomQuestions[Math.floor(Math.random() * randomQuestions.length)]
+      welcomeMessageContent = `${welcomeMessageContent}\n\n${randomQuestion}`
+
       messages.value.push({
         id: Date.now(),
         sender: 'bot',
-        content: `안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`,
-        parsedContent: parseMarkdown(`안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`),
+        content: welcomeMessageContent, // 수정된 메시지 사용
+        parsedContent: parseMarkdown(welcomeMessageContent), // 수정된 메시지로 파싱
         time: getCurrentTime()
-      })
+      });
       // 환영 메시지도 로컬 스토리지에 저장
-      saveMessagesToLocalStorage()
+      saveMessagesToLocalStorage();
     }
 
     // 메시지가 추가되면 스크롤을 맨 아래로 이동
-    instantScrollToBottom()
+    instantScrollToBottom();
   } catch (error) {
-    handleError(error, CONTEXT)
+    handleError(error, CONTEXT);
   }
 })
 
@@ -174,7 +208,8 @@ const getUserInfo = async () => {
     // 올바른 API 엔드포인트로 수정
     const response = await apiClient.get('/accounts/users/me/')
     userId.value = response.data.user_id
-    logger.info(CONTEXT, '사용자 정보 로드 완료:', userId.value)
+    address.value = response.data.address
+    logger.info(CONTEXT, '사용자 정보 로드 완료:', userId.value, address.value)
   } catch (error) {
     logger.error(CONTEXT, '사용자 정보 로드 실패:', error)
     if (error.response && error.response.status === 401) {
@@ -194,9 +229,11 @@ const getPregnancyInfo = async () => {
       const pregnancy = response.data[0]
       babyName.value = pregnancy.baby_name || ''
       pregnancyWeek.value = pregnancy.current_week || 0
+      highRisk.value = pregnancy.high_risk || false
       logger.info(CONTEXT, '임신 정보 로드 완료:', {
         babyName: babyName.value,
-        week: pregnancyWeek.value
+        week: pregnancyWeek.value,
+        highRisk: highRisk.value
       })
     } else {
       hasPregnancyInfo.value = false
