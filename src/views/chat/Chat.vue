@@ -65,8 +65,10 @@ const lastSubmitTime = ref(0)
 const debounceTime = 1000 // 1초 디바운스
 const chatContainer = ref(null) // 채팅 컨테이너 ref 추가
 const userId = ref(null) // 사용자 ID 저장
+const address = ref('') // 주소
 const hasPregnancyInfo = ref(false) // 임신 정보 유무
 const babyName = ref('') // 태명
+const highRisk = ref(false) // 고위험 임신 여부
 const pregnancyWeek = ref(0) // 임신 주차
 const currentSearchQuery = ref('') // 현재 검색 쿼리 표시
 
@@ -79,9 +81,28 @@ const selectedChatRoomId = ref(null) // 현재 선택된 채팅방 ID
 // 하루의 시작은 자정(0시)부터 그날 저녁 11시 59분 59초까지
 const getTodayKey = () => {
   const now = new Date()
-  // 자정(0시)부터 저녁 11시 59분 59초까지를 하루로 간주
-  return now.toISOString().split('T')[0]
+
+  // Clone the current date
+  const today = new Date(now)
+
+  // If current time is before 3 AM, adjust the date to previous day
+  if (now.getHours() < 3) {
+    today.setDate(today.getDate() - 1)
+  }
+
+  // Set the time to 0:00:00 of the day
+  today.setHours(0, 0, 0, 0)
+
+  // Format the key as YYYYMMDD
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const date = String(today.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${date}`
 }
+
+// 사용 예시 (Example usage):
+console.log(getTodayKey())
 
 // 시작 시 초기화
 onMounted(async () => {
@@ -121,7 +142,7 @@ onMounted(async () => {
 
     // 오늘 채팅방 확인 및 생성
     await checkTodayChatRoom()
-    
+
     // 현재 시간 기준으로 채팅방이 없으면 강제로 생성
     // 이 부분은 기존 로직으로 처리되어야 하지만, 혹시 모를 상황을 대비해 추가
     if (!selectedChatRoomId.value) {
@@ -131,21 +152,53 @@ onMounted(async () => {
 
     // 메시지가 없을 경우만 환영 메시지 추가
     if (messages.value.length === 0) {
+      // 기본 환영 메시지 구성
+      let welcomeMessageContent = `반갑습니다. AI 에이전트 플로렌스입니다.\n ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차군요!`
+
+      // highRisk가 true일 경우 메시지 앞에 추가
+      if (highRisk.value === true) {
+        welcomeMessageContent = `${welcomeMessageContent}\n\n현재 고위험 임신을 겪고 계시다고 들었어요. 걱정과 불안이 크실 수 있지만, 필요한 정보와 조언을 최대한 편하게 받아보실 수 있도록 도와드릴게요. `
+      }
+
+      // if (address.value !== null) {
+      //   welcomeMessageContent = `${welcomeMessageContent}\n\n${address.value} 주변에 있는 병원 정보를 알려드릴수도있습니다.`
+      // }
+
+      const randomQuestions = [
+        '요즘 몸 상태는 어떠세요? 특별히 불편하거나 걱정되는 증상이 있으신가요?',
+        '최근에 컨디션이 많이 변하셨나요? 어떤 점이 가장 신경 쓰이세요?',
+        '의사 선생님께 들은 주의사항 중 이해하기 어렵거나 궁금한 점이 있으신가요?',
+        '식사와 수분 섭취는 잘하고 계신가요? 혹시 드시기 힘든 음식이 있나요?',
+        '최근 운동을 하고 계시나요? 운동 횟수와 시간은 어땠나요?',
+        '최근 수면 시간은 어땠나요? 수면 패턴이 변했나요?',
+        '최근 스트레스 수준이 어땠나요? 스트레스 원인이 뭐예요?',
+        '최근 피로감이 많이 있으신가요?',
+        '최근 몸에 부담을 주는 행동이 있나요?',
+        '최근 체중 변화가 있나요?',
+        '휴식은 충분히 취하고 계신가요? 혹시 잠을 자는 데 어려움이 있으신가요?',
+        '최근에 스트레스나 불안감을 느끼신 적이 있나요? 도움이 될 만한 방법을 찾아볼까요?',
+        '가족이나 주변 분들의 도움을 잘 받고 계신가요? 혹시 도움이 더 필요하신가요?',
+        '운동이나 가벼운 활동은 무리 없이 하고 계신가요? 안전한 운동 방법을 알고 싶으신가요?',
+        '출산 준비에 대한 고민이 많으실 것 같아요. 궁금한 점이 있으면 함께 알아볼까요?'
+      ]
+      const randomQuestion = randomQuestions[Math.floor(Math.random() * randomQuestions.length)]
+      welcomeMessageContent = `${welcomeMessageContent}\n\n${randomQuestion}`
+
       messages.value.push({
         id: Date.now(),
         sender: 'bot',
-        content: `안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`,
-        parsedContent: parseMarkdown(`안녕하세요. AI에이전트 플로렌스입니다. 나이팅게일의 풀네임은 플로렌스 나이팅게일이라고 하네요. 그 분의 정신을 닮아 성심성의껏 도움을 드리겠습니다.  ${babyName.value || '아이'}는 현재 ${pregnancyWeek.value}주차이군요! 임신과 출산에 관한 궁금한 점을 물어보세요!`),
+        content: welcomeMessageContent, // 수정된 메시지 사용
+        parsedContent: parseMarkdown(welcomeMessageContent), // 수정된 메시지로 파싱
         time: getCurrentTime()
-      })
+      });
       // 환영 메시지도 로컬 스토리지에 저장
-      saveMessagesToLocalStorage()
+      saveMessagesToLocalStorage();
     }
 
     // 메시지가 추가되면 스크롤을 맨 아래로 이동
-    instantScrollToBottom()
+    instantScrollToBottom();
   } catch (error) {
-    handleError(error, CONTEXT)
+    handleError(error, CONTEXT);
   }
 })
 
@@ -155,7 +208,8 @@ const getUserInfo = async () => {
     // 올바른 API 엔드포인트로 수정
     const response = await apiClient.get('/accounts/users/me/')
     userId.value = response.data.user_id
-    logger.info(CONTEXT, '사용자 정보 로드 완료:', userId.value)
+    address.value = response.data.address
+    logger.info(CONTEXT, '사용자 정보 로드 완료:', userId.value, address.value)
   } catch (error) {
     logger.error(CONTEXT, '사용자 정보 로드 실패:', error)
     if (error.response && error.response.status === 401) {
@@ -175,9 +229,11 @@ const getPregnancyInfo = async () => {
       const pregnancy = response.data[0]
       babyName.value = pregnancy.baby_name || ''
       pregnancyWeek.value = pregnancy.current_week || 0
+      highRisk.value = pregnancy.high_risk || false
       logger.info(CONTEXT, '임신 정보 로드 완료:', {
         babyName: babyName.value,
-        week: pregnancyWeek.value
+        week: pregnancyWeek.value,
+        highRisk: highRisk.value
       })
     } else {
       hasPregnancyInfo.value = false
@@ -212,33 +268,46 @@ const checkTodayChatRoom = async () => {
   const today = new Date(todayKey + 'T00:00:00')
   const now = new Date()
   logger.info(CONTEXT, `현재 시간: ${now.toLocaleString()}, 현재 시간(시): ${now.getHours()}, 오늘 날짜 키: ${todayKey}`)
-  
+
   // 오늘 날짜로 생성된 채팅방이 있는지 확인
   let todayRoom = null
-  
+
   // 모든 채팅방 정보 로깅
   logger.info(CONTEXT, `채팅방 목록 수: ${chatRooms.value.length}`)
-  
+
   for (const room of chatRooms.value) {
-    const roomDate = new Date(room.created_at)
-    const roomDateStr = roomDate.toISOString().split('T')[0]
-    
+    const roomDateStr = (() => {
+      const roomDate = new Date(room.created_at)
+
+      // If room creation time is before 3 AM, adjust to previous day
+      if (roomDate.getHours() < 3) {
+        roomDate.setDate(roomDate.getDate() - 1)
+      }
+
+      // Format the date as YYYYMMDD
+      const year = roomDate.getFullYear()
+      const month = String(roomDate.getMonth() + 1).padStart(2, '0')
+      const date = String(roomDate.getDate()).padStart(2, '0')
+
+      return `${year}-${month}-${date}`
+    })()
+
     // 각 채팅방의 날짜 정보를 자세히 로깅
     logger.info(CONTEXT, `채팅방 ID: ${room.chat_id}, 생성일: ${room.created_at}, 날짜키: ${roomDateStr}`)
-    
+
     if (roomDateStr === todayKey) {
       logger.info(CONTEXT, `오늘(${todayKey})의 채팅방 찾음: ${room.chat_id}, 생성일: ${roomDateStr}`)
       todayRoom = room
       break
     }
   }
-  
+
   if (todayRoom) {
     // 오늘 채팅방이 있으면 선택
     logger.info(CONTEXT, `오늘의 채팅방 선택: ${todayRoom.chat_id}`)
     todayChatRoom.value = todayRoom
     selectedChatRoomId.value = todayRoom.chat_id
-    
+
     // 채팅방 메시지 로딩
     loadMessagesFromLocalStorage()
   } else {
@@ -264,10 +333,10 @@ const loadMessagesFromLocalStorage = () => {
     messages.value = []
     return
   }
-  
+
   const storageKey = `chat_messages_${selectedChatRoomId.value}`
   const savedMessagesJson = localStorage.getItem(storageKey)
-  
+
   if (savedMessagesJson) {
     try {
       const savedMessages = JSON.parse(savedMessagesJson)
@@ -297,67 +366,67 @@ const createChatRoom = async () => {
     const today = new Date(todayKey + 'T00:00:00')
     const now = new Date()
     logger.info(CONTEXT, `채팅방 생성 - 현재 시간: ${now.toLocaleString()}, 현재 시간(시): ${now.getHours()}, 오늘 날짜 키: ${todayKey}`)
-    
+
     let existingTodayRoom = null
-    
+
     // 모든 채팅방 정보 로깅
     logger.info(CONTEXT, `채팅방 생성 전 채팅방 목록 수: ${chatRooms.value.length}`)
-    
+
     for (const room of chatRooms.value) {
       const roomDate = new Date(room.created_at)
       const roomDateStr = roomDate.toISOString().split('T')[0]
-      
+
       // 각 채팅방의 날짜 정보를 자세히 로깅
       logger.info(CONTEXT, `채팅방 ID: ${room.chat_id}, 생성일: ${room.created_at}, 날짜키: ${roomDateStr}`)
-      
+
       if (roomDateStr === todayKey) {
         logger.info(CONTEXT, `이미 오늘(${todayKey})의 채팅방 존재: ${room.chat_id}, 생성일: ${roomDateStr}`)
         existingTodayRoom = room
         break
       }
     }
-    
+
     // 이미 오늘의 채팅방이 있으면 그것을 사용
     if (existingTodayRoom) {
       logger.info(CONTEXT, `이미 오늘의 채팅방이 있습니다: ${existingTodayRoom.chat_id}`)
       todayChatRoom.value = existingTodayRoom
       selectedChatRoomId.value = existingTodayRoom.chat_id
-      
+
       // 현재 선택된 채팅방이 있고 그게 오늘 채팅방이 아니면 메시지 저장
       if (selectedChatRoomId.value && selectedChatRoomId.value !== existingTodayRoom.chat_id && messages.value.length > 0) {
         saveMessagesToLocalStorage()
       }
-      
+
       // 메시지 로드
       loadMessagesFromLocalStorage()
       return
     }
-    
+
     // 현재 채팅방이 있고 메시지가 있으면 저장
     if (selectedChatRoomId.value && messages.value.length > 0) {
       saveMessagesToLocalStorage()
     }
-    
+
     const formattedDate = today.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     })
-    
+
     // 올바른 API 엔드포인트 사용
     const response = await apiClient.post('/llm/chat/rooms/', {
       user_id: userId.value,
       topic: `${babyName.value || '아이'}와의 대화 (${formattedDate})`
     })
-    
+
     if (response.data) {
       todayChatRoom.value = response.data
       selectedChatRoomId.value = response.data.chat_id
-      
+
       // 새로 생성된 채팅방을 목록 최상단에 추가
       chatRooms.value.unshift(response.data)
       logger.info(CONTEXT, `새 채팅방 생성 완료: ${response.data.chat_id}`)
-      
+
       // 새 채팅방이므로 메시지 초기화
       messages.value = []
     }
@@ -373,34 +442,34 @@ const selectChatRoom = (chatRoomId) => {
     isMenuOpen.value = false
     return
   }
-  
+
   // 이전 채팅방의 메시지 저장
   if (selectedChatRoomId.value && messages.value.length > 0) {
     saveMessagesToLocalStorage()
   }
-  
+
   // 새 채팅방 선택
   logger.info(CONTEXT, `채팅방 선택: ${chatRoomId}`)
   selectedChatRoomId.value = chatRoomId
-  
+
   // 선택한 채팅방의 메시지 로드
   loadMessagesFromLocalStorage()
-  
+
   // 메뉴 닫기
   isMenuOpen.value = false
 }
 
 // 상태 선언
-const isStreaming = ref(false)        // 스트리밍 진행 중인지 표시
-const streamedBotContent = ref('')    // 스트리밍 중간 누적(봇 응답)
+const isStreaming = ref(false) // 스트리밍 진행 중인지 표시
+const streamedBotContent = ref('') // 스트리밍 중간 누적(봇 응답)
 
 // SSE 요청 함수
-async function submitStreamAnswer() {
+async function submitStreamAnswer () {
   // 1) 요청 전 체크
   if (!userAnswer.value.trim() || isSubmitting.value) {
     return
   }
-  
+
   // 채팅방이 없으면 먼저 생성
   if (!selectedChatRoomId.value) {
     logger.warn(CONTEXT, '선택된 채팅방이 없어 새 채팅방을 생성합니다.')
@@ -523,10 +592,10 @@ async function submitStreamAnswer() {
             updateBotMessage(loadingMessageId, accumulatedText)
             await nextTick()
             scrollToBottom()
-            
+
             // 메시지 완료 후 로컬 스토리지에 저장
             saveMessagesToLocalStorage()
-            
+
             // 메시지 완료 처리
             const botMsg = messages.value.find(m => m.id === loadingMessageId)
             if (botMsg) {
@@ -539,13 +608,13 @@ async function submitStreamAnswer() {
   } catch (error) {
     console.error('submitStreamAnswer error:', error)
     errorMessage.value = '스트리밍 도중 오류가 발생했습니다.'
-    
-    // 에러 발생 시 로딩 메시지 제거 
+
+    // 에러 발생 시 로딩 메시지 제거
     const errorIndex = messages.value.findIndex(m => m.id === loadingMessageId)
     if (errorIndex !== -1) {
       messages.value.splice(errorIndex, 1)
     }
-    
+
     // 로컬 스토리지에 저장
     saveMessagesToLocalStorage()
   } finally {
@@ -566,11 +635,11 @@ async function submitStreamAnswer() {
 }
 
 // 스트리밍 중간에 봇 메시지(content)를 업데이트
-function updateBotMessage(msgId, newContent) {
+function updateBotMessage (msgId, newContent) {
   const botMsg = messages.value.find(m => m.id === msgId)
   if (botMsg) {
     botMsg.content = newContent
-    
+
     // 실시간 마크다운 파싱 적용
     try {
       botMsg.parsedContent = parseMarkdown(newContent)
@@ -578,7 +647,7 @@ function updateBotMessage(msgId, newContent) {
       console.error('Markdown parsing error:', error)
       botMsg.parsedContent = newContent // 오류 시 원본 텍스트 사용
     }
-    
+
     // 메시지 업데이트 후 스크롤을 아래로 내림
     scrollToBottom()
   }
@@ -612,10 +681,10 @@ const instantScrollToBottom = () => {
   setTimeout(() => {
     const container = chatContainer.value || document.querySelector('.chat-messages')
     if (container) {
-      const prevScrollBehavior = container.style.scrollBehavior;
-      container.style.scrollBehavior = 'auto';
-      container.scrollTop = container.scrollHeight;
-      container.style.scrollBehavior = prevScrollBehavior || 'smooth';
+      const prevScrollBehavior = container.style.scrollBehavior
+      container.style.scrollBehavior = 'auto'
+      container.scrollTop = container.scrollHeight
+      container.style.scrollBehavior = prevScrollBehavior || 'smooth'
     }
   }, 0)
 }
@@ -688,14 +757,14 @@ const formatChatRoomName = (room) => {
     day: 'numeric'
   })
   const formattedDate = formatter.format(date)
-  
+
   // 주제가 있으면 주제 사용, 없으면 날짜만 표시
   if (room.topic) {
     // 주제에서 첫 10자만 가져오고 나머지는 '...'으로 표시
     const shortTopic = room.topic.length > 15 ? room.topic.substring(0, 15) + '...' : room.topic
     return shortTopic
   }
-  
+
   // 기본 이름: 사용자 이름과 날짜 표시
   return `${room.user_name || '사용자'}님의 대화`
 }
@@ -726,13 +795,13 @@ watch(selectedChatRoomId, () => {
           :fill="'#353535'"
         />
       </button>
-      
+
       <h1 class="text-xl font-bold text-center text-dark-gray">
         플로렌스
       </h1>
-      
+
       <!-- 빈 요소로 균형 맞추기 -->
-      <div class="w-[24px]"></div>
+      <div class="w-[24px]" />
     </div>
 
     <!-- 햄버거 메뉴 (슬라이드 사이드 바) -->
@@ -742,32 +811,37 @@ watch(selectedChatRoomId, () => {
       @click.self="isMenuOpen = false"
     >
       <!-- 오버레이 -->
-      <div class="absolute inset-0 bg-black bg-opacity-50"></div>
-      
+      <div class="absolute inset-0 bg-black bg-opacity-50" />
+
       <!-- 사이드바 - ChatGPT 스타일 -->
       <div class="relative w-4/5 max-w-[300px] bg-white h-full flex flex-col overflow-hidden shadow-xl animate-slide-in">
         <!-- 헤더 -->
         <div class="p-4 bg-point-yellow flex justify-between items-center">
-          <h2 class="text-lg font-bold text-dark-gray">채팅 기록</h2>
-          <button 
+          <h2 class="text-lg font-bold text-dark-gray">
+            채팅 기록
+          </h2>
+          <button
             class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-yellow-400 transition-colors"
             aria-label="메뉴 닫기"
             @click="isMenuOpen = false"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              class="h-6 w-6 text-dark-gray" 
-              fill="none" 
-              viewBox="0 0 24 24" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6 text-dark-gray"
+              fill="none"
+              viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
-        
 
-        
         <!-- 채팅방 목록 (스크롤 가능) -->
         <div class="flex-1 overflow-y-auto">
           <div class="p-2 space-y-1">
@@ -790,14 +864,32 @@ watch(selectedChatRoomId, () => {
                   <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                   <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
                 </svg>
-                
+
                 <div class="flex-1 truncate">
-                  <div class="text-dark-gray text-sm font-medium">{{ formatChatRoomName(room) }}</div>
-                  <div class="text-xs text-gray-500">{{ new Date(room.created_at).toLocaleDateString() }}</div>
+                  <div class="text-dark-gray text-sm font-medium">
+                    {{ formatChatRoomName(room) }}
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ (() => {
+                      const roomDate = new Date(room.created_at)
+
+                      // If room creation time is before 3 AM, adjust to previous day
+                      if (roomDate.getHours() < 3) {
+                        roomDate.setDate(roomDate.getDate() - 1)
+                      }
+
+                      // Use toLocaleDateString with Korean locale to ensure correct formatting
+                      return roomDate.toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      });
+                    })() }}
+                  </div>
                 </div>
               </button>
             </div>
-            
+
             <!-- 채팅방이 없을 경우 메시지 -->
             <div
               v-else
@@ -860,7 +952,10 @@ watch(selectedChatRoomId, () => {
                 <!-- 로딩 표시는 기존대로 유지 -->
                 <template v-else>
                   <!-- 타이핑 중인 경우에도 마크다운 렌더링 -->
-                  <div v-if="message.isTyping && message.content" v-html="message.parsedContent || parseMarkdown(message.content)"></div>
+                  <div
+                    v-if="message.isTyping && message.content"
+                    v-html="message.parsedContent || parseMarkdown(message.content)"
+                  />
                   <!-- 로딩만 있을 때 -->
                   <template v-else>
                     {{ message.content }}
@@ -896,7 +991,7 @@ watch(selectedChatRoomId, () => {
                 {{ message.time }}
               </div>
               <div class="bg-base-yellow p-3 rounded-lg shadow-sm">
-                <div v-html="message.parsedContent || parseMarkdown(message.content)"></div>
+                <div v-html="message.parsedContent || parseMarkdown(message.content)" />
               </div>
             </div>
           </div>
