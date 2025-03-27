@@ -73,8 +73,8 @@ onMounted(async () => {
         console.log('디코딩된 토큰 정보:', decodedTokenInfo)
 
         // 토큰 저장
-        localStorage.setItem('access_token', decodedTokenInfo.access_token)
-        localStorage.setItem('refresh_token', decodedTokenInfo.refresh_token)
+        // localStorage.setItem('access_token', decodedTokenInfo.access_token)
+        // localStorage.setItem('refresh_token', decodedTokenInfo.refresh_token)
 
         if (decodedTokenInfo.user) {
           // 사용자 정보 저장

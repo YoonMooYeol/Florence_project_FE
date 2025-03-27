@@ -4,16 +4,28 @@ import api from '../utils/axios'
 import { clearAuthData } from '../utils/auth'
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    // 쿠키 기반 인증으로 전환하므로 토큰을 직접 저장하지 않음
-    loading: false,
-    error: null,
-    // 사용자 정보는 필요에 따라 저장
-    userId: sessionStorage.getItem('userId') || localStorage.getItem('userId') || null,
-    userName: sessionStorage.getItem('userName') || localStorage.getItem('userName') || null,
-    accessToken: localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken') || null,
-    refreshToken: localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken') || null
-  }),
+  state: () => {
+    const rememberMe = localStorage.getItem('rememberMe') === 'true'
+    
+    return {
+      loading: false,
+      error: null,
+      // 사용자 정보
+      userId: rememberMe 
+        ? localStorage.getItem('userId') 
+        : sessionStorage.getItem('userId') || null,
+      userName: rememberMe 
+        ? localStorage.getItem('userName') 
+        : sessionStorage.getItem('userName') || null,
+      // 토큰 정보 - rememberMe 값에 따라 적절한 스토리지에서만 가져옴
+      accessToken: rememberMe 
+        ? localStorage.getItem('accessToken') 
+        : sessionStorage.getItem('accessToken') || null,
+      refreshToken: rememberMe 
+        ? localStorage.getItem('refreshToken') 
+        : sessionStorage.getItem('refreshToken') || null
+    }
+  },
 
   actions: {
     // 사용자 정보 설정
@@ -50,6 +62,12 @@ export const useAuthStore = defineStore('auth', {
         this.accessToken = null
         this.refreshToken = null
 
+        // 모든 스토리지에서 명시적으로 토큰 제거
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
+        sessionStorage.removeItem('accessToken')
+        sessionStorage.removeItem('refreshToken')
+
         // auth.js의 clearAuthData 함수를 사용하여 모든 데이터 삭제
         clearAuthData()
         
@@ -61,24 +79,32 @@ export const useAuthStore = defineStore('auth', {
     // 액세스 토큰 설정
     setAccessToken (token) {
       this.accessToken = token
+      const rememberMe = localStorage.getItem('rememberMe') === 'true'
 
-      // 로그인 유지 설정에 따라 저장소 선택
-      if (localStorage.getItem('rememberMe') === 'true') {
+      if (rememberMe) {
         localStorage.setItem('accessToken', token)
+        // 세션 스토리지에서 제거
+        sessionStorage.removeItem('accessToken')
       } else {
         sessionStorage.setItem('accessToken', token)
+        // 로컬 스토리지에서 제거
+        localStorage.removeItem('accessToken')
       }
     },
 
     // 리프레시 토큰 설정
     setRefreshToken (token) {
       this.refreshToken = token
+      const rememberMe = localStorage.getItem('rememberMe') === 'true'
 
-      // 로그인 유지 설정에 따라 저장소 선택
-      if (localStorage.getItem('rememberMe') === 'true') {
+      if (rememberMe) {
         localStorage.setItem('refreshToken', token)
+        // 세션 스토리지에서 제거
+        sessionStorage.removeItem('refreshToken')
       } else {
         sessionStorage.setItem('refreshToken', token)
+        // 로컬 스토리지에서 제거
+        localStorage.removeItem('refreshToken')
       }
     },
 
