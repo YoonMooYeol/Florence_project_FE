@@ -103,7 +103,7 @@ const searchUserByEmail = async () => {
 
   try {
     // 이메일로 사용자 검색 (백엔드에서 이제 is_following 정보 포함)
-    const response = await api.get(`/accounts/search/?email=${searchQuery.value.trim()}`)
+    const response = await api.get(`/accounts/search/?username=${searchQuery.value.trim()}`)
 
     // 응답 데이터 로깅
     console.log('검색 응답 데이터:', response.data)
