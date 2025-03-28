@@ -5,6 +5,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { normalizeDate, isSameDay } from '@/utils/dateUtils'
 import api from '@/utils/axios'
+import { formatEventForCalendar } from '@/utils/calendarUtils'
 
 // 캘린더 스토어 정의
 export const useCalendarStore = defineStore('calendar', () => {
@@ -47,9 +48,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       const year = currentYear.value
       const month = currentMonth.value
       
-      // 캐시 키 생성
-      const cacheKey = `events_${year}_${month}`
-      
       // 월의 시작일과 종료일 계산
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`
       const lastDay = new Date(year, month, 0).getDate()
@@ -67,49 +65,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (response.data) {
         // 서버 응답 데이터를 FullCalendar 형식으로 변환
         const formattedEvents = response.data.map(event => {
-          // 기본 이벤트 객체 생성
-          const fcEvent = {
-            id: event.event_id,
-            title: event.title,
-            backgroundColor: event.event_color || '#FFD600',
-            borderColor: event.event_color || '#FFD600',
-            textColor: '#353535',
-            event_type: event.event_type,
-            description: event.description || '',
-            recurrence_rules: event.recurrence_rules
-          }
-
-          // 시작일 처리
-          fcEvent.start_date = event.start_date
-          fcEvent.start = event.start_time 
-            ? `${event.start_date}T${event.start_time}` 
-            : event.start_date
-          
-          if (event.start_time) {
-            fcEvent.start_time = event.start_time
-          }
-
-          // 종료일 처리
-          if (event.end_date) {
-            fcEvent.end_date = event.end_date
-            
-            // 종료일이 있는 경우 (멀티데이 이벤트)
-            if (event.end_time) {
-              // 시간이 있는 경우
-              fcEvent.end = `${event.end_date}T${event.end_time}`
-              fcEvent.end_time = event.end_time
-            } else {
-              // 시간이 없는 경우 (날짜만)
-              // 종료일을 다음날로 설정하지 않음 - FullCalendar가 알아서 처리
-              fcEvent.end = event.end_date
-            }
-          } else if (event.end_time && !event.end_date) {
-            // 종료일은 없고 종료 시간만 있는 경우 (당일 이벤트)
-            fcEvent.end = `${event.start_date}T${event.end_time}`
-            fcEvent.end_time = event.end_time
-          }
-          
-          return fcEvent
+          // 새 유틸리티 함수 사용
+          return formatEventForCalendar(event)
         })
         
         // 이벤트 목록 갱신
