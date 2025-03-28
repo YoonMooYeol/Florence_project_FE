@@ -210,7 +210,7 @@ const deletePregnancyInfo = async () => {
     const resetData = {
       baby_name: null,        // 태명 초기화
       due_date: null,         // 출산예정일 초기화
-      current_week: null,     // 임신 주차 초기화
+      current_week: 1,     // 임신 주차 초기화
       high_risk: false,       // 고위험 임신 여부 false로 설정
       is_active: false        // 비활성화
     }
