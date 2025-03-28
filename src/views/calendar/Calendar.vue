@@ -217,8 +217,52 @@ calendarOptions.initialView = 'dayGridMonth'
 calendarOptions.dayMaxEvents = 3
 calendarOptions.eventContent = function (arg) {
   console.log('이벤트 렌더링:', arg.event.title, arg.event)
-  // 오직 타이틀만 표시합니다
-  return { html: `<span class="fc-event-title">${arg.event.title}</span>` }
+  
+  // 멀티데이 이벤트를 효과적으로 표시하기 위한 처리
+  const startDate = arg.event.start;
+  const endDate = arg.event.end;
+  const isMultiDayEvent = endDate && startDate && 
+    (endDate.getDate() !== startDate.getDate() || 
+     endDate.getMonth() !== startDate.getMonth() || 
+     endDate.getFullYear() !== startDate.getFullYear());
+
+  // 다중 일정을 위한 특수 마킹
+  let displayMark = '';
+  if (isMultiDayEvent) {
+    if (arg.isStart && arg.isEnd) {
+      // 하루짜리 이벤트 (시작이자 끝)
+      displayMark = '<span class="event-full">◆</span>';
+    } else if (arg.isStart) {
+      // 시작 날짜
+      displayMark = '<span class="event-start">▶</span>';
+    } else if (arg.isEnd) {
+      // 종료 날짜
+      displayMark = '<span class="event-end">◀</span>';
+    } else {
+      // 중간 날짜
+      displayMark = '<span class="event-middle">■</span>';
+    }
+  }
+
+  // 타이틀에서 [매월] 등의 마커 제거
+  const title = arg.event.title.replace(/\[매월\]/g, '').trim();
+
+  // 멀티데이 이벤트 특별 처리
+  if (isMultiDayEvent) {
+    return { 
+      html: `<div class="multi-day-event-content">
+               ${displayMark}
+               <span class="event-title" title="${title}">${title}</span>
+             </div>` 
+    };
+  }
+  
+  // 일반 이벤트 표시
+  return { 
+    html: `<div class="fc-event-main-frame">
+             <span class="event-title" title="${title}">${title}</span>
+           </div>` 
+  };
 }
 
 // 이벤트 소스 설정 - FullCalendar가 직접 데이터를 가져오게 함
@@ -241,20 +285,22 @@ calendarOptions.eventSources = [
         // API에서 직접 데이터 가져오기
         await calendarStore.fetchEvents()
         
-        // calendarStore.events에서 FullCalendar 형식으로 변환
-        const mappedEvents = calendarStore.events.map(event => ({
-          id: event.id,
-          title: event.title,
-          event_day: event.event_day,
-          // start: event.start,
-          backgroundColor: event.backgroundColor || '#FFD600',
-          borderColor: event.borderColor || '#FFD600',
-          textColor: event.textColor || '#353535',
-          allDay: event.allDay || false
-        }))
+        // 해당 범위의 이벤트만 필터링하여 반환
+        const filteredEvents = calendarStore.events.filter(event => {
+          // 이벤트의 시작과 끝 날짜
+          const eventStart = new Date(event.start);
+          const eventEnd = event.end ? new Date(event.end) : new Date(event.start);
+          
+          // info 시작과 끝 날짜
+          const viewStart = new Date(startDate);
+          const viewEnd = new Date(endDate);
+          
+          // 이벤트가 보기 범위와 겹치는지 확인
+          return (eventStart < viewEnd && eventEnd >= viewStart);
+        });
         
-        logger.info(CONTEXT, `${mappedEvents.length}개 이벤트 로드됨`)
-        successCallback(mappedEvents)
+        logger.info(CONTEXT, `${filteredEvents.length}개 이벤트 로드됨`)
+        successCallback(filteredEvents)
       } catch (error) {
         logger.error(CONTEXT, '이벤트 로드 중 오류 발생:', error)
         failureCallback(error)
@@ -322,6 +368,42 @@ const loadMonthEvents = async () => {
     
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()
+      
+      // 기존 이벤트 모두 제거 후 다시 렌더링 (멀티데이 이벤트 정확히 표시하기 위함)
+      calendarApi.removeAllEvents()
+      
+      // 모든 이벤트 다시 추가 (멀티데이 이벤트 정확히 표시하기 위함)
+      events.forEach(event => {
+        // 서버에서 가져온 이벤트를 FullCalendar 형식으로 변환해서 직접 추가
+        const startDate = new Date(event.start);
+        let endDate = event.end ? new Date(event.end) : new Date(event.start);
+        
+        // 멀티데이 이벤트가 아닌 경우 (일일 일정)
+        const isMultiDayEvent = event.end && startDate.getTime() !== endDate.getTime();
+        
+        // 일일 일정인 경우 end date를 start date와 동일하게 설정
+        if (!isMultiDayEvent) {
+          endDate = new Date(startDate);
+        }
+
+        calendarApi.addEvent({
+          id: event.id,
+          title: event.title,
+          start: event.start,
+          end: endDate.toISOString().split('T')[0],
+          allDay: event.allDay,
+          display: isMultiDayEvent ? 'block' : 'auto',
+          backgroundColor: event.backgroundColor,
+          borderColor: event.borderColor,
+          textColor: event.textColor,
+          extendedProps: {
+            _isMultiDay: isMultiDayEvent,
+            description: event.description,
+            event_type: event.event_type
+          }
+        })
+      })
+      
       calendarApi.refetchEvents()
       
       // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
@@ -360,6 +442,20 @@ onMounted(async () => {
 
     // 메인 캘린더 데이터 로드
     await loadMonthEvents() 
+
+    // 멀티데이 이벤트가 제대로 렌더링되도록 약간의 지연 후 캘린더 리렌더링
+    setTimeout(() => {
+      if (calendarRef.value) {
+        const calendarApi = calendarRef.value.getApi()
+        calendarApi.refetchEvents()
+        
+        // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
+        requestAnimationFrame(() => {
+          calendarApi.render()
+          logger.info(CONTEXT, '캘린더 멀티데이 이벤트 렌더링 완료')
+        })
+      }
+    }, 500)
 
     // 저장된 모달 상태가 있는지 확인하고 있으면 모달 다시 열기
     const savedModalState = sessionStorage.getItem('modalState')
@@ -577,72 +673,24 @@ watch(() => calendarStore.babyDiaries, () => {
 
 // 캘린더 새로고침 핸들러
 const handleCalendarRefresh = async (event) => {
-  logger.info(CONTEXT, '캘린더 새로고침 이벤트 감지:', event.detail)
-  
-  if (!calendarRef.value) {
-    logger.warn(CONTEXT, '캘린더 참조가 없어 새로고침을 수행할 수 없습니다')
-    return
-  }
-  
+  logger.info(CONTEXT, '캘린더 새로고침 이벤트 받음')
   try {
-    const calendarApi = calendarRef.value.getApi()
+    await loadMonthEvents()
     
-    // 1단계: 먼저 모든 이벤트 제거
-    logger.info(CONTEXT, '기존 이벤트 모두 제거 중...')
-    calendarApi.removeAllEvents()
-    
-    // 2단계: 서버에서 최신 이벤트 데이터 로드
-    logger.info(CONTEXT, '서버에서 최신 이벤트 데이터 로드 중...')
-    const timestamp = new Date().getTime() // 캐시 방지
-    await calendarStore.fetchEvents()
-    
-    // 3단계: 캘린더 API를 통해 이벤트 새로고침
-    logger.info(CONTEXT, '캘린더 API 새로고침 중...')
-    await calendarApi.refetchEvents()
-    
-    // 4단계: 캘린더 다시 렌더링 (첫 번째 렌더링)
-    logger.info(CONTEXT, '캘린더 첫 번째 렌더링 중...')
-    calendarApi.render()
-    
-    // 5단계: 모든 이벤트가 제대로 표시되었는지 확인
-    const calendarEvents = calendarApi.getEvents()
-    logger.info(CONTEXT, `캘린더 API 이벤트 개수: ${calendarEvents.length}, 스토어 이벤트 개수: ${calendarStore.events.length}`)
-    
-    // 이벤트 개수가 불일치하면 강제로 모든 이벤트를 다시 추가
-    if (calendarEvents.length !== calendarStore.events.length) {
-      logger.warn(CONTEXT, '이벤트 개수 불일치 감지. 모든 이벤트 강제 추가 중...')
-      
-      // 기존 이벤트 다시 제거
-      calendarApi.removeAllEvents()
-      
-      // 스토어에서 직접 이벤트 추가
-      calendarStore.events.forEach(event => {
-        calendarApi.addEvent({
-          id: event.id,
-          title: event.title,
-          start: event.start,
-          allDay: event.allDay,
-          backgroundColor: event.backgroundColor,
-          borderColor: event.borderColor,
-          textColor: event.textColor
-        })
-      })
-    }
-    
-    // 6단계: 추가 안정성을 위해 다음 렌더링 사이클에서도 한 번 더 렌더링
+    // 멀티데이 이벤트 렌더링 최적화를 위한 추가 리렌더링
     setTimeout(() => {
-      calendarApi.render()
-      logger.info(CONTEXT, '캘린더 최종 렌더링 완료')
-    }, 100)
-    
-    // 7단계: 최종 업데이트를 위해 requestAnimationFrame 사용
-    requestAnimationFrame(() => {
-      calendarApi.render()
-      logger.info(CONTEXT, '캘린더 새로고침 완료 (총 이벤트 수: ' + calendarStore.events.length + ')')
-    })
+      if (calendarRef.value) {
+        const calendarApi = calendarRef.value.getApi()
+        calendarApi.refetchEvents()
+        requestAnimationFrame(() => {
+          calendarApi.render()
+          logger.info(CONTEXT, '캘린더 멀티데이 이벤트 리렌더링 완료')
+        })
+      }
+    }, 300)
   } catch (error) {
     logger.error(CONTEXT, '캘린더 새로고침 중 오류 발생:', error)
-    handleError(error, `${CONTEXT}.handleCalendarRefresh`)
+    handleError(error, CONTEXT)
   }
 }
 
@@ -978,38 +1026,48 @@ const handleCalendarRefresh = async (event) => {
   text-align: left;
 }
 
-/* 멀티데이 이벤트 스타일 */
-.fc-event {
+/* 멀티데이 이벤트를 위한 스타일 추가 */
+:deep(.fc-event-main) {
+  padding: 2px 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+:deep(.fc-event) {
   border-radius: 4px;
-  margin: 1px 0;
-  padding: 2px 4px;
+  border: none;
+  font-size: 0.9em;
 }
 
-.fc-event.fc-event-multi-day {
-  margin: 1px -1px;
-  padding: 2px 4px;
-  border-radius: 0;
+:deep(.fc-event.fc-v-event) {
+  border-left-width: 3px;
+  border-left-style: solid;
 }
 
-.fc-event.fc-event-multi-day:first-child {
+:deep(.fc-daygrid-block-event .fc-event-time),
+:deep(.fc-daygrid-block-event .fc-event-title) {
+  padding: 1px 4px;
+}
+
+:deep(.fc-daygrid-day-events) {
+  margin-top: 2px;
+}
+
+/* 연속 일정 렌더링 개선 */
+:deep(.fc-event.fc-daygrid-block-event) {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+/* 연속 일정의 시작과 끝 부분 스타일 추가 */
+:deep(.fc-event.fc-daygrid-block-event.fc-event-start) {
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
-  margin-left: 1px;
 }
 
-.fc-event.fc-event-multi-day:last-child {
+:deep(.fc-event.fc-daygrid-block-event.fc-event-end) {
   border-top-right-radius: 4px;
   border-bottom-right-radius: 4px;
-  margin-right: 1px;
-}
-
-.custom-event-content {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.875rem;
-  line-height: 1.25;
-  padding: 2px 0;
 }
 
 /* 요일 헤더 영역 숨기기 */
@@ -1172,164 +1230,133 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
 /* 이벤트 스타일 */
 .fc-daygrid-event {
   border-radius: 4px;
-  padding: 1px 4px;
+  padding: 1px 2px;
   font-size: 0.75rem;
   cursor: pointer;
   margin: 1px 0;
   width: 100%;
-  display: block;
+  display: flex;
+  align-items: center;
   text-align: left;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  height: auto;
-  min-height: 20px;
+  height: 22px;
   background-color: var(--event-color, #ffd600);
   color: #353535;
   font-weight: 500;
   border: 1px solid var(--event-color, #ffd600);
   white-space: normal;
   line-height: 1.3;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
-/* 이벤트 메인 콘텐츠 */
-.fc-event-main {
-  padding: 1px 2px;
-  display: block;
-  text-align: center;
-  color: #353535;
-  overflow: hidden;
-  white-space: normal;
-  text-overflow: ellipsis;
+/* 멀티데이 이벤트 스타일 개선 */
+.multi-day-event {
+  margin: 1px 0 !important;
+  border-radius: 4px !important;
+  font-weight: 500 !important;
+  color: #353535 !important;
+  height: 22px !important;
+  padding: 0 2px !important;
+  display: flex !important;
+  align-items: center !important;
+  min-width: calc(100% - 2px) !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.event-start {
+  margin-right: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: 0 !important;
+  min-width: calc(100% - 2px) !important;
+  padding-right: 0 !important;
+}
+
+.event-middle {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-radius: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  width: calc(100% + 2px) !important;
+  left: -1px !important;
+  position: relative !important;
+  padding-left: 4px !important;
+  padding-right: 0 !important;
+}
+
+.event-end {
+  margin-left: 0 !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-left: 0 !important;
+  padding-left: 4px !important;
+}
+
+.special-multi-day-event {
+  background-color: var(--event-color, #ffd600) !important;
+  border-color: var(--event-color, #ffd600) !important;
+  height: 24px !important;
+  z-index: 5 !important;
+}
+
+/* 멀티데이 이벤트 콘텐츠 */
+.multi-day-event-content {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  height: 22px !important;
+}
+
+.multi-day-event-content .event-title {
+  flex-grow: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  margin-left: 4px !important;
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
+/* 이벤트 마커 스타일 */
+.event-start, .event-middle, .event-end, .event-full {
+  display: flex !important;
+  align-items: center !important;
+  height: 22px !important;
+  padding: 0 2px !important;
+}
+
+/* 이벤트 생성 */
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-events {
+  position: relative !important;
+}
+
+/* fc-event 스타일 오버라이드 - 멀티데이 이벤트 텍스트 표시 개선 */
+.fc-event-title {
+  flex: 1;
   font-size: 0.75rem;
-  line-height: 1.3;
-  height: 100%;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* 이벤트 컨테이너 */
-.fc-daygrid-event-harness {
-  margin: 1px 0;
-  width: 100%;
+  font-weight: 500;
   display: flex;
-  justify-content: center;
-  height: auto;
-}
-
-/* 날짜 바디 영역 */
-.fc-daygrid-day-events {
-  padding: 0 2px;
-  margin-top: 2px;
-  flex-grow: 1;
-  width: 100%;
-  min-height: 32px;
-}
-
-/* 종일 이벤트 */
-.fc-daygrid-block-event {
-  margin: 1px 0;
-  width: 95%;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* dot 이벤트 스타일 */
-.fc-daygrid-dot-event {
-  display: block;
-  padding: 2px 4px;
-  background-color: var(--event-color, #ffd600);
-  border-color: var(--event-color, #ffd600);
-}
-
-.fc-daygrid-dot-event .fc-event-title {
-  font-weight: 500;
-  flex-grow: 1;
-  display: block;
-  color: #353535;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* 이벤트 "더보기" 링크 */
-.fc-daygrid-more-link {
-  font-size: 0.7rem;
-  color: #3182ce;
-  font-weight: 500;
-  margin: 0 auto;
-  display: block;
-  text-align: center;
-}
-
-/* 커스텀 이벤트 콘텐츠 */
-.custom-event-content {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #353535;
-  text-align: center;
-  width: 100%;
-  display: block;
+  align-items: center;
+  height: 100%;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: normal;
-  line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  padding-left: 0px;
 }
 
-/* 다른 월의 날짜 스타일 */
-.fc-day-other {
-  opacity: 0.4;
-  background-color: rgba(0, 0, 0, 0.02);
+/* 먼쪽/가까운쪽 셀 구분 */
+.fc td.fc-day-past .fc-daygrid-day-number {
+  opacity: 0.6;
 }
 
-/* 반응형 설정 */
-@media screen and (max-width: 768px) {
-  .fc-daygrid-event {
-    font-size: 0.75rem;
-    min-height: 18px;
-    line-height: 1.2;
-    padding: 1px 3px;
-  }
-  
-  .fc-event-main {
-    font-size: 0.7rem;
-    padding: 0 1px;
-  }
-  
-  .fc-daygrid-dot-event .fc-event-title {
-    font-size: 0.7rem;
-  }
-  
-  .fc-daygrid-more-link {
-    font-size: 0.65rem;
-  }
-  
-  .custom-event-content {
-    font-size: 0.7rem;
-  }
-}
-
-@media screen and (min-width: 1200px) {
-  .fc-daygrid-day {
-    min-height: 150px;
-  }
-  
-  .fc-daygrid-day-frame {
-    min-height: 150px;
-  }
-  
-  .fc-daygrid-day-number {
-    margin-left: 8px;
-  }
+.fc-v-event {
+  border: none !important;
 }
 
 /* 하단 네비게이션 바 스타일 */
@@ -1662,5 +1689,128 @@ body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top a.fc-daygrid-day-n
 .calendar-content {
   position: relative;
   z-index: 1;
+}
+
+/* 멀티데이 이벤트 특화 스타일 */
+.multi-day-event {
+  margin: 1px 0;
+  overflow: hidden;
+}
+
+/* 이벤트의 시작, 중간, 끝 부분을 위한 스타일 */
+.event-start {
+  border-top-left-radius: 4px !important;
+  border-bottom-left-radius: 4px !important;
+  margin-right: -1px;
+  border-right: 0 !important;
+  padding-left: 6px !important;
+  color: #FF6B6B;
+}
+
+.event-end {
+  border-top-right-radius: 4px !important;
+  border-bottom-right-radius: 4px !important;
+  margin-left: -1px;
+  border-left: 0 !important;
+  padding-right: 6px !important;
+  color: #FF6B6B;
+}
+
+.event-middle {
+  border-radius: 0 !important;
+  margin-left: -1px;
+  margin-right: -1px;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  color: #FF6B6B;
+}
+
+.event-full {
+  border-radius: 4px !important;
+  margin-right: 4px;
+  color: #FF6B6B;
+}
+
+/* 연속 이벤트 시각적 개선 */
+:deep(.fc-event.fc-daygrid-block-event.fc-h-event) {
+  overflow: hidden;
+  border: 1px solid;
+}
+
+:deep(.fc-event.fc-daygrid-block-event.fc-h-event.fc-event-start) {
+  border-left-width: 3px;
+}
+
+:deep(.fc-event.fc-daygrid-block-event.fc-h-event.fc-event-end) {
+  border-right-width: 3px;
+}
+
+:deep(.fc-daygrid-event-harness) {
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
+}
+
+:deep(.fc-h-event .fc-event-main) {
+  padding: 1px 3px;
+}
+
+/* 이벤트 내 텍스트와 마커 레이아웃 */
+.fc-event-main-frame {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  overflow: hidden;
+  height: 22px;
+}
+
+.fc-event-main-frame span {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fc-event-title {
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* 기존 멀티데이 이벤트 스타일 향상 */
+:deep(.fc-event.fc-daygrid-block-event) {
+  margin-top: 2px;
+  margin-bottom: 2px;
+  border-width: 1px;
+}
+
+:deep(.fc-event.fc-daygrid-block-event.fc-event-start) {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+:deep(.fc-event.fc-daygrid-block-event.fc-event-end) {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* 이벤트 타이틀 내 텍스트 정렬 */
+:deep(.fc-daygrid-block-event .fc-event-time),
+:deep(.fc-daygrid-block-event .fc-event-title) {
+  padding: 1px 3px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* 최대한 많은 이벤트 표시 */
+:deep(.fc-daygrid-day-events) {
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+:deep(.fc-dayGridMonth-view .fc-daygrid-day-events) {
+  margin-top: 2px !important;
 }
 </style>
