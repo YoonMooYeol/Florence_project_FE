@@ -37,6 +37,9 @@ export function useEventLoading(calendarStore, calendarRef, currentYear, current
           if (!event.end) {
             event.end = event.start
           }
+          
+          // 종료일 처리는 formatEventForCalendar 함수에서 이미 수행됨
+          // 여기서는 추가 처리 없이 기존 종료일 사용
         })
         
         // 새 이벤트 일괄 추가
@@ -81,17 +84,29 @@ export function useEventLoading(calendarStore, calendarRef, currentYear, current
               const eventStart = new Date(event.start)
               let eventEnd = new Date(event.end || event.start)
               
-              // 멀티데이 이벤트의 경우 종료일에 하루를 추가 (FullCalendar의 exclusive end date 처리)
-              if (isMultiDayEvent(event.start, event.end) && event.end && !event.end.includes('T')) {
-                // 시간 정보가 없는 경우만 확인해서 store에서 이미 처리했는지 확인
-                const originalEndDate = new Date(event.end_date || event.end)
-                const currentEndDate = new Date(event.end)
+              // 종료일 처리 검증: formatEventForCalendar 함수에서 조정된 종료일 확인
+              // 멀티데이 이벤트 & 시간 정보 없음 & 원본과 조정된 종료일이 다른지 확인
+              if (isMultiDayEvent(event.start, event.end) && 
+                  event.end && 
+                  !event.end.includes('T') && 
+                  event.original_end_date && 
+                  event.adjusted_end_date) {
                 
-                // 종료일이 원래 종료일보다 1일 큰지 확인하고 아니면 추가
-                if (currentEndDate.getDate() === originalEndDate.getDate()) {
-                  // Store에서 처리되지 않은 경우 여기서 처리
+                // 원본 종료일과 조정된 종료일 간의 차이 계산 (타임스탬프 기반)
+                const originalEndDate = new Date(event.original_end_date)
+                const adjustedEndDate = new Date(event.adjusted_end_date)
+                const oneDayMs = 24 * 60 * 60 * 1000 // 1일을 밀리초로
+                
+                // 차이가 정확히 1일(하루)인지 확인 (약간의 오차 허용)
+                const dateDiff = adjustedEndDate.getTime() - originalEndDate.getTime()
+                
+                // 오차 허용 범위: 90% ~ 110%
+                if (dateDiff < oneDayMs * 0.9) {
+                  logger.debug(CONTEXT, `멀티데이 이벤트 "${event.title}"의 종료일 재조정 필요`)
                   eventEnd = new Date(event.end)
                   eventEnd.setDate(eventEnd.getDate() + 1)
+                  event.end = eventEnd.toISOString().split('T')[0]
+                  event.adjusted_end_date = event.end
                 }
               }
               

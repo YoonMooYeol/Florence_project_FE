@@ -326,12 +326,30 @@ const loadMonthEvents = async () => {
       
       // 새 이벤트 일괄 추가 전에 종료일 처리 확인
       events.forEach(event => {
-        if (event.end) {
-          // 종료일이 있으면 그대로 사용 (이미 store에서 +1일 처리됨)
-          // 아무 처리도 하지 않음 - formatEventForCalendar 함수에서 이미 +1일 처리함
-        } else {
-          // 종료일이 없으면 시작일과 동일하게 설정
+        // 종료일이 없으면 시작일과 동일하게 설정
+        if (!event.end) {
           event.end = event.start
+          logger.debug(CONTEXT, `이벤트 "${event.title}"에 종료일 추가: ${event.end}`)
+        }
+        
+        // 장기일정(멀티데이 이벤트) 검증
+        // 날짜만 있는 멀티데이 이벤트인 경우 종료일이 제대로 조정되었는지 확인
+        if (isMultiDayEvent(event.start, event.end) && !event.end.includes('T')) {
+          // 멀티데이 이벤트의 원본 종료일과 현재 종료일 비교 (타임스탬프로 비교)
+          const endDate = new Date(event.end)
+          const originalEndDate = new Date(event.end_date || event.original_end_date || event.end)
+          
+          // 날짜 차이를 밀리초로 계산
+          const oneDayMs = 24 * 60 * 60 * 1000 // 1일을 밀리초로 표현
+          const dateDiff = endDate.getTime() - originalEndDate.getTime()
+          
+          // 차이가 1일(하루)보다 작으면 조정 필요 (시간대 차이 등 고려하여 90% 기준 적용)
+          if (dateDiff < oneDayMs * 0.9 && event.end_date && event.end_date !== event.start_date) {
+            const newEndDate = new Date(originalEndDate)
+            newEndDate.setDate(newEndDate.getDate() + 1)
+            event.end = newEndDate.toISOString().split('T')[0]
+            logger.debug(CONTEXT, `장기일정 종료일 보정: "${event.title}" 원본=${originalEndDate.toISOString().split('T')[0]} → 조정=${event.end}`)
+          }
         }
       })
       
