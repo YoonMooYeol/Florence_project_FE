@@ -57,7 +57,7 @@ const checkRecurringStatusFromServer = async () => {
   if (props.event && props.event.id) {
     try {
       console.log('서버에서 반복 일정 상태 확인 중...')
-      const { calendarStore } = useCalendarStore()
+      const calendarStore = useCalendarStore()
       const serverEvent = await calendarStore.fetchEventDetail(props.event.id)
       
       // 서버 정보로 이벤트 상태 보강
@@ -241,36 +241,57 @@ const getRecurringText = (recurring) => {
 
 // 이벤트 날짜 포맷팅
 const formatEventDate = (event) => {
-  if (!event || !event.start) {
+  if (!event) {
     return '';
   }
   
   try {
+    // start가 없는 경우 start_date를 사용
+    const startValue = event.start || event.start_date;
+    const endValue = event.end || event.end_date;
+    
+    if (!startValue) {
+      console.error('이벤트에 시작 날짜 정보가 없습니다:', event);
+      return '';
+    }
+    
     if (event.allDay) {
-      return formatDate(event.start);
+      return formatDate(startValue);
     }
     
     // 날짜 형식이 ISO 문자열인지 확인 (T를 포함하는지)
-    const hasTimeStart = typeof event.start === 'string' && event.start.includes('T');
-    const hasTimeEnd = typeof event.end === 'string' && event.end && event.end.includes('T');
+    const hasTimeStart = typeof startValue === 'string' && startValue.includes('T');
+    const hasTimeEnd = typeof endValue === 'string' && endValue && endValue.includes('T');
     
     if (hasTimeStart && hasTimeEnd) {
       // 시간이 있는 경우 시작 날짜와 시간, 종료 시간을 표시
-      const startTimePart = event.start.split('T')[1];
-      const endTimePart = event.end.split('T')[1];
+      const startTimePart = startValue.split('T')[1];
+      const endTimePart = endValue.split('T')[1];
       
       if (startTimePart && endTimePart) {
         const startTime = startTimePart.substring(0, 5);
         const endTime = endTimePart.substring(0, 5);
-        return `${formatDate(event.start)} ${startTime} - ${endTime}`;
+        return `${formatDate(startValue)} ${startTime} - ${endTime}`;
       }
     }
     
+    // 시간 정보가 있는 경우 직접 조합
+    if (event.start_date && event.start_time) {
+      const dateStr = formatDate(event.start_date);
+      const startTime = event.start_time.substring(0, 5);
+      const endTime = event.end_time ? event.end_time.substring(0, 5) : '';
+      
+      if (endTime) {
+        return `${dateStr} ${startTime} - ${endTime}`;
+      }
+      return `${dateStr} ${startTime}`;
+    }
+    
     // 기본적으로 시작 날짜만 표시
-    return formatDate(event.start);
+    return formatDate(startValue);
   } catch (error) {
     console.error('날짜 포맷팅 중 오류 발생:', error);
-    return formatDate(event.start) || '';
+    return '';
   }
 }
 </script>

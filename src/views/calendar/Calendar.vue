@@ -146,9 +146,9 @@ const handleDateClick = (info) => {
     const result = calendarStore.setSelectedDate(dateStr)
     logger.debug(CONTEXT, '날짜 설정 결과:', result)
 
-    // 실제 모달 열기
+    // 실제 모달 열기 - 여기가 중요: 클릭한 날짜를 전달
     logger.debug(CONTEXT, '일일 일정 모달 열기 시도')
-    modalManager.openDayEventsModal(dateStr)
+    modalManager.openDayEventsModal(dateStr) // 클릭한 날짜를 명시적으로 전달
   } catch (error) {
     logger.error(CONTEXT, '날짜 클릭 처리 중 오류 발생:', error)
     handleError(error, CONTEXT)
@@ -162,16 +162,20 @@ const handleEventClick = (info) => {
 
   try {
     // events 배열에서 해당 이벤트 찾기
-    const eventObj = calendarStore.events.find((e) => e.id === eventId)
+    const eventObj = calendarStore.events.find((e) => e.id === eventId || e.event_id === eventId)
     if (eventObj) {
       console.log('찾은 이벤트:', eventObj)
 
       // 이벤트의 날짜 정보 추출
       let eventDate = null
-      if (eventObj.start) {
+      if (eventObj.start_date) {
+        // 새로운 모델 구조 사용
+        eventDate = eventObj.start_date
+      } else if (eventObj.start) {
+        // FullCalendar 형식 처리
         eventDate = typeof eventObj.start === 'string' && eventObj.start.includes('T')
           ? eventObj.start.split('T')[0]
-          : normalizeDate(eventObj.event_day)
+          : eventObj.start
       }
 
       // 날짜가 있으면 일일 이벤트 모달 열기

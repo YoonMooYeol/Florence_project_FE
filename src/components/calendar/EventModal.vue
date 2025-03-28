@@ -241,6 +241,7 @@ const showDeleteConfirm = ref(false)
 
 // 삭제 처리
 const handleDelete = async () => {
+  console.log('EventModal: 일정 삭제 시도')
   showDeleteConfirm.value = true
 }
 
@@ -266,7 +267,7 @@ const confirmDelete = async () => {
   if (!confirm(confirmMessage)) {
     return;
   }
-  
+  console.log('EventModal: 일정 삭제 확인')
   // 이벤트 ID와 반복 여부 전달
   emit('delete', props.event.id, isRecurringEvent.value, { option: updateOption.value })
   showDeleteConfirm.value = false

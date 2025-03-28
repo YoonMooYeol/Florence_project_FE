@@ -160,14 +160,17 @@ const viewEvent = async (event) => {
     
     // 업데이트된 이벤트 정보로 selectedEvent 설정
     selectedEvent.value = mergedEvent
+    
+    // 이벤트 상세 모달 대신 바로 수정 모달 열기
+    showEventModal.value = true
   } catch (error) {
     console.error('이벤트 데이터 가져오기 실패:', error)
     // 오류 발생 시 원본 이벤트 데이터 사용
     selectedEvent.value = event
+    
+    // 이벤트 상세 모달 대신 바로 수정 모달 열기
+    showEventModal.value = true
   }
-  
-  // 이벤트 상세 모달 열기
-  showEventDetailModal.value = true
 }
 
 // 반복 주기 텍스트 변환 함수
@@ -193,6 +196,22 @@ const formatEventTime = (event) => {
   try {
     if (event.allDay) return '종일'
 
+    // 새로운 모델 구조 (start_time/end_time)을 먼저 확인
+    if (event.start_time) {
+      // start_time이 있는 경우
+      const startTime = event.start_time.substring(0, 5) // HH:MM 형식만 추출
+      
+      if (event.end_time) {
+        // end_time도 있는 경우
+        const endTime = event.end_time.substring(0, 5)
+        return `${startTime} ~ ${endTime}${event.recurring && event.recurring !== 'none' ? ' (' + getRecurringText(event.recurring) + ')' : ''}`
+      } else {
+        // start_time만 있는 경우
+        return `${startTime}${event.recurring && event.recurring !== 'none' ? ' (' + getRecurringText(event.recurring) + ')' : ''}`
+      }
+    }
+    
+    // 기존 모델 구조 (start/end ISO 문자열)
     if (event.start && event.end) {
       return `${formatTime(event.start)} ~ ${formatTime(event.end)}${event.recurring && event.recurring !== 'none' ? ' (' + getRecurringText(event.recurring) + ')' : ''}`
     } else if (event.start) {
@@ -201,7 +220,7 @@ const formatEventTime = (event) => {
       return '시간 정보 없음'
     }
   } catch (error) {
-    console.error('이벤트 시간 형식 변환 중 오류:', error)
+    console.error('이벤트 시간 형식 변환 중 오류:', error, event)
     return '시간 정보 오류'
   }
 }
@@ -759,23 +778,9 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     // 서버에서 최신 이벤트 정보 가져오기
     console.log('서버에서 최신 이벤트 정보 확인 중...')
     const eventDetail = await calendarStore.fetchEventDetail(eventId)
-    
+    console.log('서버에서 최신 이벤트 정보 확인 결과:', eventDetail)
     // 실제 반복 일정인지 확인 - 명시적으로 반복 속성이 있는 경우 또는 [매*] 패턴의 제목인 경우
-    const isActuallyRecurring = eventDetail && (
-      // 직접적인 반복 속성이 있는 경우
-      (eventDetail.recurring && eventDetail.recurring !== 'none') ||
-      eventDetail.is_recurring === true ||
-      (eventDetail.recurrence_pattern && eventDetail.recurrence_pattern !== 'none') ||
-      eventDetail.recurringEventId || 
-      eventDetail.parentId ||
-      // 제목이 [매일], [매주], [매월], [매년]으로 시작하는 경우
-      (eventDetail.title && (
-        eventDetail.title.startsWith('[매일]') || 
-        eventDetail.title.startsWith('[매주]') || 
-        eventDetail.title.startsWith('[매월]') || 
-        eventDetail.title.startsWith('[매년]')
-      ))
-    )
+    const isActuallyRecurring = eventDetail && eventDetail.recurrence_rules;
     
     // 클라이언트 상태와 서버 상태가 다를 때 처리 (반복 일정이지만 반복 일정으로 처리되지 않은 경우)
     if (isActuallyRecurring && !isRecurring) {
@@ -804,33 +809,19 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     
     if (isActuallyRecurring || isRecurring) {
       console.log('반복 일정 삭제:', deleteOptions?.option)
-      
-      if (deleteOptions?.option === 'all_future') {
-        if (!deleteOptions.untilDate) {
-          // 자동으로 현재 날짜를 untilDate로 설정
-          if (selectedEvent.value && selectedEvent.value.start) {
-            deleteOptions.untilDate = typeof selectedEvent.value.start === 'string' && selectedEvent.value.start.includes('T') 
-              ? selectedEvent.value.start.split('T')[0] 
-              : selectedEvent.value.start
             
-            console.log('이후 모든 일정 삭제: 자동으로 기준일 설정됨:', deleteOptions.untilDate)
-          } else {
-            alert('유지할 마지막 날짜를 선택해주세요.')
-            return
-          }
-        }
-        console.log('이후 모든 일정 삭제 시도 - 기준날짜:', deleteOptions.untilDate)
-        success = await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
-      } else if (deleteOptions?.option === 'this_only') {
+      if (deleteOptions?.option === 'this_only') {
         console.log('이 일정만 삭제 시도')
-        success = await calendarStore.deleteRecurringEventThisOnly(eventId)
+        await calendarStore.deleteRecurringEventThisOnly(eventId)
+        success = true
+      } else if (deleteOptions?.option === 'this_and_future') {
+        console.log('이후 모든 일정 삭제 시도')
+        await calendarStore.deleteRecurringEventsThisAndFuture(eventId)
+        success = true
       } else if (deleteOptions?.option === 'all') {
         console.log('모든 반복 일정 삭제 시도')
-        success = await calendarStore.deleteRecurringEvents(eventId)
-      } else {
-        console.warn('알 수 없는 삭제 옵션:', deleteOptions?.option)
-        alert('삭제 옵션을 선택해주세요.')
-        return
+        await calendarStore.deleteRecurringEventsAll(eventId)
+        success = true
       }
     } else {
       // 일반 일정 삭제
@@ -1392,6 +1383,7 @@ const closeBirthdayPhoto = () => {
     :event="selectedEvent"
     :date="date"
     @close="showEventModal = false"
+    @delete="handleDeleteEvent"
     @save="handleSaveEvent"
   />
 </template>
