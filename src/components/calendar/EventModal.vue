@@ -395,7 +395,7 @@ const cancelDelete = () => {
             class="h-4 w-4 text-point focus:ring-point border-gray-300 rounded bg-white"
           />
           <label class="ml-2 text-sm text-gray-700">
-            종일 일정
+            하루 종일
           </label>
         </div>
 

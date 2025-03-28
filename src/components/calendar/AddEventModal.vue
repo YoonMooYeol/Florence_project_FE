@@ -150,8 +150,8 @@ const saveEvent = () => {
     display: 'block',
     recurring: isRecurring.value ? recurrenceType.value : 'none',
     event_time: isAllDay.value ? null : startTime.value,
-    startTime: startTime.value,
-    endTime: endTime.value,
+    startTime: isAllDay.value ? '00:00' : startTime.value,
+    endTime: isAllDay.value ? '23:59' : endTime.value,
     event_color: eventColor.value,
     start_date: startDate.value,
     end_date: endDate.value
@@ -282,7 +282,7 @@ const closeModal = () => {
             <label
               for="all-day"
               class="text-dark-gray font-medium"
-            >종일</label>
+            >하루 종일</label>
           </div>
 
           <div

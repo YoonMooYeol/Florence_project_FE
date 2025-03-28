@@ -214,7 +214,7 @@ const formatEventTime = (event) => {
   if (!event) return '시간 정보 없음'
 
   try {
-    if (event.allDay) return '종일'
+    if (event.allDay) return '하루 종일'
 
     // 새로운 모델 구조 (start_time/end_time)을 먼저 확인
     if (event.start_time) {

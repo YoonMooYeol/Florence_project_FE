@@ -156,7 +156,7 @@ export const koLocale = {
     list: '일정목록'
   },
   weekText: '주',
-  allDayText: '종일',
+  allDayText: '하루 종일',
   moreLinkText: '개 더보기',
   noEventsText: '일정이 없습니다'
 }
