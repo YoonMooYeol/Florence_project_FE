@@ -72,20 +72,32 @@ const initFormData = () => {
     let endTime = '10:00';
     let isAllDay = event.allDay || false;
     
+    // 반복 일정 여부 확인
+    const isRecurringEvent = event.recurring && event.recurring !== 'none';
+    
     // 시작 날짜/시간 처리
     if (event.start) {
       if (typeof event.start === 'string') {
         if (event.start.includes('T')) {
           // ISO 형식 (YYYY-MM-DDTHH:MM:SS)
-          startDate = event.start.split('T')[0];
+          // 반복 일정인 경우 선택된 날짜 사용
+          if (!isRecurringEvent) {
+            startDate = event.start.split('T')[0];
+          }
           startTime = event.start.split('T')[1].substring(0, 5);
         } else {
           // 날짜만 있는 형식 (YYYY-MM-DD)
-          startDate = event.start;
+          // 반복 일정인 경우 선택된 날짜 사용
+          if (!isRecurringEvent) {
+            startDate = event.start;
+          }
         }
       } else if (event.start instanceof Date) {
         // Date 객체
-        startDate = event.start.toISOString().split('T')[0];
+        // 반복 일정인 경우 선택된 날짜 사용
+        if (!isRecurringEvent) {
+          startDate = event.start.toISOString().split('T')[0];
+        }
         startTime = event.start.toTimeString().substring(0, 5);
       }
     }
@@ -95,15 +107,24 @@ const initFormData = () => {
       if (typeof event.end === 'string') {
         if (event.end.includes('T')) {
           // ISO 형식 (YYYY-MM-DDTHH:MM:SS)
-          endDate = event.end.split('T')[0];
+          // 반복 일정인 경우 선택된 날짜 사용
+          if (!isRecurringEvent) {
+            endDate = event.end.split('T')[0];
+          }
           endTime = event.end.split('T')[1].substring(0, 5);
         } else {
           // 날짜만 있는 형식 (YYYY-MM-DD)
-          endDate = event.end;
+          // 반복 일정인 경우 선택된 날짜 사용
+          if (!isRecurringEvent) {
+            endDate = event.end;
+          }
         }
       } else if (event.end instanceof Date) {
         // Date 객체
-        endDate = event.end.toISOString().split('T')[0];
+        // 반복 일정인 경우 선택된 날짜 사용
+        if (!isRecurringEvent) {
+          endDate = event.end.toISOString().split('T')[0];
+        }
         endTime = event.end.toTimeString().substring(0, 5);
       }
     } else {
@@ -127,6 +148,9 @@ const initFormData = () => {
       isAllDay = true;
     }
     
+    console.log('선택된 날짜:', props.date);
+    console.log('반복 일정 여부:', isRecurringEvent);
+    
     // 폼 데이터 설정
     formData.value = {
       title: event.title || '',
@@ -136,11 +160,12 @@ const initFormData = () => {
       startTime: startTime,
       endTime: endTime,
       allDay: isAllDay,
-      recurring: event.recurring || event.recurrence_pattern || 'none',
+      recurring: event.recurrence_rules?.pattern || event.recurring || event.recurrence_pattern || 'none',
       event_color: event.event_color || '#FFD600'  // 색상 추가
     };
     
     console.log('폼 데이터 초기화 완료:', formData.value);
+    console.log('반복 패턴:', event.recurrence_rules?.pattern || '없음');
     
     // 반복 일정 수정 옵션 기본값
     updateOption.value = 'this_and_future';
@@ -199,6 +224,9 @@ const handleSave = () => {
     }
   }
 
+  // 반복 일정 여부 확인
+  const isRecurringEvent = formData.value.recurring && formData.value.recurring !== 'none';
+  
   const eventData = {
     title: formData.value.title,
     description: formData.value.description,
@@ -210,12 +238,14 @@ const handleSave = () => {
       `${formData.value.end}T${formData.value.endTime}:00`,
     allDay: formData.value.allDay,
     recurring: formData.value.recurring,
+    start_date: formData.value.start, // 시작일 별도 저장
+    end_date: formData.value.end,     // 종료일 별도 저장
     startTime: formData.value.allDay ? '00:00' : formData.value.startTime,
     endTime: formData.value.allDay ? '23:59' : formData.value.endTime,
     event_color: formData.value.event_color,  // 색상 추가
     id: props.event?.id,
     event_type: props.event?.event_type || 'general',
-    updateOption: isRecurringEvent.value ? updateOption.value : null
+    updateOption: isRecurringEvent ? updateOption.value : null
   }
   
   console.log('이벤트 저장/수정 데이터:', eventData)
@@ -312,15 +342,27 @@ const cancelDelete = () => {
       </div>
 
       <div class="p-3 space-y-2">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            날짜
-          </label>
-          <input
-            type="date"
-            v-model="formData.start"
-            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point bg-white"
-          />
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              시작 날짜
+            </label>
+            <input
+              type="date"
+              v-model="formData.start"
+              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point bg-white"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              종료 날짜
+            </label>
+            <input
+              type="date"
+              v-model="formData.end"
+              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point bg-white"
+            />
+          </div>
         </div>
 
         <div>

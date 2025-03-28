@@ -139,18 +139,38 @@ const viewEvent = async (event) => {
     // 원본 이벤트 객체와 서버에서 가져온 데이터 병합
     let mergedEvent = { ...event, ...updatedEvent }
     
+    // recurrence_rules에서 반복 패턴 확인 및 적용
+    if (mergedEvent.recurrence_rules && mergedEvent.recurrence_rules.pattern) {
+      console.log('서버에서 받은 반복 패턴:', mergedEvent.recurrence_rules.pattern)
+      mergedEvent.recurring = mergedEvent.recurrence_rules.pattern
+      mergedEvent.is_recurring = true
+    }
     // 제목이 [매일], [매주], [매월], [매년]으로 시작하는 경우 반복 일정으로 처리
-    if (mergedEvent.title && (
+    else if (mergedEvent.title && (
       mergedEvent.title.startsWith('[매일]') || 
       mergedEvent.title.startsWith('[매주]') || 
       mergedEvent.title.startsWith('[매월]') || 
       mergedEvent.title.startsWith('[매년]')
     )) {
       console.log('제목 패턴으로 반복 일정 판단:', mergedEvent.title)
+      
+      // 제목 패턴에 따라 반복 주기 설정
+      let recurringPattern = 'weekly'; // 기본값
+      
+      if (mergedEvent.title.startsWith('[매일]')) {
+        recurringPattern = 'daily';
+      } else if (mergedEvent.title.startsWith('[매주]')) {
+        recurringPattern = 'weekly';
+      } else if (mergedEvent.title.startsWith('[매월]')) {
+        recurringPattern = 'monthly';
+      } else if (mergedEvent.title.startsWith('[매년]')) {
+        recurringPattern = 'yearly';
+      }
+      
       mergedEvent = {
         ...mergedEvent,
         is_recurring: true,
-        recurring: 'weekly' // 기본값
+        recurring: recurringPattern
       }
     }
     
@@ -779,7 +799,6 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     console.log('서버에서 최신 이벤트 정보 확인 중...')
     const eventDetail = await calendarStore.fetchEventDetail(eventId)
     console.log('서버에서 최신 이벤트 정보 확인 결과:', eventDetail)
-    // 실제 반복 일정인지 확인 - 명시적으로 반복 속성이 있는 경우 또는 [매*] 패턴의 제목인 경우
     const isActuallyRecurring = eventDetail && eventDetail.recurrence_rules;
     
     // 클라이언트 상태와 서버 상태가 다를 때 처리 (반복 일정이지만 반복 일정으로 처리되지 않은 경우)
@@ -806,6 +825,7 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     
     // 반복 일정 및 삭제 옵션에 따른 처리
     let success = false
+    let savedEvent = null
     
     if (isActuallyRecurring || isRecurring) {
       console.log('반복 일정 삭제:', deleteOptions?.option)
@@ -902,7 +922,8 @@ const handleSaveEvent = async (eventData) => {
     // 시간 정보가 있는 경우 event_time 필드 추가
     const newEventData = {
       ...eventData,
-      event_time: eventData.startTime
+      event_time: eventData.startTime,
+      event_date: props.date // 선택한 날짜 추가
     }
 
     if (!eventData.allDay) {
@@ -916,31 +937,54 @@ const handleSaveEvent = async (eventData) => {
     console.log('반복 일정 여부:', newEventData.recurring && newEventData.recurring !== 'none')
     console.log('반복 일정 수정 옵션:', eventData.updateOption)
 
-    let savedEvent
-    if (eventData.id) {
-      // 기존 이벤트 수정
-      if (eventData.recurring && eventData.recurring !== 'none') {
-        // 반복 일정인 경우 특별한 API 사용
-        const updateOption = eventData.updateOption || 'this_and_future'
-        console.log(`반복 일정 수정 시도 - 옵션: ${updateOption}`)
-        savedEvent = await calendarStore.updateRecurringEvent(newEventData, updateOption)
-      } else {
-        // 일반 일정 수정
-        console.log('일반 일정 수정 시도')
-        savedEvent = await calendarStore.updateEvent(newEventData)
+    // 서버에서 최신 이벤트 정보 가져오기
+    console.log('서버에서 최신 이벤트 정보 확인 중...')
+    const eventDetail = await calendarStore.fetchEventDetail(eventData.id)
+    console.log('서버에서 최신 이벤트 정보 확인 결과:', eventDetail)
+    
+    // 반복 일정 여부 확인 - 여러 방법으로 체크
+    const isActuallyRecurring = (
+      (eventDetail && eventDetail.recurrence_rules) || // 서버 응답에 recurrence_rules가 있는 경우
+      (eventDetail && eventDetail.recurring && eventDetail.recurring !== 'none') || // recurring 속성이 있는 경우
+      (eventData.recurring && eventData.recurring !== 'none') || // 사용자 입력 폼에서 recurring 값이 설정된 경우
+      (eventData.title && (
+        eventData.title.startsWith('[매일]') || 
+        eventData.title.startsWith('[매주]') || 
+        eventData.title.startsWith('[매월]') || 
+        eventData.title.startsWith('[매년]')
+      )) // 제목에 반복 패턴이 있는 경우
+    );
+    
+    console.log('반복 일정 여부 확인 결과:', isActuallyRecurring);
+
+    // 반복 일정 및 삭제 옵션에 따른 처리
+    let success = false
+    let savedEvent = null
+    
+    if (isActuallyRecurring) {
+      console.log('반복 일정 수정:', eventData.updateOption)
+      
+      // 현재 선택된 날짜 설정 (event_date 파라미터로 사용)
+      newEventData.event_date = props.date;
+      
+      if (eventData.updateOption === 'this_only') {
+        console.log('이 일정만 수정 시도, 선택된 날짜:', props.date)
+        savedEvent = await calendarStore.updateRecurringEventThisOnly(newEventData)
+        success = true
+      } else if (eventData.updateOption === 'this_and_future') {
+        console.log('이후 모든 일정 수정 시도, 시작일:', props.date)
+        savedEvent = await calendarStore.updateRecurringEventsThisAndFuture(newEventData)
+        success = true
+      } else if (eventData.updateOption === 'all') {
+        console.log('모든 반복 일정 수정 시도')
+        savedEvent = await calendarStore.updateRecurringEventsAll(newEventData)
+        success = true
       }
     } else {
-      // 새 이벤트 추가
-      console.log('새 이벤트 추가 시도')
-      console.log('새 이벤트의 반복 설정:', newEventData.recurring)
-      savedEvent = await calendarStore.addEvent(newEventData)
-    }
-    
-    if (savedEvent) {
-      console.log('이벤트 저장 성공:', savedEvent)
-      console.log('저장된 이벤트의 반복 설정:', savedEvent.recurring, savedEvent.is_recurring)
-    } else {
-      console.warn('이벤트는 저장되었지만 반환된 데이터가 없습니다')
+      // 일반 일정 수정
+      console.log('단일 일정 수정 시도')
+      savedEvent = await calendarStore.updateEvent(newEventData)
+      success = !!savedEvent
     }
     
     // 모달 닫기

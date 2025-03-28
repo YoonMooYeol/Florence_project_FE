@@ -978,6 +978,40 @@ const handleCalendarRefresh = async (event) => {
   text-align: left;
 }
 
+/* 멀티데이 이벤트 스타일 */
+.fc-event {
+  border-radius: 4px;
+  margin: 1px 0;
+  padding: 2px 4px;
+}
+
+.fc-event.fc-event-multi-day {
+  margin: 1px -1px;
+  padding: 2px 4px;
+  border-radius: 0;
+}
+
+.fc-event.fc-event-multi-day:first-child {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  margin-left: 1px;
+}
+
+.fc-event.fc-event-multi-day:last-child {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  margin-right: 1px;
+}
+
+.custom-event-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  padding: 2px 0;
+}
+
 /* 요일 헤더 영역 숨기기 */
 .fc-col-header {
   height: 0;

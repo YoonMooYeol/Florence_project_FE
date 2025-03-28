@@ -63,25 +63,36 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       if (response.data) {
         // 서버 응답 데이터를 FullCalendar 형식으로 변환
-        const formattedEvents = response.data.map(event => ({
-          id: event.event_id,
-          title: event.title,
-          start: event.start_date,
-          end: event.end_date,
-          allDay: !event.start_time,
-          start_date: event.start_date,
-          end_date: event.end_date,
-          start_time: event.start_time,
-          end_time: event.end_time,
-          description: event.description,
-          event_type: event.event_type,
-          event_color: event.event_color,
-          recurrence_rules: event.recurrence_rules,
-          // FullCalendar 표시용 속성
-          backgroundColor: event.event_color || '#FFD600',
-          borderColor: event.event_color || '#FFD600',
-          textColor: '#353535'
-        }))
+        const formattedEvents = response.data.map(event => {
+          // end_date가 있는 경우 하루를 더함 (FullCalendar는 end를 exclusive하게 처리)
+          let endDate = event.end_date
+          if (endDate) {
+            const date = new Date(endDate)
+            date.setDate(date.getDate() + 1)
+            endDate = date.toISOString().split('T')[0]
+          }
+
+          return {
+            id: event.event_id,
+            title: event.title,
+            start: event.start_time ? `${event.start_date}T${event.start_time}` : event.start_date,
+            end: event.end_time ? `${endDate || event.start_date}T${event.end_time}` : (endDate || event.start_date),
+            allDay: !event.start_time,
+            start_date: event.start_date,
+            end_date: event.end_date,
+            start_time: event.start_time,
+            end_time: event.end_time,
+            description: event.description,
+            event_type: event.event_type,
+            event_color: event.event_color,
+            recurrence_rules: event.recurrence_rules,
+            // FullCalendar 표시용 속성
+            backgroundColor: event.event_color || '#FFD600',
+            borderColor: event.event_color || '#FFD600',
+            textColor: '#353535',
+            display: 'block'
+          }
+        })
         
         // 이벤트 목록 갱신
         events.value = formattedEvents
@@ -199,7 +210,8 @@ export const useCalendarStore = defineStore('calendar', () => {
         updated_at: response.data.updated_at,
         event_color: response.data.event_color || '#FFD600',
         start_time: response.data.start_time,
-        end_time: response.data.end_time
+        end_time: response.data.end_time,
+        recurrence_rules: response.data.recurrence_rules // 반복 규칙 추가
       };
       
       // 시작 시간 정보가 있으면 start에 통합
@@ -240,9 +252,9 @@ export const useCalendarStore = defineStore('calendar', () => {
       const payload = {
         title: newEvent.title,
         // event_day 대신 start_date 사용
-        start_date: newEvent.dates?.[0] || newEvent.start?.split('T')[0] || newEvent.event_day,
-        // 종료일이 있으면 추가 (멀티데이 이벤트인 경우)
-        end_date: newEvent.dates?.length > 1 ? newEvent.dates[newEvent.dates.length - 1] : null,
+        start_date: newEvent.start_date || newEvent.start?.split('T')[0] || newEvent.event_day,
+        // 종료일이 있으면 추가
+        end_date: newEvent.end_date || newEvent.end?.split('T')[0] || null,
         description: newEvent.description || '',
         event_type: newEvent.event_type || 'other',
         event_color: newEvent.event_color || '#FFD600'
@@ -1357,21 +1369,12 @@ export const useCalendarStore = defineStore('calendar', () => {
    */
   async function deleteRecurringEventThisOnly(eventId) {
     try {
-      // 선택된 이벤트 정보 가져오기
-      const event = selectedEvent.value
-      
-      if (!event) {
-        throw new Error('선택된 이벤트 정보가 없습니다.')
-      }
-      
-      // 가상 인스턴스인 경우
-      const eventDate = selectedDate.value || event.start_date
-      
-      // API 호출
-      const response = await api.delete(`calendars/events/${eventId}/delete_recurring/`, {
+      console.log('이 일정만 삭제 API 호출:', eventId)
+      const response = await api.delete(`/calendars/events/${eventId}/delete_recurring/`, {
+        headers: getAuthHeaders(),
         params: {
           delete_type: 'this_only',
-          event_date: eventDate
+          event_date: selectedDate.value
         }
       })
       
@@ -1382,7 +1385,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       }
       return false
     } catch (error) {
-      console.error('반복 일정(단일) 삭제 중 오류 발생:', error)
+      console.error('이 일정만 삭제 중 오류 발생:', error)
       throw error
     }
   }
@@ -1480,85 +1483,75 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
+  // Helper function to prepare event payload for API requests
+  function prepareEventPayload(eventData) {
+    const payload = {
+      title: eventData.title,
+      description: eventData.description || '',
+      start_date: eventData.start_date || eventData.start?.split('T')[0],
+      end_date: eventData.end_date || eventData.end?.split('T')[0],
+      start_time: eventData.startTime || eventData.start_time,
+      end_time: eventData.endTime || eventData.end_time,
+      event_type: eventData.event_type || 'other',
+      event_color: eventData.event_color || '#FFD600'
+    };
+    
+    // 반복 일정인 경우 recurrence_rules 추가
+    if (eventData.recurring && eventData.recurring !== 'none') {
+      payload.recurrence_rules = {
+        pattern: eventData.recurring,
+        exceptions: eventData.exceptions || []
+      };
+      console.log('반복 일정 패턴 추가:', eventData.recurring);
+    }
+    
+    return payload;
+  }
+
   /**
    * 반복 일정 중 이 일정만 수정
    * @param {Object} eventData - 수정할 이벤트 데이터
    * @returns {Promise<Object>} 수정된 이벤트 객체
    */
   async function updateRecurringEventThisOnly(eventData) {
+    isLoading.value = true;
+    error.value = null;
+    
     try {
-      const eventId = eventData.id || selectedEvent.value?.id
+      const eventId = eventData.id
       
       if (!eventId) {
         throw new Error('이벤트 ID가 없습니다.')
       }
       
-      // 선택된 날짜 또는 이벤트의 시작일
-      const eventDate = selectedDate.value || eventData.start_date
+      // 선택된 날짜 또는 이벤트의 시작일 - 이제 eventData에서 직접 가져옴
+      const eventDate = eventData.event_date || selectedDate.value || eventData.start_date
       
-      // API 요청 데이터 구성
-      const payload = {
-        title: eventData.title,
-        description: eventData.description || '',
-        start_date: eventData.start_date,
-        end_date: eventData.end_date,
-        start_time: eventData.start_time,
-        end_time: eventData.end_time,
-        event_type: eventData.event_type || 'other',
-        event_color: eventData.event_color || '#FFD600'
-      }
+      console.log('이 일정만 수정 API 호출:', eventId)
+      console.log('이벤트 날짜:', eventDate)
+      
+      // API 요청 데이터 구성 (공통 함수 사용)
+      const apiPayload = prepareEventPayload(eventData);
+      console.log('이 일정만 수정 페이로드:', apiPayload);
+      console.log('반복 정보:', eventData.recurring);
       
       // API 호출
-      const response = await api.patch(`calendars/events/${eventId}/update_recurring/`, payload, {
+      const response = await api.put(`/calendars/events/${eventId}/update_recurring/`, apiPayload, {
+        headers: getAuthHeaders(),
         params: {
           update_type: 'this_only',
           event_date: eventDate
         }
-      })
-      
-      if (response.data) {
-        // 이벤트 목록 다시 로드
-        await fetchEvents()
-        return response.data
-      }
-      return null
-    } catch (error) {
-      console.error('반복 일정(단일) 업데이트 중 오류 발생:', error)
-      throw error
-    }
-  }
-
-  /**
-   * 반복 일정 중 이 일정과 이후 모든 일정 수정
-   * @param {Object} eventData - 수정할 이벤트 데이터
-   * @returns {Promise<Object>} 수정된 이벤트 객체
-   */
-  async function updateRecurringEventsThisAndFuture(eventData) {
-    isLoading.value = true;
-    error.value = null;
-    
-    try {
-      console.log('이 일정과 이후 모든 일정 수정 API 호출:', eventData.id)
-      
-      // API 요청 형식에 맞게 데이터 변환
-      const apiPayload = prepareEventPayload(eventData);
-      
-      // API 호출
-      const response = await api.put(`calendars/events/${eventData.id}/update_recurring/`, apiPayload, {
-        headers: getAuthHeaders(),
-        params: {
-          update_type: 'this_and_future'
-        }
       });
       
-      // 응답 데이터 매핑
+      // 응답 데이터 매핑 (다른 함수들과 일관성 유지)
       const updatedEvent = {
         id: response.data.event_id || eventData.id,
         title: response.data.title,
         description: response.data.description,
         event_day: response.data.event_day,
-        backgroundColor: '#FFD600',
-        borderColor: '#FFD600',
+        backgroundColor: response.data.event_color || '#FFD600',
+        borderColor: response.data.event_color || '#FFD600',
         textColor: '#353535',
         display: 'block',
         pregnancy: response.data.pregnancy,
@@ -1581,14 +1574,164 @@ export const useCalendarStore = defineStore('calendar', () => {
         updatedEvent.end = response.data.event_day;
       }
       
+      // UI 업데이트를 위해 전체 이벤트 새로고침
+      await fetchEvents();
+      
+      return updatedEvent;
+    } catch (error) {
+      console.error('이 일정만 업데이트 중 오류 발생:', error)
+      error.value = '일정 수정에 실패했습니다.';
+      throw error
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * 반복 일정 중 이 일정과 이후 모든 일정 수정
+   * @param {Object} eventData - 수정할 이벤트 데이터
+   * @returns {Promise<Object>} 수정된 이벤트 객체
+   */
+  async function updateRecurringEventsThisAndFuture(eventData) {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      console.log('이 일정과 이후 모든 일정 수정 API 호출:', eventData.id)
+      
+      // 선택된 날짜 추출
+      const eventDate = eventData.event_date || selectedDate.value || eventData.start_date
+      console.log('이벤트 날짜:', eventDate)
+      
+      // API 요청 형식에 맞게 데이터 변환
+      const apiPayload = prepareEventPayload(eventData);
+      console.log('이 일정과 이후 모든 일정 수정 페이로드:', apiPayload);
+      console.log('반복 정보:', eventData.recurring);
+      
+      // API 호출
+      const response = await api.put(`/calendars/events/${eventData.id}/update_recurring/`, apiPayload, {
+        headers: getAuthHeaders(),
+        params: {
+          update_type: 'this_and_future',
+          event_date: eventDate
+        }
+      });
+      
+      // 응답 데이터 매핑
+      const updatedEvent = {
+        id: response.data.event_id || eventData.id,
+        title: response.data.title,
+        description: response.data.description,
+        event_day: response.data.event_day,
+        backgroundColor: response.data.event_color || '#FFD600',
+        borderColor: response.data.event_color || '#FFD600',
+        textColor: '#353535',
+        display: 'block',
+        pregnancy: response.data.pregnancy,
+        event_type: response.data.event_type,
+        recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
+        created_at: response.data.created_at,
+        updated_at: response.data.updated_at,
+        event_color: response.data.event_color || '#FFD600'
+      };
+
+      // 시작/종료 시간 설정
+      if (response.data.start_time) {
+        updatedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
+      } else {
+        updatedEvent.start = response.data.event_day;
+      }
+      
+      if (response.data.end_time) {
+        updatedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
+      } else {
+        updatedEvent.end = response.data.event_day;
+      }
+      
       // UI 업데이트를 위해 로컬 상태 업데이트
       // 여러 일정이 업데이트될 수 있으므로 전체 일정 새로고침이 필요할 수 있음
       await fetchEvents();
       
       return updatedEvent;
-    } catch (err) {
+    } catch (error) {
+      console.error('이 일정과 이후 일정 업데이트 중 오류 발생:', error);
       error.value = '일정 수정에 실패했습니다.';
-      throw err;
+      throw error;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * 모든 반복 일정 수정
+   * @param {Object} eventData - 수정할 이벤트 데이터
+   * @returns {Promise<Object>} 수정된 이벤트 객체
+   */
+  async function updateRecurringEventsAll(eventData) {
+    isLoading.value = true;
+    error.value = null;
+    
+    try {
+      console.log('모든 반복 일정 수정 API 호출:', eventData.id)
+      
+      // 선택된 날짜 추출
+      const eventDate = eventData.event_date || selectedDate.value || eventData.start_date
+      console.log('이벤트 날짜:', eventDate)
+      
+      // API 요청 형식에 맞게 데이터 변환
+      const apiPayload = prepareEventPayload(eventData);
+      console.log('모든 반복 일정 수정 페이로드:', apiPayload);
+      console.log('반복 정보:', eventData.recurring);
+      
+      // API 호출
+      const response = await api.put(`/calendars/events/${eventData.id}/update_recurring/`, apiPayload, {
+        headers: getAuthHeaders(),
+        params: {
+          update_type: 'all',
+          event_date: eventDate
+        }
+      });
+      
+      // 응답 데이터 매핑
+      const updatedEvent = {
+        id: response.data.event_id || eventData.id,
+        title: response.data.title,
+        description: response.data.description,
+        event_day: response.data.event_day,
+        backgroundColor: response.data.event_color || '#FFD600',
+        borderColor: response.data.event_color || '#FFD600',
+        textColor: '#353535',
+        display: 'block',
+        pregnancy: response.data.pregnancy,
+        event_type: response.data.event_type,
+        recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
+        created_at: response.data.created_at,
+        updated_at: response.data.updated_at,
+        event_color: response.data.event_color || '#FFD600'
+      };
+
+      // 시작/종료 시간 설정
+      if (response.data.start_time) {
+        updatedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
+      } else {
+        updatedEvent.start = response.data.event_day;
+      }
+      
+      if (response.data.end_time) {
+        updatedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
+      } else {
+        updatedEvent.end = response.data.event_day;
+      }
+      
+      // UI 업데이트를 위해 로컬 상태 업데이트
+      // 모든 반복 일정이 업데이트될 수 있으므로 전체 일정 새로고침
+      await fetchEvents();
+      
+      return updatedEvent;
+    } catch (error) {
+      console.error('모든 반복 일정 업데이트 중 오류 발생:', error);
+      error.value = '일정 수정에 실패했습니다.';
+      throw error;
     } finally {
       isLoading.value = false;
     }
@@ -1612,72 +1755,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     } catch (error) {
       console.error('회원 탈퇴 실패:', error)
       throw error
-    }
-  }
-
-  /**
-   * 모든 반복 일정 수정
-   * @param {Object} eventData - 수정할 이벤트 데이터
-   * @returns {Promise<Object>} 수정된 이벤트 객체
-   */
-  async function updateRecurringEventsAll(eventData) {
-    isLoading.value = true;
-    error.value = null;
-    
-    try {
-      console.log('모든 반복 일정 수정 API 호출:', eventData.id)
-      
-      // API 요청 형식에 맞게 데이터 변환
-      const apiPayload = prepareEventPayload(eventData);
-      
-      // API 호출
-      const response = await api.put(`calendars/events/${eventData.id}/update_recurring/`, apiPayload, {
-        headers: getAuthHeaders(),
-        params: {
-          update_type: 'all'
-        }
-      });
-      
-      // 응답 데이터 매핑
-      const updatedEvent = {
-        id: response.data.event_id || eventData.id,
-        title: response.data.title,
-        description: response.data.description,
-        event_day: response.data.event_day,
-        backgroundColor: '#FFD600',
-        borderColor: '#FFD600',
-        textColor: '#353535',
-        display: 'block',
-        pregnancy: response.data.pregnancy,
-        event_type: response.data.event_type,
-        recurring: response.data.is_recurring ? response.data.recurrence_pattern : 'none',
-        created_at: response.data.created_at,
-        updated_at: response.data.updated_at
-      };
-
-      // 시작/종료 시간 설정
-      if (response.data.start_time) {
-        updatedEvent.start = `${response.data.event_day}T${response.data.start_time}`;
-      } else {
-        updatedEvent.start = response.data.event_day;
-      }
-      
-      if (response.data.end_time) {
-        updatedEvent.end = `${response.data.event_day}T${response.data.end_time}`;
-      } else {
-        updatedEvent.end = response.data.event_day;
-      }
-      
-      // UI 업데이트를 위해 로컬 상태 업데이트
-      // 모든 반복 일정이 업데이트될 수 있으므로 전체 일정 새로고침
-      await fetchEvents();
-      
-      return updatedEvent;
-    } catch (err) {
-      error.value = '일정 수정에 실패했습니다.';
-      throw err;
-    } finally {
-      isLoading.value = false;
     }
   }
 

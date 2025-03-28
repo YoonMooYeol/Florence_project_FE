@@ -16,7 +16,8 @@ const emit = defineEmits(['close', 'save'])
 
 // 폼 데이터
 const title = ref('')
-const dates = ref([]) // 다중 날짜를 위한 배열
+const startDate = ref(props.selectedDate || new Date().toISOString().split('T')[0]) // 시작 날짜
+const endDate = ref(props.selectedDate || new Date().toISOString().split('T')[0])   // 종료 날짜
 const isAllDay = ref(false)
 const startTime = ref('09:00')
 const endTime = ref('10:00')
@@ -76,7 +77,8 @@ const selectEndTime = (time) => {
 // 선택된 날짜가 변경되면 폼 데이터 업데이트
 watch(() => props.selectedDate, (newDate) => {
   if (newDate) {
-    dates.value = [newDate.split('T')[0]]
+    startDate.value = newDate.split('T')[0]
+    endDate.value = newDate.split('T')[0]
   }
 }, { immediate: true })
 
@@ -88,36 +90,6 @@ watch(isRecurring, (newValue) => {
     recurrenceType.value = 'none'
   }
 })
-
-// 날짜 추가
-const addDate = () => {
-  dates.value.push('')
-}
-
-// 날짜 삭제
-const removeDate = (index) => {
-  dates.value.splice(index, 1)
-}
-
-// 모달 닫기
-const closeModal = () => {
-  resetForm()
-  emit('close')
-}
-
-// 폼 초기화
-const resetForm = () => {
-  title.value = ''
-  dates.value = props.selectedDate ? [props.selectedDate.split('T')[0]] : ['']
-  isAllDay.value = false
-  startTime.value = '09:00'
-  endTime.value = '10:00'
-  notification.value = 'none'
-  memo.value = ''
-  isRecurring.value = false
-  recurrenceType.value = 'none'
-  eventColor.value = '#FFD600'  // 색상 초기화 추가
-}
 
 // 반복 주기 텍스트 가져오기
 const getRecurringText = (type) => {
@@ -138,77 +110,92 @@ const getRecurringText = (type) => {
 // 일정 저장
 const saveEvent = () => {
   // 필수 입력값 검증
-  if (!title.value || dates.value.length === 0 || dates.value.some(date => !date)) {
+  if (!title.value || !startDate.value || !endDate.value) {
     alert('제목과 날짜는 필수 입력 항목입니다.')
     return
   }
 
-  // 시작 시간이 종료 시간보다 이른 경우 검증
-  if (!isAllDay.value && startTime.value > endTime.value) {
+  // 시작 날짜가 종료 날짜보다 이후인 경우 검증
+  if (startDate.value > endDate.value) {
+    alert('종료 날짜는 시작 날짜 이후여야 합니다.')
+    return
+  }
+
+  // 시작 시간이 종료 시간보다 이른 경우 검증 (같은 날짜일 경우만)
+  if (!isAllDay.value && startDate.value === endDate.value && startTime.value > endTime.value) {
     alert('종료 시간이 시작 시간 이후여야 합니다.')
     return
   }
 
   console.log('일정 저장 시작:', {
     title: title.value,
-    dates: dates.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
     isAllDay: isAllDay.value,
     startTime: startTime.value,
     endTime: endTime.value
   })
 
-  // 각 날짜별로 이벤트 생성
-  const events = dates.value.map(date => {
-    const recurringText = isRecurring.value ? `[${getRecurringText(recurrenceType.value)}] ` : ''
-    const newEvent = {
-      title: `${recurringText}${title.value}`,
-      allDay: isAllDay.value,
-      description: memo.value,
-      backgroundColor: eventColor.value,  // 선택된 색상 적용
-      borderColor: eventColor.value,      // 선택된 색상 적용
-      textColor: '#353535',
-      display: 'block',
-      recurring: isRecurring.value ? recurrenceType.value : 'none',
-      event_time: isAllDay.value ? null : startTime.value,
-      startTime: startTime.value,
-      endTime: endTime.value,
-      event_color: eventColor.value  // 색상 정보 추가
-    }
+  // 반복 텍스트 추가
+  const recurringText = isRecurring.value ? `[${getRecurringText(recurrenceType.value)}] ` : ''
+  
+  // 이벤트 생성
+  const newEvent = {
+    title: `${recurringText}${title.value}`,
+    allDay: isAllDay.value,
+    description: memo.value,
+    backgroundColor: eventColor.value,
+    borderColor: eventColor.value,
+    textColor: '#353535',
+    display: 'block',
+    recurring: isRecurring.value ? recurrenceType.value : 'none',
+    event_time: isAllDay.value ? null : startTime.value,
+    startTime: startTime.value,
+    endTime: endTime.value,
+    event_color: eventColor.value,
+    start_date: startDate.value,
+    end_date: endDate.value
+  }
 
-    // 종일 이벤트인 경우
-    if (isAllDay.value) {
-      console.log('종일 이벤트: ', date)
-      // newEvent.start = date
-      // newEvent.end = date
-      newEvent.start = `${date}T00:00:00`
-      newEvent.end = `${date}T23:59:59`
-    } else {
-      // 시간이 있는 이벤트인 경우
-      const startDateTime = `${date}T${startTime.value}:00`
-      const endDateTime = `${date}T${endTime.value}:00`
-      newEvent.start = startDateTime
-      newEvent.end = endDateTime
-      console.log('시간 정보:', {
-        startDateTime,
-        endDateTime,
-        event_time: newEvent.event_time
-      })
-    }
+  // 시간 정보 설정
+  if (isAllDay.value) {
+    newEvent.start = `${startDate.value}T00:00:00`
+    newEvent.end = `${endDate.value}T23:59:59`
+  } else {
+    newEvent.start = `${startDate.value}T${startTime.value}:00`
+    newEvent.end = `${endDate.value}T${endTime.value}:00`
+  }
 
-    // 알림 설정 추가
-    newEvent.notification = notification.value
+  // 알림 설정 추가
+  newEvent.notification = notification.value
 
-    console.log('생성된 이벤트:', newEvent)
-    return newEvent
-  })
-
+  console.log('생성된 이벤트:', newEvent)
+  
   // 부모 컴포넌트로 이벤트 전달
-  events.forEach(event => {
-    console.log('이벤트 전달:', event)
-    emit('save', event)
-  })
+  emit('save', newEvent)
 
   // 폼 초기화 및 모달 닫기
+  resetForm()
+  emit('close')
+}
+
+// 폼 초기화
+const resetForm = () => {
+  title.value = ''
+  startDate.value = props.selectedDate ? props.selectedDate.split('T')[0] : new Date().toISOString().split('T')[0]
+  endDate.value = props.selectedDate ? props.selectedDate.split('T')[0] : new Date().toISOString().split('T')[0]
+  isAllDay.value = false
+  startTime.value = '09:00'
+  endTime.value = '10:00'
+  notification.value = 'none'
+  memo.value = ''
+  isRecurring.value = false
+  recurrenceType.value = 'none'
+  eventColor.value = '#FFD600'  // 색상 초기화 추가
+}
+
+// 모달 닫기
+const closeModal = () => {
   resetForm()
   emit('close')
 }
@@ -266,33 +253,21 @@ const saveEvent = () => {
         <!-- 날짜 선택 -->
         <div class="mb-1">
           <label class="block text-dark-gray font-medium mb-2">날짜</label>
-          <div v-for="(date, index) in dates" :key="index" class="flex items-center mb-2">
+          <div class="flex items-center mb-2">
             <input
-              :id="'event-date-' + index"
-              v-model="dates[index]"
+              :id="'event-start-date'"
+              v-model="startDate"
               type="date"
               class="flex-1 px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
             >
-            <button
-              v-if="index > 0"
-              class="ml-2 p-2 text-red-500 hover:text-red-700"
-              @click="removeDate(index)"
+            <span class="mx-2">-</span>
+            <input
+              :id="'event-end-date'"
+              v-model="endDate"
+              type="date"
+              class="flex-1 px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-point"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-              </svg>
-            </button>
           </div>
-          <button
-            type="button"
-            class="mt-2 py-2 text-dark-gray hover:text-gray-600 transition-colors font-medium flex items-center"
-            @click="addDate"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-            </svg>
-            날짜 추가
-          </button>
         </div>
 
         <!-- 시간 선택 -->
