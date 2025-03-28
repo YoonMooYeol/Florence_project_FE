@@ -322,12 +322,42 @@ const loadMonthEvents = async () => {
     
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()
-      calendarApi.refetchEvents()
       
-      // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
+      // 1. 먼저 캘린더 API를 통해 이벤트 새로고침
+      logger.info(CONTEXT, '캘린더 API 새로고침 중...')
+      await calendarApi.refetchEvents()
+      
+      // 2. 캘린더 첫 번째 렌더링 실행
+      logger.info(CONTEXT, '캘린더 첫 번째 렌더링 중...')
+      calendarApi.render()
+      
+      // 3. 모든 이벤트가 제대로 표시되었는지 확인
+      const calendarEvents = calendarApi.getEvents()
+      logger.info(CONTEXT, `캘린더 API 이벤트 개수: ${calendarEvents.length}, 스토어 이벤트 개수: ${calendarStore.events.length}`)
+      
+      // 4. 무조건 이벤트 개수 확인 및 강제 추가 로직 실행
+      logger.warn(CONTEXT, '이벤트 개수 불일치 감지. 모든 이벤트 강제 추가 중...')
+      
+      // 기존 이벤트 모두 제거
+      calendarApi.removeAllEvents()
+      
+      // 스토어에서 직접 모든 이벤트 다시 추가
+      calendarStore.events.forEach(event => {
+        calendarApi.addEvent({
+          id: event.id || event.event_id,
+          title: event.title,
+          start: event.start_date || event.start,
+          allDay: event.all_day || event.allDay || true,
+          backgroundColor: event.background_color || event.backgroundColor || '#ffd600',
+          borderColor: event.border_color || event.borderColor || '#ffd600',
+          textColor: event.text_color || event.textColor || '#353535'
+        })
+      })
+      
+      // 5. 최종 렌더링
       requestAnimationFrame(() => {
         calendarApi.render()
-        logger.info(CONTEXT, '캘린더 렌더링 완료')
+        logger.info(CONTEXT, '캘린더 렌더링 완료 (총 이벤트 수: ' + calendarStore.events.length + ')')
       })
     }
   } catch (error) {
@@ -350,16 +380,21 @@ onMounted(async () => {
       calendarStore.setPregnancyId(storedPregnancyId)
     }
 
+    // API 응답 완료 후 임신 정보 상태 확인
+    // 임신 ID가 존재하는지 확인하기 전에 짧은 지연을 추가하여 모든 상태 업데이트가 완료되도록 함
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
     // 임신 정보 초기화 성공 로깅
-    if (calendarStore.pregnancyId.value) {
+    if (calendarStore.pregnancyId && calendarStore.pregnancyId.value) {
       logger.info(CONTEXT, '임신 정보 초기화 성공:', calendarStore.pregnancyId.value)
       savePregnancyId(calendarStore.pregnancyId.value)
-    } else {
-      logger.warn(CONTEXT, '임신 정보가 없습니다')
+    } else if (process.env.NODE_ENV !== 'production') {
+      // 개발 환경에서만 경고 표시 (불필요한 사용자 경고 방지)
+      logger.debug(CONTEXT, '임신 정보가 설정되지 않았습니다 - 일부 기능이 제한될 수 있습니다')
     }
 
     // 메인 캘린더 데이터 로드
-    await loadMonthEvents() 
+    await loadMonthEvents()
 
     // 저장된 모달 상태가 있는지 확인하고 있으면 모달 다시 열기
     const savedModalState = sessionStorage.getItem('modalState')
@@ -477,11 +512,33 @@ const handleEventSave = async (eventData) => {
       // 캘린더 새로고침
       if (calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
-        // 이벤트를 다시 가져오고 즉시 렌더링
+        
+        // 1. 모든 이벤트 제거
+        calendarApi.removeAllEvents()
+        
+        // 2. 이벤트 데이터 다시 로드
+        await calendarStore.fetchEvents()
+        
+        // 3. 이벤트 새로고침
         await calendarApi.refetchEvents()
+        
+        // 4. 모든 이벤트 강제 추가
+        calendarStore.events.forEach(event => {
+          calendarApi.addEvent({
+            id: event.id || event.event_id,
+            title: event.title,
+            start: event.start_date || event.start,
+            allDay: event.all_day || event.allDay || true,
+            backgroundColor: event.background_color || event.backgroundColor || '#ffd600',
+            borderColor: event.border_color || event.borderColor || '#ffd600',
+            textColor: event.text_color || event.textColor || '#353535'
+          })
+        })
+        
+        // 5. 최종 렌더링
         requestAnimationFrame(() => {
           calendarApi.render()
-          console.log('캘린더 렌더링 완료')
+          console.log('일정 추가 후 캘린더 렌더링 완료')
         })
       }
     } else {
@@ -532,10 +589,33 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
       // 캘린더 새로고침
       if (calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
+        
+        // 1. 모든 이벤트 제거
+        calendarApi.removeAllEvents()
+        
+        // 2. 이벤트 데이터 다시 로드
+        await calendarStore.fetchEvents()
+        
+        // 3. 이벤트 새로고침
         await calendarApi.refetchEvents()
+        
+        // 4. 모든 이벤트 강제 추가
+        calendarStore.events.forEach(event => {
+          calendarApi.addEvent({
+            id: event.id || event.event_id,
+            title: event.title,
+            start: event.start_date || event.start,
+            allDay: event.all_day || event.allDay || true,
+            backgroundColor: event.background_color || event.backgroundColor || '#ffd600',
+            borderColor: event.border_color || event.borderColor || '#ffd600',
+            textColor: event.text_color || event.textColor || '#353535'
+          })
+        })
+        
+        // 5. 최종 렌더링
         requestAnimationFrame(() => {
           calendarApi.render()
-          console.log('캘린더 렌더링 완료')
+          console.log('일정 삭제 후 캘린더 렌더링 완료')
         })
       }
     }
@@ -561,17 +641,25 @@ const handleDateSelect = ({ year, month }) => {
 // 추가: LLM 요약 및 태교일기 데이터 변경 시 캘린더를 재렌더링하여 날짜 옆 표시를 실시간 업데이트
 watch(() => calendarStore.llmSummaries, () => {
   if (calendarRef.value) {
-    const calendarApi = calendarRef.value.getApi()
-    calendarApi.render()
-    console.log('LLM 요약 변경 감지 - 캘린더 재렌더링')
+    // 전체 재렌더링 대신 날짜 표시만 업데이트
+    requestAnimationFrame(() => {
+      const calendarApi = calendarRef.value.getApi()
+      // 기존 이벤트 유지하면서 UI만 업데이트
+      calendarApi.updateSize()
+      console.log('LLM 요약 변경 감지 - 날짜 표시만 업데이트')
+    })
   }
 }, { deep: true })
 
 watch(() => calendarStore.babyDiaries, () => {
   if (calendarRef.value) {
-    const calendarApi = calendarRef.value.getApi()
-    calendarApi.render()
-    console.log('태교일기 변경 감지 - 캘린더 재렌더링')
+    // 전체 재렌더링 대신 날짜 표시만 업데이트
+    requestAnimationFrame(() => {
+      const calendarApi = calendarRef.value.getApi()
+      // 기존 이벤트 유지하면서 UI만 업데이트
+      calendarApi.updateSize()
+      console.log('태교일기 변경 감지 - 날짜 표시만 업데이트')
+    })
   }
 }, { deep: true })
 
@@ -609,25 +697,23 @@ const handleCalendarRefresh = async (event) => {
     logger.info(CONTEXT, `캘린더 API 이벤트 개수: ${calendarEvents.length}, 스토어 이벤트 개수: ${calendarStore.events.length}`)
     
     // 이벤트 개수가 불일치하면 강제로 모든 이벤트를 다시 추가
-    if (calendarEvents.length !== calendarStore.events.length) {
-      logger.warn(CONTEXT, '이벤트 개수 불일치 감지. 모든 이벤트 강제 추가 중...')
-      
-      // 기존 이벤트 다시 제거
-      calendarApi.removeAllEvents()
-      
-      // 스토어에서 직접 이벤트 추가
-      calendarStore.events.forEach(event => {
-        calendarApi.addEvent({
-          id: event.id,
-          title: event.title,
-          start: event.start,
-          allDay: event.allDay,
-          backgroundColor: event.backgroundColor,
-          borderColor: event.borderColor,
-          textColor: event.textColor
-        })
+    logger.warn(CONTEXT, '이벤트 개수 불일치 감지. 모든 이벤트 강제 추가 중...')
+    
+    // 기존 이벤트 다시 제거
+    calendarApi.removeAllEvents()
+    
+    // 스토어에서 직접 이벤트 추가
+    calendarStore.events.forEach(event => {
+      calendarApi.addEvent({
+        id: event.id || event.event_id,
+        title: event.title,
+        start: event.start_date || event.start,
+        allDay: event.all_day || event.allDay || true,
+        backgroundColor: event.background_color || event.backgroundColor || '#ffd600',
+        borderColor: event.border_color || event.borderColor || '#ffd600',
+        textColor: event.text_color || event.textColor || '#353535'
       })
-    }
+    })
     
     // 6단계: 추가 안정성을 위해 다음 렌더링 사이클에서도 한 번 더 렌더링
     setTimeout(() => {
