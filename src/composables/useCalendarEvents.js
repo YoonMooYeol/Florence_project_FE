@@ -6,6 +6,7 @@ import { ref } from 'vue'
 import { normalizeDate } from '@/utils/dateUtils'
 import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
+import { refreshCalendar, renderCalendarOptimized } from '@/utils/calendarRenderer'
 
 // 컨텍스트 상수
 const CONTEXT = 'useCalendarEvents'
@@ -117,20 +118,10 @@ export function useCalendarEvents(calendarStore, modalManager) {
         return
       }
 
-      // 최적화된 업데이트 방법 사용
-      // 1. 이벤트를 다시 가져옴
-      calendarApi.refetchEvents()
-      logger.debug(CONTEXT, '캘린더 이벤트 리패치 완료')
-
-      // 2. requestAnimationFrame을 사용하여 렌더링 최적화
-      // 브라우저의 다음 렌더링 사이클에 렌더링을 예약하여 더 부드러운 업데이트 수행
-      requestAnimationFrame(() => {
-        // 3. 화면에 변경사항 반영
-        calendarApi.render()
-        logger.debug(CONTEXT, '캘린더 렌더링 완료')
-
-        logger.info(CONTEXT, '캘린더 업데이트 완료 (날짜:', deletedDate, ')')
-      })
+      // 최적화된 렌더링 함수 사용
+      renderCalendarOptimized(calendarApi, { forceRefetch: true })
+      
+      logger.info(CONTEXT, '캘린더 업데이트 완료 (날짜:', deletedDate, ')')
     } catch (error) {
       handleError(error, `${CONTEXT}.handleLLMSummaryDeleted`)
     }
@@ -140,22 +131,13 @@ export function useCalendarEvents(calendarStore, modalManager) {
   const handleCalendarRefresh = async (event, calendarRef, loadMonthEvents) => {
     logger.info(CONTEXT, '캘린더 새로고침 이벤트 받음')
     try {
-      // 이벤트 데이터 로드
-      await loadMonthEvents()
-      
-      // 캘린더 API가 있는지 확인
-      if (calendarRef.value) {
-        const calendarApi = calendarRef.value.getApi()
-        
-        // 이벤트 새로고침 및 렌더링
-        calendarApi.refetchEvents()
-        
-        // requestAnimationFrame을 사용하여 다음 렌더링 사이클에서 렌더링
-        requestAnimationFrame(() => {
-          calendarApi.render()
-          logger.info(CONTEXT, '캘린더 렌더링 완료')
-        })
+      if (!calendarRef.value) {
+        logger.warn(CONTEXT, '캘린더 참조가 없어 이벤트를 처리할 수 없음')
+        return
       }
+      
+      // 통합된 함수를 사용하여 캘린더 새로고침
+      await refreshCalendar(calendarRef.value.getApi(), loadMonthEvents)
     } catch (error) {
       logger.error(CONTEXT, '캘린더 새로고침 중 오류 발생:', error)
       handleError(error, CONTEXT)

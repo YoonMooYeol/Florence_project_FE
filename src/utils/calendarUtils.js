@@ -17,34 +17,12 @@ export function isMultiDayEvent(startDate, endDate) {
 }
 
 /**
- * FullCalendar 이벤트 객체로 변환하는 함수
- * @param {Object} event - 서버에서 받은 이벤트 객체
- * @returns {Object} FullCalendar 이벤트 객체
+ * 이벤트 종료일 처리 로직을 별도 함수로 분리
+ * @param {Object} fcEvent - FullCalendar 형식 이벤트
+ * @param {Object} event - 원본 이벤트 데이터
+ * @returns {Object} 종료일이 처리된 이벤트 객체
  */
-export function formatEventForCalendar(event) {
-  // 기본 이벤트 객체 생성
-  const fcEvent = {
-    id: event.event_id,
-    title: event.title,
-    backgroundColor: event.event_color || '#FFD600',
-    borderColor: event.event_color || '#FFD600',
-    textColor: '#353535',
-    event_type: event.event_type,
-    description: event.description || '',
-    recurrence_rules: event.recurrence_rules
-  }
-
-  // 시작일 처리
-  fcEvent.start_date = event.start_date
-  fcEvent.start = event.start_time 
-    ? `${event.start_date}T${event.start_time}` 
-    : event.start_date
-  
-  if (event.start_time) {
-    fcEvent.start_time = event.start_time
-  }
-
-  // 종료일 처리
+export function processEndDate(fcEvent, event) {
   if (event.end_date) {
     // 원본 종료일을 저장 (API 참조용)
     fcEvent.end_date = event.end_date
@@ -71,11 +49,6 @@ export function formatEventForCalendar(event) {
       // 디버깅을 위한 정보 저장
       fcEvent.original_end_date = event.end_date
       fcEvent.adjusted_end_date = fcEvent.end
-      
-      // 콘솔에 종료일 조정 정보 출력 (멀티데이 이벤트만)
-      if (isMultiDay) {
-        console.log(`[calendarUtils] 멀티데이 이벤트 "${event.title}" 종료일 조정: 원본=${event.end_date}, 조정=${fcEvent.end}`)
-      }
     }
   } else if (event.end_time && !event.end_date) {
     // 종료일은 없고 종료 시간만 있는 경우 (당일 이벤트)
@@ -88,6 +61,49 @@ export function formatEventForCalendar(event) {
   }
   
   return fcEvent
+}
+
+/**
+ * 이벤트 데이터 처리하는 통합 함수
+ * @param {Object} event - 서버에서 받은 이벤트 객체
+ * @returns {Object} FullCalendar 이벤트 객체
+ */
+export function processEventDates(event) {
+  // 기본 이벤트 객체 생성
+  const fcEvent = {
+    id: event.event_id,
+    title: event.title,
+    backgroundColor: event.event_color || '#FFD600',
+    borderColor: event.event_color || '#FFD600',
+    textColor: '#353535',
+    event_type: event.event_type,
+    description: event.description || '',
+    recurrence_rules: event.recurrence_rules
+  }
+
+  // 시작일 처리
+  fcEvent.start_date = event.start_date
+  fcEvent.start = event.start_time 
+    ? `${event.start_date}T${event.start_time}` 
+    : event.start_date
+  
+  if (event.start_time) {
+    fcEvent.start_time = event.start_time
+  }
+
+  // 종료일 처리
+  processEndDate(fcEvent, event)
+  
+  return fcEvent
+}
+
+/**
+ * FullCalendar 이벤트 객체로 변환하는 함수
+ * @param {Object} event - 서버에서 받은 이벤트 객체
+ * @returns {Object} FullCalendar 이벤트 객체
+ */
+export function formatEventForCalendar(event) {
+  return processEventDates(event)
 }
 
 /**
@@ -151,15 +167,13 @@ export function createEventContent(arg) {
       content = `<div class="multi-day-event-content start">
                   <span class="event-title" title="${title}">${title}</span>
                 </div>`
-    } 
-    // 중간 날짜에는 연속성을 보여주는 간단한 표시
-    else if (!arg.isStart && !arg.isEnd) {
+    } else if (!arg.isStart && !arg.isEnd) {
+      // 중간 날짜에는 연속성을 보여주는 간단한 표시
       content = `<div class="multi-day-event-content middle">
                   <span class="event-continuation">${title}</span>
                 </div>`
-    } 
-    // 마지막 날짜에도 제목 표시
-    else if (arg.isEnd) {
+    } else if (arg.isEnd) {
+      // 마지막 날짜에도 제목 표시
       content = `<div class="multi-day-event-content end">
                   <span class="event-title" title="${title}">${title}</span>
                 </div>`

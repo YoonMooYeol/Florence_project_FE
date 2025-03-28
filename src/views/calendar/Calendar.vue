@@ -20,6 +20,10 @@ import EventModal from '@/components/calendar/EventModal.vue'
 import { savePregnancyId } from '@/utils/auth'
 import { isMultiDayEvent } from '@/utils/calendarUtils'
 import '@/assets/styles/calendar.css'
+import { 
+  useEventLoading 
+} from '@/composables/useEventLoading'
+import { refreshCalendar } from '@/utils/calendarRenderer'
 
 // import TodoList from './TodoList.vue'
 
@@ -303,74 +307,8 @@ const handleGoToToday = async () => {
   await loadMonthEvents()
 }
 
-// 현재 월의 이벤트 로딩 함수
-const loadMonthEvents = async () => {
-  try {
-    logger.info(CONTEXT, `${currentYear.value}년 ${currentMonth.value}월 이벤트 로딩 시작`)
-    
-    // 이벤트, 요약, 일기 데이터 동시에 로드 (병렬 처리)
-    const [events, summaries, diaries] = await Promise.all([
-      calendarStore.fetchEvents(), // 확장된 fetchEvents 함수는 이미 다음 달 이벤트도 가져옴
-      calendarStore.fetchLLMSummaries(currentYear.value, currentMonth.value),
-      calendarStore.fetchBabyDiaries(currentYear.value, currentMonth.value)
-    ])
-    
-    logger.info(CONTEXT, 
-      `데이터 로드 완료: 이벤트 ${events.length}개, LLM 요약 ${summaries.length}개, 태교일기 ${diaries.length}개`
-    )
-    
-    // 캘린더 API를 통해 이벤트 표시
-    if (calendarRef.value) {
-      const calendarApi = calendarRef.value.getApi()
-      calendarApi.removeAllEvents() // 기존 이벤트 제거
-      
-      // 새 이벤트 일괄 추가 전에 종료일 처리 확인
-      events.forEach(event => {
-        // 종료일이 없으면 시작일과 동일하게 설정
-        if (!event.end) {
-          event.end = event.start
-          logger.debug(CONTEXT, `이벤트 "${event.title}"에 종료일 추가: ${event.end}`)
-        }
-        
-        // 장기일정(멀티데이 이벤트) 검증
-        // 날짜만 있는 멀티데이 이벤트인 경우 종료일이 제대로 조정되었는지 확인
-        if (isMultiDayEvent(event.start, event.end) && !event.end.includes('T')) {
-          // 멀티데이 이벤트의 원본 종료일과 현재 종료일 비교 (타임스탬프로 비교)
-          const endDate = new Date(event.end)
-          const originalEndDate = new Date(event.end_date || event.original_end_date || event.end)
-          
-          // 날짜 차이를 밀리초로 계산
-          const oneDayMs = 24 * 60 * 60 * 1000 // 1일을 밀리초로 표현
-          const dateDiff = endDate.getTime() - originalEndDate.getTime()
-          
-          // 차이가 1일(하루)보다 작으면 조정 필요 (시간대 차이 등 고려하여 90% 기준 적용)
-          if (dateDiff < oneDayMs * 0.9 && event.end_date && event.end_date !== event.start_date) {
-            const newEndDate = new Date(originalEndDate)
-            newEndDate.setDate(newEndDate.getDate() + 1)
-            event.end = newEndDate.toISOString().split('T')[0]
-            logger.debug(CONTEXT, `장기일정 종료일 보정: "${event.title}" 원본=${originalEndDate.toISOString().split('T')[0]} → 조정=${event.end}`)
-          }
-        }
-      })
-      
-      // 새 이벤트 일괄 추가
-      calendarApi.addEventSource(events)
-      
-      // 리렌더링 후에도 이벤트가 사라지지 않도록 설정
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          calendarApi.render()
-        })
-      }, 100)
-    }
-    
-    return events
-  } catch (error) {
-    logger.error(CONTEXT, '이벤트 로드 중 오류 발생:', error)
-    handleError(error, `${CONTEXT}.loadMonthEvents`)
-    return []
-  }
-}
+// 기존 함수 중 loadMonthEvents 제거 및 useEventLoading에서 가져오기
+const { loadMonthEvents } = useEventLoading(calendarStore, calendarRef, currentYear, currentMonth)
 
 // 컴포넌트 마운트 시 현재 날짜 정보 초기화
 onMounted(async () => {
@@ -618,31 +556,18 @@ watch(() => calendarStore.babyDiaries, () => {
   }
 }, { deep: true })
 
-// 캘린더 새로고침 이벤트 핸들러
+// handleCalendarRefresh 함수 수정
 const handleCalendarRefresh = async () => {
   try {
     logger.info(CONTEXT, '캘린더 새로고침 이벤트 처리 시작')
     
-    // 이벤트 데이터 로드
-    await loadMonthEvents()
-    
-    // 캘린더 API가 있는지 확인
-    if (calendarRef.value) {
-      const calendarApi = calendarRef.value.getApi()
-      
-      // 이벤트 새로고침 및 렌더링
-      calendarApi.refetchEvents()
-      
-      // 멀티데이 이벤트가 제대로 렌더링되도록 지연 후 재렌더링
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          calendarApi.render()
-          logger.info(CONTEXT, '캘린더 새로고침 렌더링 완료')
-        })
-      }, 200)
-    } else {
-      logger.warn(CONTEXT, '캘린더 새로고침 실패: 캘린더 참조 없음')
+    if (!calendarRef.value) {
+      logger.warn(CONTEXT, '캘린더 참조가 없어 이벤트를 처리할 수 없음')
+      return
     }
+    
+    // 캘린더 새로고침 유틸리티 함수 직접 사용
+    await refreshCalendar(calendarRef.value.getApi(), loadMonthEvents)
   } catch (error) {
     logger.error(CONTEXT, '캘린더 새로고침 중 오류 발생:', error)
     handleError(error, CONTEXT)
