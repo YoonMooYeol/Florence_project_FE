@@ -375,18 +375,29 @@ const loadMonthEvents = async () => {
       // 모든 이벤트 다시 추가 (멀티데이 이벤트 정확히 표시하기 위함)
       events.forEach(event => {
         // 서버에서 가져온 이벤트를 FullCalendar 형식으로 변환해서 직접 추가
+        const startDate = new Date(event.start);
+        let endDate = event.end ? new Date(event.end) : new Date(event.start);
+        
+        // 멀티데이 이벤트가 아닌 경우 (일일 일정)
+        const isMultiDayEvent = event.end && startDate.getTime() !== endDate.getTime();
+        
+        // 일일 일정인 경우 end date를 start date와 동일하게 설정
+        if (!isMultiDayEvent) {
+          endDate = new Date(startDate);
+        }
+
         calendarApi.addEvent({
           id: event.id,
           title: event.title,
           start: event.start,
-          end: event.end,
+          end: endDate.toISOString().split('T')[0],
           allDay: event.allDay,
-          display: event._isMultiDay ? 'block' : 'auto', // 멀티데이 이벤트는 block으로 표시
+          display: isMultiDayEvent ? 'block' : 'auto',
           backgroundColor: event.backgroundColor,
           borderColor: event.borderColor,
           textColor: event.textColor,
           extendedProps: {
-            _isMultiDay: event._isMultiDay,
+            _isMultiDay: isMultiDayEvent,
             description: event.description,
             event_type: event.event_type
           }
@@ -1019,7 +1030,6 @@ const handleCalendarRefresh = async (event) => {
 :deep(.fc-event-main) {
   padding: 2px 4px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1220,36 +1230,33 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
 /* 이벤트 스타일 */
 .fc-daygrid-event {
   border-radius: 4px;
-  padding: 1px 4px;
+  padding: 1px 2px;
   font-size: 0.75rem;
   cursor: pointer;
   margin: 1px 0;
   width: 100%;
-  display: block;
+  display: flex;
+  align-items: center;
   text-align: left;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  height: auto;
-  min-height: 20px;
+  height: 22px;
   background-color: var(--event-color, #ffd600);
   color: #353535;
   font-weight: 500;
   border: 1px solid var(--event-color, #ffd600);
   white-space: normal;
   line-height: 1.3;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 /* 멀티데이 이벤트 스타일 개선 */
 .multi-day-event {
-  margin: 2px 0 !important;
+  margin: 1px 0 !important;
   border-radius: 4px !important;
   font-weight: 500 !important;
   color: #353535 !important;
-  height: 24px !important;
-  padding: 2px 4px !important;
+  height: 22px !important;
+  padding: 0 2px !important;
   display: flex !important;
   align-items: center !important;
   min-width: calc(100% - 2px) !important;
@@ -1302,23 +1309,26 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
   justify-content: flex-start !important;
   overflow: hidden !important;
   white-space: nowrap !important;
+  height: 22px !important;
 }
 
 .multi-day-event-content .event-title {
   flex-grow: 1 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
   margin-left: 4px !important;
   min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
 }
 
 /* 이벤트 마커 스타일 */
 .event-start, .event-middle, .event-end, .event-full {
-  display: inline-block !important;
-  font-size: 10px !important;
-  line-height: 1 !important;
-  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 22px !important;
+  padding: 0 2px !important;
 }
 
 /* 이벤트 생성 */
@@ -1328,12 +1338,16 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
 
 /* fc-event 스타일 오버라이드 - 멀티데이 이벤트 텍스트 표시 개선 */
 .fc-event-title {
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  display: block !important;
-  width: 100% !important;
-  font-weight: 500 !important;
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 0px;
 }
 
 /* 먼쪽/가까운쪽 셀 구분 */
@@ -1746,18 +1760,21 @@ body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top a.fc-daygrid-day-n
   align-items: center;
   width: 100%;
   overflow: hidden;
+  height: 22px;
 }
 
 .fc-event-main-frame span {
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .fc-event-title {
   flex: 1;
   font-size: 0.75rem;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 /* 기존 멀티데이 이벤트 스타일 향상 */
@@ -1780,8 +1797,11 @@ body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top a.fc-daygrid-day-n
 /* 이벤트 타이틀 내 텍스트 정렬 */
 :deep(.fc-daygrid-block-event .fc-event-time),
 :deep(.fc-daygrid-block-event .fc-event-title) {
-  padding: 1px 6px;
+  padding: 1px 3px;
   text-align: left;
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 /* 최대한 많은 이벤트 표시 */
