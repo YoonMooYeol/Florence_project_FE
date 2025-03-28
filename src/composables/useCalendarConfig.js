@@ -58,36 +58,34 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
       hour12: false
     },
     displayEventTime: false,
-    displayEventEnd: true,  // 종료 시간 표시 활성화
-    eventDisplay: 'block',  // 'auto'에서 'block'으로 변경 - 멀티데이 이벤트에 더 효과적
+    displayEventEnd: true,
+    eventDisplay: 'block',
     eventBackgroundColor: '#ffd600',
     eventBorderColor: '#ffd600',
     eventTextColor: '#353535',
     eventClassNames: function(arg) {
-      // 멀티데이 이벤트에 특별한 클래스 추가
       const classes = ['custom-event'];
-      const startDate = arg.event.start;
-      const endDate = arg.event.end;
+      const startDate = new Date(arg.event.start);
+      const endDate = arg.event.end ? new Date(arg.event.end) : null;
       
-      // end가 있고, start와 같은 날짜가 아니면 멀티데이 이벤트로 간주
-      if (endDate && startDate && !isSameDay(startDate, endDate)) {
+      // 멀티데이 이벤트 처리
+      if (endDate && !isSameDay(startDate, endDate)) {
         classes.push('multi-day-event');
         
-        // 이벤트의 시작, 중간, 끝 부분에 추가 클래스
+        // 이벤트의 시작, 중간, 끝 부분에 클래스 추가
         if (arg.isStart) {
           classes.push('event-start');
-        }
-        if (arg.isEnd) {
+        } else if (arg.isEnd) {
           classes.push('event-end');
-        }
-        if (!arg.isStart && !arg.isEnd) {
+        } else {
           classes.push('event-middle');
         }
-      }
-      
-      // 특별한 속성이 있는 이벤트에 추가 클래스
-      if (arg.event.extendedProps && arg.event.extendedProps._isMultiDay) {
-        classes.push('special-multi-day-event');
+        
+        // 일정 유형에 따라 다른 클래스 추가
+        const eventType = arg.event.extendedProps?.event_type || '';
+        if (eventType) {
+          classes.push(`event-type-${eventType}`);
+        }
       }
       
       return classes;
@@ -96,22 +94,39 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
     dateClick: handleDateClick,
     eventClick: handleEventClick,
     eventContent: (arg) => {
-      // Remove recurring marker [매월] from the event title
+      // 제목에서 반복 마커 제거
       const title = arg.event.title.replace(/\[(매일|매주|매년|매월)\]/g, '').trim();
+      const startDate = new Date(arg.event.start);
+      const endDate = arg.event.end ? new Date(arg.event.end) : null;
+      const isMultiDay = endDate && !isSameDay(startDate, endDate);
       
-      // 멀티데이 이벤트 특수 마킹
-      const startDate = arg.event.start;
-      const endDate = arg.event.end;
-      const isMultiDayEvent = endDate && startDate && !isSameDay(startDate, endDate);
-      
-      if (isMultiDayEvent) {
-        return {
-          html: `<div class="multi-day-event-content">
-                   <span class="event-title" title="${title}">${title}</span>
-                 </div>`
-        };
+      // 멀티데이 이벤트 - 모든 날짜에 제목 표시
+      if (isMultiDay) {
+        let content = '';
+        
+        // 시작일에는 이벤트 제목 표시
+        if (arg.isStart) {
+          content = `<div class="multi-day-event-content start">
+                      <span class="event-title" title="${title}">${title}</span>
+                     </div>`;
+        } 
+        // 중간 날짜에는 연속성을 보여주는 간단한 표시
+        else if (!arg.isStart && !arg.isEnd) {
+          content = `<div class="multi-day-event-content middle">
+                      <span class="event-continuation">${title}</span>
+                     </div>`;
+        } 
+        // 마지막 날짜에도 제목 표시
+        else if (arg.isEnd) {
+          content = `<div class="multi-day-event-content end">
+                      <span class="event-title" title="${title}">${title}</span>
+                     </div>`;
+        }
+        
+        return { html: content };
       }
       
+      // 단일 일정
       return {
         html: `<div class="custom-event-content">
                  <span class="event-title" title="${title}">${title}</span>

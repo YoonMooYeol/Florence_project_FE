@@ -47,6 +47,9 @@ export const useCalendarStore = defineStore('calendar', () => {
       const year = currentYear.value
       const month = currentMonth.value
       
+      // 캐시 키 생성
+      const cacheKey = `events_${year}_${month}`
+      
       // 월의 시작일과 종료일 계산
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`
       const lastDay = new Date(year, month, 0).getDate()
@@ -64,92 +67,54 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (response.data) {
         // 서버 응답 데이터를 FullCalendar 형식으로 변환
         const formattedEvents = response.data.map(event => {
-          // FullCalendar 이벤트 객체 생성
+          // 기본 이벤트 객체 생성
           const fcEvent = {
             id: event.event_id,
             title: event.title,
-            // 이벤트 타입별 스타일
             backgroundColor: event.event_color || '#FFD600',
             borderColor: event.event_color || '#FFD600',
             textColor: '#353535',
-            // 원본 데이터 보존
             event_type: event.event_type,
             description: event.description || '',
-            recurrence_rules: event.recurrence_rules,
-            // 중요: FullCalendar 렌더링 속성
-            display: 'block', // 멀티데이 이벤트를 바로 표시하기 위해 'block' 사용
-            allDay: true // 기본적으로 종일 이벤트로 처리
+            recurrence_rules: event.recurrence_rules
           }
 
-          // 1. start 속성 처리
-          fcEvent.start_date = event.start_date // 원본 데이터 보존
-          if (event.start_time) {
-            fcEvent.start = `${event.start_date}T${event.start_time}`
-            fcEvent.start_time = event.start_time
-            fcEvent.allDay = false // 시간이 있으면 종일 이벤트가 아님
-          } else {
-            fcEvent.start = event.start_date // 시간 없는 경우
-          }
-
-          // 2. end 속성 처리 (중요: end_date가 있는 경우 FullCalendar는 exclusive하게 처리)
-          fcEvent.end_date = event.end_date // 원본 데이터 보존
+          // 시작일 처리
+          fcEvent.start_date = event.start_date
+          fcEvent.start = event.start_time 
+            ? `${event.start_date}T${event.start_time}` 
+            : event.start_date
           
+          if (event.start_time) {
+            fcEvent.start_time = event.start_time
+          }
+
+          // 종료일 처리
           if (event.end_date) {
-            // end_date가 있는 경우 (멀티데이 이벤트)
-            const endDateObj = new Date(event.end_date)
+            fcEvent.end_date = event.end_date
             
+            // 종료일이 있는 경우 (멀티데이 이벤트)
             if (event.end_time) {
-              // 종료 시간이 있는 경우
-              fcEvent.end = `${endDateObj.toISOString().split('T')[0]}T${event.end_time}`
+              // 시간이 있는 경우
+              fcEvent.end = `${event.end_date}T${event.end_time}`
               fcEvent.end_time = event.end_time
-              fcEvent.allDay = false // 시간이 있으면 종일 이벤트가 아님
             } else {
-              // 종료 시간이 없는 경우 (날짜만)
-              fcEvent.end = endDateObj.toISOString().split('T')[0]
+              // 시간이 없는 경우 (날짜만)
+              // 종료일을 다음날로 설정하지 않음 - FullCalendar가 알아서 처리
+              fcEvent.end = event.end_date
             }
           } else if (event.end_time && !event.end_date) {
-            // end_date는 없고 end_time만 있는 경우 (당일 이벤트)
+            // 종료일은 없고 종료 시간만 있는 경우 (당일 이벤트)
             fcEvent.end = `${event.start_date}T${event.end_time}`
             fcEvent.end_time = event.end_time
-            fcEvent.allDay = false // 시간이 있으면 종일 이벤트가 아님
-          } else {
-            // end_date, end_time 모두 없는 경우 (하루짜리 이벤트)
-            // 일일 일정은 end를 start와 동일하게 설정
-            fcEvent.end = event.start_date
           }
-
-          // 3. 멀티데이 이벤트 특별 처리 (연속된 바로 표시되도록)
-          if (event.end_date) {
-            // 시작일과 종료일이 다른 멀티데이 이벤트
-            const startDateObj = new Date(event.start_date)
-            const endDateObj = new Date(event.end_date)
-            
-            // 날짜 차이 계산 (실제 일수)
-            const diffTime = Math.abs(endDateObj - startDateObj)
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-            
-            if (diffDays > 0) {
-              // 멀티데이 이벤트 설정
-              fcEvent.display = 'block' // 멀티데이 이벤트를 바로 표시
-              fcEvent.allDay = true // 멀티데이 이벤트는 종일 이벤트로 설정
-              fcEvent._isMultiDay = true // 내부 플래그
-              
-              // 확실하게 시작일부터 종료일까지 모든 날짜를 채우도록 범위 설정
-              const startDate = new Date(startDateObj.getTime())
-              const endDate = new Date(endDateObj.getTime())
-
-              fcEvent.start = startDate.toISOString().split('T')[0]
-              fcEvent.end = endDate.toISOString().split('T')[0]
-            }
-          }
-
+          
           return fcEvent
         })
         
         // 이벤트 목록 갱신
         events.value = formattedEvents
         console.log(`${formattedEvents.length}개 이벤트 로드됨`)
-        console.log('변환된 이벤트 데이터:', formattedEvents)
         return formattedEvents
       }
       return []

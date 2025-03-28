@@ -1,0 +1,97 @@
+/* 멀티데이 이벤트 스타일 */
+.multi-day-event {
+  margin: 1px 0;
+  overflow: hidden;
+  border-radius: 0 !important;
+}
+
+/* 이벤트 시작 날짜 스타일 */
+.event-start {
+  border-top-left-radius: 4px !important;
+  border-bottom-left-radius: 4px !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  margin-right: 0 !important;
+  border-right: 0 !important;
+  padding-left: 4px !important;
+}
+
+/* 이벤트 중간 날짜 스타일 */
+.event-middle {
+  border-radius: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+}
+
+/* 이벤트 종료 날짜 스타일 */
+.event-end {
+  border-top-right-radius: 4px !important;
+  border-bottom-right-radius: 4px !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  margin-left: 0 !important;
+  border-left: 0 !important;
+  padding-right: 4px !important;
+}
+
+/* 멀티데이 이벤트 내용 컨테이너 */
+.multi-day-event-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: flex-start;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* 이벤트 시작일 제목 스타일 */
+.multi-day-event-content.start .event-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 4px;
+}
+
+/* 이벤트 중간 날짜 연속 표시 스타일 */
+.multi-day-event-content.middle .event-continuation {
+  font-weight: 400;
+  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 4px;
+}
+
+/* 이벤트 종료일 제목 스타일 */
+.multi-day-event-content.end .event-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 4px;
+}
+
+/* 이벤트 제목 공통 스타일 */
+.event-title {
+  flex: 1;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 일정 유형별 색상 */
+.event-type-clinic {
+  background-color: #4fc3f7 !important;
+  border-color: #29b6f6 !important;
+}
+
+.event-type-medication {
+  background-color: #81c784 !important;
+  border-color: #66bb6a !important;
+}
+
+.event-type-checkup {
+  background-color: #ffb74d !important;
+  border-color: #ffa726 !important;
+} 

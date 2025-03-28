@@ -377,6 +377,7 @@ const loadMonthEvents = async () => {
   try {
     logger.info(CONTEXT, `${currentYear.value}년 ${currentMonth.value}월 이벤트 로딩 시작`)
     
+    // 이벤트, 요약, 일기 데이터 로드
     const events = await calendarStore.fetchEvents()
     logger.info(CONTEXT, `이벤트 ${events.length}개 로드됨`)
     
@@ -386,78 +387,39 @@ const loadMonthEvents = async () => {
     const diaries = await calendarStore.fetchBabyDiaries(currentYear.value, currentMonth.value)
     logger.info(CONTEXT, `태교일기 ${diaries.length}개 로드됨`)
     
+    // 캘린더 API를 통해 이벤트 표시
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()
+      
+      // 기존 이벤트 모두 제거
       calendarApi.removeAllEvents()
       
+      // 새 이벤트 추가
       events.forEach(event => {
+        // 시작일과 종료일 처리
         const eventStart = new Date(event.start)
-        let eventEnd = event.end ? new Date(event.end) : new Date(event.start)
+        const eventEnd = event.end ? new Date(event.end) : new Date(event.start)
         
-        // 일일 일정인 경우 end date를 start date와 동일하게 설정
-        if (!isMultiDayEvent(event.start, event.end)) {
-          eventEnd = new Date(eventStart)
-        }
-
-        // 이벤트 추가 시 display 속성 조정
-        const display = isMultiDayEvent(event.start, event.end) ? 'block' : 'auto'
-        
+        // 이벤트 객체 생성 - 필요한 속성만 포함
         calendarApi.addEvent({
           id: event.id,
           title: event.title,
           start: event.start,
-          end: eventEnd.toISOString().split('T')[0],
-          allDay: true,
-          display: display,
-          backgroundColor: event.backgroundColor,
-          borderColor: event.borderColor,
-          textColor: event.textColor,
+          end: event.end,
+          backgroundColor: event.backgroundColor || event.event_color || '#ffd600',
+          borderColor: event.borderColor || event.event_color || '#ffd600',
+          textColor: event.textColor || '#353535',
           extendedProps: {
-            _isMultiDay: isMultiDayEvent(event.start, event.end),
             description: event.description,
             event_type: event.event_type
           }
         })
       })
       
-      // 이벤트 리패치 및 렌더링
+      // 한 번만 렌더링
       calendarApi.refetchEvents()
-      
-      // 1. 먼저 캘린더 API를 통해 이벤트 새로고침
-      logger.info(CONTEXT, '캘린더 API 새로고침 중...')
-      await calendarApi.refetchEvents()
-      
-      // 2. 캘린더 첫 번째 렌더링 실행
-      logger.info(CONTEXT, '캘린더 첫 번째 렌더링 중...')
-      calendarApi.render()
-      
-      // 3. 모든 이벤트가 제대로 표시되었는지 확인
-      const calendarEvents = calendarApi.getEvents()
-      logger.info(CONTEXT, `캘린더 API 이벤트 개수: ${calendarEvents.length}, 스토어 이벤트 개수: ${calendarStore.events.length}`)
-      
-      // 4. 무조건 이벤트 개수 확인 및 강제 추가 로직 실행
-      logger.warn(CONTEXT, '이벤트 개수 불일치 감지. 모든 이벤트 강제 추가 중...')
-      
-      // 기존 이벤트 모두 제거
-      calendarApi.removeAllEvents()
-      
-      // 스토어에서 직접 모든 이벤트 다시 추가
-      calendarStore.events.forEach(event => {
-        calendarApi.addEvent({
-          id: event.id || event.event_id,
-          title: event.title,
-          start: event.start_date || event.start,
-          allDay: event.all_day || event.allDay || true,
-          backgroundColor: event.background_color || event.backgroundColor || '#ffd600',
-          borderColor: event.border_color || event.borderColor || '#ffd600',
-          textColor: event.text_color || event.textColor || '#353535'
-        })
-      })
-      
-      // 5. 최종 렌더링
       requestAnimationFrame(() => {
         calendarApi.render()
-        logger.info(CONTEXT, '캘린더 렌더링 완료 (총 이벤트 수: ' + calendarStore.events.length + ')')
       })
     }
   } catch (error) {
@@ -624,37 +586,7 @@ const handleEventSave = async (eventData) => {
       showEventModal.value = false
 
       // 캘린더 새로고침
-      if (calendarRef.value) {
-        const calendarApi = calendarRef.value.getApi()
-        
-        // 1. 모든 이벤트 제거
-        calendarApi.removeAllEvents()
-        
-        // 2. 이벤트 데이터 다시 로드
-        await calendarStore.fetchEvents()
-        
-        // 3. 이벤트 새로고침
-        await calendarApi.refetchEvents()
-        
-        // 4. 모든 이벤트 강제 추가
-        calendarStore.events.forEach(event => {
-          calendarApi.addEvent({
-            id: event.id || event.event_id,
-            title: event.title,
-            start: event.start_date || event.start,
-            allDay: event.all_day || event.allDay || true,
-            backgroundColor: event.background_color || event.backgroundColor || '#ffd600',
-            borderColor: event.border_color || event.borderColor || '#ffd600',
-            textColor: event.text_color || event.textColor || '#353535'
-          })
-        })
-        
-        // 5. 최종 렌더링
-        requestAnimationFrame(() => {
-          calendarApi.render()
-          console.log('일정 추가 후 캘린더 렌더링 완료')
-        })
-      }
+      await loadMonthEvents()
     } else {
       console.error('일정 저장 실패: savedEvent가 없음')
       alert('일정 저장에 실패했습니다. 다시 시도해주세요.')
@@ -701,37 +633,7 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
       modalManager.closeEventDetailModal()
 
       // 캘린더 새로고침
-      if (calendarRef.value) {
-        const calendarApi = calendarRef.value.getApi()
-        
-        // 1. 모든 이벤트 제거
-        calendarApi.removeAllEvents()
-        
-        // 2. 이벤트 데이터 다시 로드
-        await calendarStore.fetchEvents()
-        
-        // 3. 이벤트 새로고침
-        await calendarApi.refetchEvents()
-        
-        // 4. 모든 이벤트 강제 추가
-        calendarStore.events.forEach(event => {
-          calendarApi.addEvent({
-            id: event.id || event.event_id,
-            title: event.title,
-            start: event.start_date || event.start,
-            allDay: event.all_day || event.allDay || true,
-            backgroundColor: event.background_color || event.backgroundColor || '#ffd600',
-            borderColor: event.border_color || event.borderColor || '#ffd600',
-            textColor: event.text_color || event.textColor || '#353535'
-          })
-        })
-        
-        // 5. 최종 렌더링
-        requestAnimationFrame(() => {
-          calendarApi.render()
-          console.log('일정 삭제 후 캘린더 렌더링 완료')
-        })
-      }
+      await loadMonthEvents()
     }
   } catch (error) {
     console.error('일정 삭제 중 오류:', error)
@@ -781,50 +683,22 @@ watch(() => calendarStore.babyDiaries, () => {
 const handleCalendarRefresh = async (event) => {
   logger.info(CONTEXT, '캘린더 새로고침 이벤트 받음')
   try {
+    // 이벤트 데이터 로드
     await loadMonthEvents()
     
-    // 3단계: 캘린더 API를 통해 이벤트 새로고침
-    logger.info(CONTEXT, '캘린더 API 새로고침 중...')
-    await calendarApi.refetchEvents()
-    
-    // 4단계: 캘린더 다시 렌더링 (첫 번째 렌더링)
-    logger.info(CONTEXT, '캘린더 첫 번째 렌더링 중...')
-    calendarApi.render()
-    
-    // 5단계: 모든 이벤트가 제대로 표시되었는지 확인
-    const calendarEvents = calendarApi.getEvents()
-    logger.info(CONTEXT, `캘린더 API 이벤트 개수: ${calendarEvents.length}, 스토어 이벤트 개수: ${calendarStore.events.length}`)
-    
-    // 이벤트 개수가 불일치하면 강제로 모든 이벤트를 다시 추가
-    logger.warn(CONTEXT, '이벤트 개수 불일치 감지. 모든 이벤트 강제 추가 중...')
-    
-    // 기존 이벤트 다시 제거
-    calendarApi.removeAllEvents()
-    
-    // 스토어에서 직접 이벤트 추가
-    calendarStore.events.forEach(event => {
-      calendarApi.addEvent({
-        id: event.id || event.event_id,
-        title: event.title,
-        start: event.start_date || event.start,
-        allDay: event.all_day || event.allDay || true,
-        backgroundColor: event.background_color || event.backgroundColor || '#ffd600',
-        borderColor: event.border_color || event.borderColor || '#ffd600',
-        textColor: event.text_color || event.textColor || '#353535'
+    // 캘린더 API가 있는지 확인
+    if (calendarRef.value) {
+      const calendarApi = calendarRef.value.getApi()
+      
+      // 이벤트 새로고침 및 렌더링
+      calendarApi.refetchEvents()
+      
+      // requestAnimationFrame을 사용하여 다음 렌더링 사이클에서 렌더링
+      requestAnimationFrame(() => {
+        calendarApi.render()
+        logger.info(CONTEXT, '캘린더 렌더링 완료')
       })
-    })
-    
-    // 6단계: 추가 안정성을 위해 다음 렌더링 사이클에서도 한 번 더 렌더링
-    setTimeout(() => {
-      if (calendarRef.value) {
-        const calendarApi = calendarRef.value.getApi()
-        calendarApi.refetchEvents()
-        requestAnimationFrame(() => {
-          calendarApi.render()
-          logger.info(CONTEXT, '캘린더 멀티데이 이벤트 리렌더링 완료')
-        })
-      }
-    }, 300)
+    }
   } catch (error) {
     logger.error(CONTEXT, '캘린더 새로고침 중 오류 발생:', error)
     handleError(error, CONTEXT)
