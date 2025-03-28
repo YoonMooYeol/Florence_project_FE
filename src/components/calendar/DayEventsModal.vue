@@ -1314,8 +1314,8 @@ const closeBirthdayPhoto = () => {
           </div>
         </div>
       </div>
-    </div>
-  </div>
+          </div>
+        </div>
 
   <!-- 태교일기 작성 모달 -->
   <div

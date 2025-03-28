@@ -54,7 +54,27 @@ const showCongratulation = ref(false)
 // 컴포넌트 마운트 시 로컬 스토리지 확인
 onMounted(() => {
   const hideForever = localStorage.getItem('hideCongratulation')
-  showCongratulation.value = !hideForever
+  const isPregnant = localStorage.getItem('isPregnant') === 'true'
+  const dueDate = localStorage.getItem('dueDate')
+  
+  if (dueDate) {
+    const today = new Date()
+    const dueDateObj = new Date(dueDate)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    // 출산 예정일이 어제였고, 임신 중인 경우에만 축하 메시지 표시
+    showCongratulation.value = !hideForever && 
+                              isPregnant && 
+                              dueDateObj.toDateString() === yesterday.toDateString()
+  }
+})
+
+// 임신 정보 변경 감지
+watch(() => calendarStore.isPregnant, (newValue) => {
+  if (!newValue) {
+    showCongratulation.value = false
+  }
 })
 
 // 다시 보지 않기 함수
@@ -347,7 +367,7 @@ onMounted(async () => {
     }
 
     // 임신 정보 초기화 성공 로깅
-    if (calendarStore.pregnancyId.value) {
+    if (calendarStore.pregnancyId && calendarStore.pregnancyId.value) {
       logger.info(CONTEXT, '임신 정보 초기화 성공:', calendarStore.pregnancyId.value)
       savePregnancyId(calendarStore.pregnancyId.value)
     } else {
@@ -725,7 +745,7 @@ const handleCalendarRefresh = async (event) => {
     </div>
 
     <!-- 출산 예정일 이후 오버레이 -->
-    <div v-if="calendarStore.isAfterDueDate && showCongratulation" class="after-due-date-overlay">
+    <div v-if="calendarStore.isAfterDueDate && showCongratulation && calendarStore.isPregnant" class="after-due-date-overlay">
       <div class="bg-white rounded-lg p-8 shadow-lg relative w-[90%] max-w-4xl flex flex-col items-center justify-center">
         <!-- X 버튼 -->
         <button 

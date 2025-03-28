@@ -154,12 +154,12 @@ const getJosa = (word, josa1, josa2) => {
 
 // 임신 정보 수정 페이지로 이동
 const goToPregnancyEdit = () => {
-  if (userInfo.value.isPregnant) {
+  // 임신 정보가 없거나 비활성화된 경우 등록 페이지로 이동
+  if (!userInfo.value.isPregnant || !userInfo.value.isActive) {
+    router.push('/pregnancy-info-register')
+  } else {
     // 임신 정보가 있는 경우 수정 페이지로 이동
     router.push('/pregnancy-info-edit')
-  } else {
-    // 임신 정보가 없는 경우 등록 페이지로 이동
-    router.push('/pregnancy-info-register')
   }
 }
 

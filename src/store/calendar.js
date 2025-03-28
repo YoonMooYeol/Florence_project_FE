@@ -1213,7 +1213,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       console.log('[setPregnancyInfo] 태명이 비어있어 "그리움"으로 설정')
       babyNickname.value = '그리움'
     } else {
-      babyNickname.value = nickname
+    babyNickname.value = nickname
     }
     
     if (id !== null) {
