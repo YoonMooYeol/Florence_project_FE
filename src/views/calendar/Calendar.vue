@@ -20,9 +20,7 @@ import EventModal from '@/components/calendar/EventModal.vue'
 import { savePregnancyId } from '@/utils/auth'
 import { isMultiDayEvent } from '@/utils/calendarUtils'
 import '@/assets/styles/calendar.css'
-import { 
-  useEventLoading 
-} from '@/composables/useEventLoading'
+import { useEventLoading } from '@/composables/useEventLoading'
 import { refreshCalendar } from '@/utils/calendarRenderer'
 
 // import TodoList from './TodoList.vue'
