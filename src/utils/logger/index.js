@@ -43,9 +43,6 @@ const log = (levelValue, levelName, context, ...args) => {
     case 'INFO':
       console.info(...formattedArgs)
       break
-    case 'WARN':
-      console.warn(...formattedArgs)
-      break
     case 'ERROR':
       console.error(...formattedArgs)
       break

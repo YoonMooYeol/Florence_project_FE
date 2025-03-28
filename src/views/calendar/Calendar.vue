@@ -84,32 +84,32 @@ const saveCongratulation = async () => {
     // Canvas 생성
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
-    
+
     // Canvas 크기 설정
     canvas.width = imgElement.naturalWidth
     canvas.height = imgElement.naturalHeight
-    
+
     // 이미지를 Canvas에 그리기
     ctx.drawImage(imgElement, 0, 0)
-    
+
     // Canvas를 Blob으로 변환
     canvas.toBlob((blob) => {
       // Blob URL 생성
       const url = window.URL.createObjectURL(blob)
-      
+
       // 다운로드 링크 생성
       const link = document.createElement('a')
       link.href = url
       link.download = '축하해요.png'
-      
+
       // 링크 클릭하여 다운로드
       document.body.appendChild(link)
       link.click()
-      
+
       // 정리
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
-      
+
       alert('이미지가 저장되었습니다!')
     }, 'image/png')
   } catch (error) {
@@ -227,34 +227,34 @@ calendarOptions.eventSources = [
       try {
         const startDate = info.startStr.split('T')[0]
         const endDate = info.endStr.split('T')[0]
-        
+
         logger.info(CONTEXT, `이벤트 요청 범위: ${startDate} ~ ${endDate}`)
-        
+
         // 날짜 범위에 따라 스토어 년/월 값 설정
         const startDateObj = new Date(startDate)
         currentYear.value = startDateObj.getFullYear()
         currentMonth.value = startDateObj.getMonth() + 1
         calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
-        
+
         // 확장된 범위의 이벤트 로드 (API가 현재 달과 다음 달 이벤트를 함께 가져옴)
         const events = await calendarStore.fetchEvents()
-        
+
         // 뷰에 표시되는 이벤트 필터링
         const filteredEvents = events.filter(event => {
           const eventStart = new Date(event.start)
-          let eventEnd = new Date(event.end || event.start)
-          
+          const eventEnd = new Date(event.end || event.start)
+
           // 뷰의 범위를 넓게 설정하여 다음 달 이벤트도 포함하도록 함
           const viewStart = new Date(startDate)
-          
+
           // endDate를 기준으로 최소 한 달 이상 확장
           const viewEnd = new Date(endDate)
           viewEnd.setMonth(viewEnd.getMonth() + 1)
-          
+
           // 이벤트가 확장된 뷰 범위에 포함되는지 확인
           return eventStart < viewEnd && eventEnd >= viewStart
         })
-        
+
         logger.info(CONTEXT, `${filteredEvents.length}개 이벤트 로드됨 (확장 범위 포함)`)
         successCallback(filteredEvents)
       } catch (error) {
@@ -275,7 +275,7 @@ const handlePrevMonth = async () => {
   }
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   prevMonth()
-  
+
   // 월 변경 후 해당 월의 이벤트 로드
   await loadMonthEvents()
 }
@@ -289,7 +289,7 @@ const handleNextMonth = async () => {
   }
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   nextMonth()
-  
+
   // 월 변경 후 해당 월의 이벤트 로드
   await loadMonthEvents()
 }
@@ -300,7 +300,7 @@ const handleGoToToday = async () => {
   currentMonth.value = today.getMonth() + 1
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   goToToday()
-  
+
   // 월 변경 후 해당 월의 이벤트 로드
   await loadMonthEvents()
 }
@@ -311,14 +311,14 @@ const { loadMonthEvents } = useEventLoading(calendarStore, calendarRef, currentY
 // 컴포넌트 마운트 시 현재 날짜 정보 초기화
 onMounted(async () => {
   logger.info(CONTEXT, '캘린더 컴포넌트 마운트')
-  
+
   try {
     // 임신 정보 초기화
     await calendarStore.initPregnancyInfo()
-    
+
     // 임신 ID가 존재하는지 확인하기 전에 짧은 지연을 추가하여 모든 상태 업데이트가 완료되도록 함
     await new Promise(resolve => setTimeout(resolve, 100))
-    
+
     // 임신 정보 초기화 성공 로깅
     if (calendarStore.pregnancyId && calendarStore.pregnancyId.value) {
       logger.info(CONTEXT, '임신 정보 초기화 성공:', calendarStore.pregnancyId.value)
@@ -327,36 +327,36 @@ onMounted(async () => {
     }
 
     // 메인 캘린더 데이터 로드
-    await loadMonthEvents() 
+    await loadMonthEvents()
 
     // 멀티데이 이벤트가 제대로 렌더링되도록 약간의 지연 후 캘린더 리렌더링
     setTimeout(() => {
       if (calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
         calendarApi.refetchEvents()
-        
+
         // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
         requestAnimationFrame(() => {
           calendarApi.render()
         })
       }
     }, 300)
-    
+
     // 세션 스토리지에 저장된 모달 상태가 있는지 확인하고 복원
     const storedModalState = sessionStorage.getItem('modalState')
     if (storedModalState) {
       try {
         const modalState = JSON.parse(storedModalState)
-        
+
         if (modalState.open && modalState.date) {
           logger.info(CONTEXT, '저장된 모달 상태 복원:', modalState)
-          
+
           // 날짜 설정
           calendarStore.setSelectedDate(modalState.date)
-          
+
           // 모달 열기
           modalManager.openDayEventsModal(modalState.date)
-          
+
           // 사용 후 삭제
           sessionStorage.removeItem('modalState')
         }
@@ -364,13 +364,12 @@ onMounted(async () => {
         logger.error(CONTEXT, '모달 상태 복원 중 오류 발생:', error)
       }
     }
-    
+
     // 캘린더 새로고침 이벤트 리스너 추가
     window.addEventListener('calendar-needs-refresh', handleCalendarRefresh)
-    
+
     // 출산 예정일 체크
     await calendarStore.checkDueDate()
-    
   } catch (error) {
     logger.error(CONTEXT, '캘린더 마운트 중 오류 발생:', error)
     handleError(error, CONTEXT)
@@ -417,15 +416,15 @@ const handleLLMSummaryDeleted = (event) => {
 onUnmounted(() => {
   try {
     document.removeEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
-    
+
     // 모달 상태 정리
     sessionStorage.removeItem('modalState')
-    
+
     logger.info(CONTEXT, '캘린더 컴포넌트 언마운트: 이벤트 리스너 및 상태 정리 완료')
   } catch (error) {
     logger.error(CONTEXT, '캘린더 언마운트 중 오류 발생:', error)
   }
-  
+
   // 캘린더 새로고침 이벤트 리스너 제거
   window.removeEventListener('calendar-needs-refresh', handleCalendarRefresh)
 })
@@ -447,7 +446,7 @@ const handleEventSave = async (eventData) => {
     console.log('일정 저장 시작:', eventData)
     // 입력받은 날짜를 YYYY-MM-DD 형식으로 정규화
     eventData.event_day = normalizeDate(eventData.event_day)
-    
+
     // 반복 일정 여부 확인
     if (eventData.recurring && eventData.recurring !== 'none') {
       console.log('반복 일정 감지:', eventData.recurring)
@@ -521,7 +520,7 @@ const handleDateSelect = ({ year, month }) => {
   currentYear.value = year
   currentMonth.value = month
   calendarStore.updateCurrentYearMonth(year, month)
-  
+
   if (calendarRef.value) {
     const calendarApi = calendarRef.value.getApi()
     calendarApi.gotoDate(`${year}-${String(month).padStart(2, '0')}-01`)
@@ -558,12 +557,12 @@ watch(() => calendarStore.babyDiaries, () => {
 const handleCalendarRefresh = async () => {
   try {
     logger.info(CONTEXT, '캘린더 새로고침 이벤트 처리 시작')
-    
+
     if (!calendarRef.value) {
       logger.warn(CONTEXT, '캘린더 참조가 없어 이벤트를 처리할 수 없음')
       return
     }
-    
+
     // 캘린더 새로고침 유틸리티 함수 직접 사용
     await refreshCalendar(calendarRef.value.getApi(), loadMonthEvents)
   } catch (error) {
@@ -577,54 +576,54 @@ const handleCalendarRefresh = async () => {
 <template>
   <div class="py-4 min-h-screen bg-yellow-200">
     <!-- 달 아이콘 박스 -->
-    <div 
-      class="bg-point py-0 flex justify-center items-center cursor-pointer" 
+    <div
+      class="bg-point py-0 flex justify-center items-center cursor-pointer"
       @click="handleGoToToday"
     >
       <div class="w-12 h-8">
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          viewBox="0 0 32 32" 
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 32 32"
           class="w-full h-full"
         >
           <!-- 달 모양 -->
-          <path 
-            d="M20 4C13 4 8 9 8 16C8 22 13 28 20 28C23 28 25.5 27 27.5 25.5C23 26.5 18 24 16 20C14 16 15 10 19 7C20.5 5.5 22.5 4.5 25 4.5C23.5 4 21.5 4 20 4Z" 
+          <path
+            d="M20 4C13 4 8 9 8 16C8 22 13 28 20 28C23 28 25.5 27 27.5 25.5C23 26.5 18 24 16 20C14 16 15 10 19 7C20.5 5.5 22.5 4.5 25 4.5C23.5 4 21.5 4 20 4Z"
             fill="#353535"
           />
           <!-- 별 1 -->
-          <circle 
-            cx="30" 
-            cy="6" 
-            r="1.2" 
+          <circle
+            cx="30"
+            cy="6"
+            r="1.2"
             fill="#353535"
           />
           <!-- 별 2 -->
-          <circle 
-            cx="25" 
-            cy="15" 
-            r="1.5" 
+          <circle
+            cx="25"
+            cy="15"
+            r="1.5"
             fill="#353535"
           />
           <!-- 별 3 -->
-          <circle 
-            cx="32" 
-            cy="22" 
-            r="2" 
+          <circle
+            cx="32"
+            cy="22"
+            r="2"
             fill="#353535"
           />
           <!-- 별 4 -->
-          <circle 
-            cx="3" 
-            cy="10" 
-            r="2" 
+          <circle
+            cx="3"
+            cy="10"
+            r="2"
             fill="#353535"
           />
           <!-- 별 5 -->
-          <circle 
-            cx="7" 
-            cy="25" 
-            r="1.2" 
+          <circle
+            cx="7"
+            cy="25"
+            r="1.2"
             fill="#353535"
           />
         </svg>
@@ -655,12 +654,15 @@ const handleCalendarRefresh = async () => {
     </div>
 
     <!-- 출산 예정일 이후 오버레이 -->
-    <div v-if="calendarStore.isAfterDueDate && showCongratulation" class="after-due-date-overlay">
+    <div
+      v-if="calendarStore.isAfterDueDate && showCongratulation"
+      class="after-due-date-overlay"
+    >
       <div class="bg-white rounded-lg p-8 shadow-lg relative w-[90%] max-w-4xl flex flex-col items-center justify-center">
         <!-- X 버튼 -->
-        <button 
-          @click="closeCongratulation"
+        <button
           class="absolute top-2 right-2 z-8 bg-red-300 text-white rounded-full p-0.5 hover:bg-red-400 transition-colors"
+          @click="closeCongratulation"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -680,25 +682,25 @@ const handleCalendarRefresh = async () => {
 
         <!-- 축하 이미지 컨테이너 -->
         <div class="w-full h-full flex items-center justify-center overflow-hidden">
-          <img 
-            src="/src/assets/images/Congratulation.png" 
-            alt="출산 예정일 이후" 
-            class="after-due-date-image" 
-          />
+          <img
+            src="/src/assets/images/Congratulation.png"
+            alt="출산 예정일 이후"
+            class="after-due-date-image"
+          >
         </div>
-        
+
         <!-- 저장하기 버튼 -->
         <button
-          @click="saveCongratulation"
           class="mt-4 px-5 py-1 bg-red-300 text-white rounded-lg hover:bg-red-400 transition-colors font-bold text-l"
+          @click="saveCongratulation"
         >
           저장하기
         </button>
-        
+
         <!-- 다시 보지 않기 버튼 -->
         <button
-          @click="neverShowAgain"
           class="mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          @click="neverShowAgain"
         >
           다시 보지 않기
         </button>
@@ -857,4 +859,19 @@ const handleCalendarRefresh = async () => {
 
 <style>
 /* 스타일이 calendar.css로 통합되었습니다 */
+
+/* 일정 앞쪽 마진 줄이기 */
+.fc-event, .fc-daygrid-event {
+  margin-left: 0 !important;
+  padding-left: 4px !important;
+}
+
+.fc-event-main {
+  padding-left: 4px !important;
+}
+
+/* 멀티데이 이벤트에 대한 스타일 조정 */
+.fc-daygrid-block-event .fc-event-main {
+  padding-left: 4px !important;
+}
 </style>

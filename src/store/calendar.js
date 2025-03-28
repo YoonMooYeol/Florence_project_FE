@@ -80,37 +80,17 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (response.data) {
         // 서버 응답 데이터를 FullCalendar 형식으로 변환
         const formattedEvents = response.data.map(event => {
-          // formatEventForCalendar 함수는 멀티데이 이벤트의 종료일에 +1일 처리를 포함하고 있음
-          // 이 부분이 calendarUtils.js에 구현되어 있음
+          // formatEventForCalendar 함수는 dateUtils.js의 adjustEventEndDate 함수를 사용하여
+          // 멀티데이 이벤트의 종료일을 표시용으로 3일 연장함
           return formatEventForCalendar(event)
         })
         
-        // 멀티데이 이벤트 확인 및 로깅
+        // 멀티데이 이벤트 로깅
         const formattedMultiDayEvents = formattedEvents.filter(event => 
           event.end_date && event.end_date !== event.start_date
         )
         
         console.log(`멀티데이 이벤트 ${formattedMultiDayEvents.length}개 확인됨`)
-        
-        formattedMultiDayEvents.forEach(event => {
-          const originalEndDate = new Date(event.original_end_date || event.end_date)
-          const adjustedEndDate = new Date(event.adjusted_end_date || event.end)
-          
-          // 날짜 차이를 밀리초로 계산
-          const oneDayMs = 24 * 60 * 60 * 1000
-          const dateDiff = adjustedEndDate.getTime() - originalEndDate.getTime()
-          
-          console.log(`멀티데이 이벤트 "${event.title}": 원본=${event.end_date}, 조정=${event.end}, 차이=${Math.round(dateDiff/oneDayMs)}일`)
-          
-          // 멀티데이 이벤트인데 +1일 처리가 안 된 경우 (시간 정보가 없는 경우만)
-          if (dateDiff < oneDayMs * 0.9 && !event.end_time) {
-            // 종료일에 +1일 추가 (안전 장치)
-            const newEndDate = new Date(originalEndDate)
-            newEndDate.setDate(newEndDate.getDate() + 1)
-            event.end = newEndDate.toISOString().split('T')[0]
-            console.log(`멀티데이 이벤트 종료일 보정 (store): "${event.title}" ${event.end}`)
-          }
-        })
         
         // 이벤트 목록 갱신
         events.value = formattedEvents

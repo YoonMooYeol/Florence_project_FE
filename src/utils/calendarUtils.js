@@ -1,7 +1,7 @@
 /**
  * 캘린더 관련 유틸리티 함수들
  */
-import { normalizeDate, isSameDay } from '@/utils/dateUtils'
+import { normalizeDate, isSameDay, adjustEventEndDate } from '@/utils/dateUtils'
 
 /**
  * 이벤트가 멀티데이 이벤트인지 확인하는 함수
@@ -23,44 +23,41 @@ export function isMultiDayEvent(startDate, endDate) {
  * @returns {Object} 종료일이 처리된 이벤트 객체
  */
 export function processEndDate(fcEvent, event) {
+  // 원본 종료일 저장 (API 참조용)
+  fcEvent.original_end_date = event.end_date || event.start_date;
+  
   if (event.end_date) {
-    // 원본 종료일을 저장 (API 참조용)
-    fcEvent.end_date = event.end_date
+    // 원본 종료일을 저장
+    fcEvent.end_date = event.end_date;
     
     // 멀티데이 이벤트인지 확인 (시작일과 종료일이 다른 경우)
-    const isMultiDay = event.start_date !== event.end_date
+    const isMultiDay = event.start_date !== event.end_date;
     
     if (event.end_time) {
       // 시간이 있는 경우 - 시간 정보가 있으면 그대로 사용
-      fcEvent.end = `${event.end_date}T${event.end_time}`
-      fcEvent.end_time = event.end_time
+      fcEvent.end = `${event.end_date}T${event.end_time}`;
+      fcEvent.end_time = event.end_time;
     } else {
       // 시간이 없는 경우 (날짜만)
-      // FullCalendar는 종료일을 exclusive로 처리하므로 멀티데이 이벤트의 경우 +1일 추가
-      const endDate = new Date(event.end_date)
-      
+      // 통합된 함수를 사용하여 종료일 처리
+      // 멀티데이 이벤트인 경우에만 조정 
       if (isMultiDay) {
-        // 시작일과 종료일이 다른 멀티데이 이벤트인 경우에만 +1일 추가
-        endDate.setDate(endDate.getDate() + 1)
+        fcEvent.end = adjustEventEndDate(event.end_date, false, event.start_date, 1);
+      } else {
+        fcEvent.end = event.end_date; // 단일 날짜 이벤트는 조정하지 않음
       }
-      
-      fcEvent.end = endDate.toISOString().split('T')[0]
-      
-      // 디버깅을 위한 정보 저장
-      fcEvent.original_end_date = event.end_date
-      fcEvent.adjusted_end_date = fcEvent.end
     }
   } else if (event.end_time && !event.end_date) {
     // 종료일은 없고 종료 시간만 있는 경우 (당일 이벤트)
-    fcEvent.end = `${event.start_date}T${event.end_time}`
-    fcEvent.end_time = event.end_time
+    fcEvent.end = `${event.start_date}T${event.end_time}`;
+    fcEvent.end_time = event.end_time;
   } else {
     // 종료일과 종료 시간이 모두 없는 경우 (단일 일정)
     // 종료일을 시작일과 동일하게 설정 (FullCalendar의 요구사항)
-    fcEvent.end = fcEvent.start
+    fcEvent.end = fcEvent.start;
   }
   
-  return fcEvent
+  return fcEvent;
 }
 
 /**

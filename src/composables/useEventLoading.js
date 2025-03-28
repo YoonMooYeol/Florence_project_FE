@@ -6,6 +6,7 @@ import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
 import { isMultiDayEvent } from '@/utils/calendarUtils'
 import { renderCalendarOptimized } from '@/utils/calendarRenderer'
+import { adjustEventEndDate } from '@/utils/dateUtils'
 
 // 컨텍스트 상수
 const CONTEXT = 'useEventLoading'
@@ -59,23 +60,33 @@ export function useEventLoading(calendarStore, calendarRef, currentYear, current
         logger.debug(CONTEXT, `이벤트 "${event.title}"에 종료일 추가: ${event.end}`)
       }
       
-      // 장기일정(멀티데이 이벤트) 검증
-      // 날짜만 있는 멀티데이 이벤트인 경우 종료일이 제대로 조정되었는지 확인
-      if (isMultiDayEvent(event.start, event.end) && !event.end.includes('T')) {
-        // 멀티데이 이벤트의 원본 종료일과 현재 종료일 비교 (타임스탬프로 비교)
-        const endDate = new Date(event.end)
-        const originalEndDate = new Date(event.end_date || event.original_end_date || event.end)
+      // 멀티데이 이벤트 검증 및 처리
+      if (isMultiDayEvent(event.start, event.end)) {
+        // 시간 정보 확인 - 시간이 있으면 조정하지 않음
+        const hasTimeComponent = event.end && event.end.includes('T')
         
-        // 날짜 차이를 밀리초로 계산
-        const oneDayMs = 24 * 60 * 60 * 1000 // 1일을 밀리초로 표현
-        const dateDiff = endDate.getTime() - originalEndDate.getTime()
-        
-        // 차이가 1일(하루)보다 작으면 조정 필요 (시간대 차이 등 고려하여 90% 기준 적용)
-        if (dateDiff < oneDayMs * 0.9 && event.end_date && event.end_date !== event.start_date) {
-          const newEndDate = new Date(originalEndDate)
-          newEndDate.setDate(newEndDate.getDate() + 1)
-          event.end = newEndDate.toISOString().split('T')[0]
-          logger.debug(CONTEXT, `장기일정 종료일 보정: "${event.title}" 원본=${originalEndDate.toISOString().split('T')[0]} → 조정=${event.end}`)
+        if (!hasTimeComponent) {
+          // 원본 종료일 저장
+          if (!event.original_end_date) {
+            event.original_end_date = event.end_date || event.end
+          }
+          
+          // 모든 종료일 처리를 통합 함수로 위임
+          const adjustedEndDate = adjustEventEndDate(
+            event.end, 
+            hasTimeComponent, 
+            event.start, 
+            3 // 3일 추가
+          )
+          
+          // 원본과 다른 경우만 업데이트
+          if (adjustedEndDate !== event.end) {
+            logger.debug(
+              CONTEXT, 
+              `장기일정 종료일 조정: "${event.title}" 원본=${event.end} → 조정=${adjustedEndDate}`
+            )
+            event.end = adjustedEndDate
+          }
         }
       }
     })
@@ -101,12 +112,13 @@ export function useEventLoading(calendarStore, calendarRef, currentYear, current
             // 이벤트 로드
             const events = await calendarStore.fetchEvents()
             
+            // 이벤트 종료일 처리
+            validateAndFixEventDates(events)
+            
             // 필터링 - 현재 보이는 범위에 포함된 이벤트만 표시
             const filteredEvents = events.filter(event => {
               const eventStart = new Date(event.start)
-              const eventEnd = event.end ? new Date(event.end || event.start) : eventStart
-              
-              // 종료일 처리 검증이 필요한 경우 validateAndFixEventDates 함수 사용
+              const eventEnd = event.end ? new Date(event.end) : eventStart
               
               const viewStart = new Date(startDate)
               const viewEnd = new Date(endDate)
