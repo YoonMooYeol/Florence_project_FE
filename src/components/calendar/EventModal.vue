@@ -565,19 +565,5 @@ const cancelDelete = () => {
 </template>
 
 <style scoped>
-.bg-point {
-  background-color: #FFD600;
-}
-.text-point {
-  color: #FFD600;
-}
-.ring-point {
-  --tw-ring-color: #FFD600;
-}
-.text-dark-gray {
-  color: #353535;
-}
-.bg-ivory {
-  background-color: #FFFAE0;
-}
+/* calendar.css에서 공통 스타일을 사용합니다 */
 </style> 

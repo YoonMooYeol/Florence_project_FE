@@ -858,15 +858,5 @@ const handleCalendarRefresh = async () => {
 </template>
 
 <style>
-/* 하단 네비게이션 바 스타일 */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 30;
-  height: 64px;
-  background-color: white;
-  padding-bottom: 0px;
-}
+/* 스타일이 calendar.css로 통합되었습니다 */
 </style>
