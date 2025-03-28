@@ -68,8 +68,8 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
     dateClick: handleDateClick,
     eventClick: handleEventClick,
     eventContent: (arg) => {
-      // Remove recurring marker [매월] from the event title
-      const title = arg.event.title.replace(/\[매월\]/g, '').trim();
+      // Remove all recurring markers from the event title
+      const title = arg.event.title.replace(/\[(매일|매주|매년|매월)\]/g, '').trim();
       return {
         html: `<div class="custom-event-content">${title}</div>`
       }
@@ -84,7 +84,7 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
     dayCellContent,
     events: calendarStore.events,
     initialDate: new Date(),
-    nextDayThreshold: '00:00:00',  // 다음날로 넘어가는 기준 시간을 자정으로 설정
+    nextDayThreshold: '23:59:59',
     eventDurationEditable: false,
     contentHeight: 'auto',
     expandRows: true,
@@ -107,13 +107,7 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
         const calendarApi = calendarRef.value.getApi()
         calendarApi.render()
       }
-    },
-    // 멀티데이 이벤트 설정 추가
-    displayEventEnd: true,  // 종료 시간 표시
-    eventDisplay: 'block',  // 이벤트를 블록 형태로 표시
-    defaultAllDay: true,    // 기본적으로 종일 이벤트로 처리
-    defaultTimedEventDuration: '01:00:00',  // 기본 이벤트 지속 시간
-    forceEventDuration: true  // 이벤트 지속 시간 강제 적용
+    }
   }))
 
   // 현재 표시 중인 날짜 정보 업데이트 함수
