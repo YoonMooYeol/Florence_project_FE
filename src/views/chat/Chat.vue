@@ -157,7 +157,7 @@ onMounted(async () => {
 
       // highRisk가 true일 경우 메시지 앞에 추가
       if (highRisk.value === true) {
-        welcomeMessageContent = `${welcomeMessageContent}\n\n현재 고위험 임신을 겪고 계시다고 들었어요. 걱정과 불안이 크실 수 있지만, 필요한 정보와 조언을 최대한 편하게 받아보실 수 있도록 도와드릴게요. `
+        welcomeMessageContent = `${welcomeMessageContent}\n\n현재 고위험 임신을 겪고 계시다고 들었어요. 걱정하지 마세요. 다 잘 될 겁니다. 우리 조금만 더 힘내요!`
       }
 
       // if (address.value !== null) {
