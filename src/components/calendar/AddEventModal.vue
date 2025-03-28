@@ -457,37 +457,5 @@ const closeModal = () => {
 </template>
 
 <style scoped>
-.bg-point {
-  background-color: #FFD600;
-}
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.text-dark-gray {
-  color: #353535;
-}
-
-select {
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-select option {
-  padding: 8px;
-}
-
-/* 드롭다운 메뉴의 최대 높이 제한 */
-select:focus option:checked {
-  background: #FFD600;
-}
-
-/* 드롭다운 메뉴의 스타일 */
-select option {
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.border-point {
-  border-color: #FFD600;
-}
+/* calendar.css에서 공통 스타일을 사용합니다 */
 </style>

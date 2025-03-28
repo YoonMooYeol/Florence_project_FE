@@ -1111,17 +1111,17 @@ const closeBirthdayPhoto = () => {
       </div>
 
       <!-- 탭 메뉴 -->
-      <div class="flex border-b border-gray-200">
+      <div class="flex border-b border-gray-300 bg-white">
         <button
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
-          :class="activeTab === 'schedule' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+          :class="activeTab === 'schedule' ? 'text-point border-b-2 border-point bg-gray-50 font-bold' : 'text-gray-500 hover:text-gray-700'"
           @click="activeTab = 'schedule'"
         >
           일정
         </button>
         <button
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
-          :class="activeTab === 'daily' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+          :class="activeTab === 'daily' ? 'text-point border-b-2 border-point bg-gray-50 font-bold' : 'text-gray-500 hover:text-gray-700'"
           @click="activeTab = 'daily'"
         >
           오늘의 하루
@@ -1129,7 +1129,7 @@ const closeBirthdayPhoto = () => {
         <button
           v-if="calendarStore.isPregnant"
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
-          :class="activeTab === 'baby' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+          :class="activeTab === 'baby' ? 'text-point border-b-2 border-point bg-gray-50 font-bold' : 'text-gray-500 hover:text-gray-700'"
           data-tab="baby"
           @click="activeTab = 'baby'"
         >
@@ -1137,7 +1137,7 @@ const closeBirthdayPhoto = () => {
         </button>
       </div>
 
-      <div class="h-96 p-6 bg-ivory overflow-y-auto">
+      <div class="h-96 p-6 bg-ivory overflow-y-auto relative">
         <!-- 일정 탭 -->
         <div
           v-if="activeTab === 'schedule'"
@@ -1175,12 +1175,16 @@ const closeBirthdayPhoto = () => {
               등록된 일정이 없습니다.
             </p>
           </div>
-          <div class="flex justify-center">
+          
+          <!-- 일정 추가 플로팅 버튼 -->
+          <div class="absolute bottom-6 right-6">
             <button
-              class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+              class="w-14 h-14 rounded-full bg-point shadow-lg flex items-center justify-center hover:bg-yellow-500 transition-colors transform hover:scale-105 focus:outline-none"
               @click="addEvent"
             >
-              일정 추가
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-dark-gray" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
             </button>
           </div>
         </div>
@@ -1204,16 +1208,18 @@ const closeBirthdayPhoto = () => {
 
             <!-- 태교일기 사진 -->
             <div class="space-y-3">
-              <div class="flex justify-between items-center">
+              <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
                 <h4 class="text-sm font-medium text-gray-600">
                   태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
                 </h4>
                 <button
                   v-if="canUploadMorePhotos"
                   @click="fileInput.click()"
-                  class="px-2 py-0.5 bg-[#A4E49B] text-dark-gray rounded-[30px] text-xl hover:bg-[#A4E49B] transition-colors font-bold text-center"
+                  class="w-8 h-8 rounded-full bg-[#A4E49B] text-dark-gray flex items-center justify-center shadow-md hover:bg-[#8CD283] transition-colors"
                 >
-                  ➕
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
                 </button>
               </div>
 
@@ -1221,7 +1227,7 @@ const closeBirthdayPhoto = () => {
                 <div
                   v-for="photo in babyDiary.photos"
                   :key="photo.id"
-                  class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
+                  class="relative rounded-lg overflow-hidden shadow-md group border-2 border-gray-200"
                   style="aspect-ratio: 16/9; height: 180px;"
                 >
                   <img
@@ -1313,7 +1319,7 @@ const closeBirthdayPhoto = () => {
               </div>
 
               <!-- 일기 내용 -->
-              <div v-if="babyDiary.content" class="bg-white p-4 rounded-lg shadow">
+              <div v-if="babyDiary.content" class="bg-white p-4 rounded-lg shadow-md">
                 <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
                   {{ babyDiary.content }}
                 </p>
@@ -1322,27 +1328,36 @@ const closeBirthdayPhoto = () => {
               <!-- 일기 작성/수정 버튼 -->
               <div class="flex space-x-2">
                 <button
-                  class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                  class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-full shadow-md hover:bg-yellow-500 transition-colors font-bold flex items-center justify-center"
                   @click="openDiaryModal(babyDiary.content ? 'edit' : 'create')"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                   {{ babyDiary.content ? '일기 수정' : '기록하기' }}
                 </button>
               </div>
             </div>
           </div>
-          <div v-else class="text-center py-4">
-            <p class="text-gray-500">기록된 일기가 없습니다.</p>
+          <div v-else class="text-center py-4 bg-white rounded-lg shadow-md p-6">
+            <p class="text-gray-500 mb-4">기록된 일기가 없습니다.</p>
             <div class="flex flex-col items-center space-y-3 mt-4">
               <button
-                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                class="w-full px-4 py-3 bg-point text-dark-gray rounded-full shadow-md hover:bg-yellow-500 transition-colors font-bold flex items-center justify-center"
                 @click="openDiaryModal('create')"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
                 기록하기
               </button>
               <button
                 @click="fileInput.click()"
-                class="px-4 py-2 bg-[#A4E49B] text-dark-gray rounded-lg hover:bg-[#A4E49B] transition-colors font-bold"
+                class="w-full px-4 py-3 bg-[#A4E49B] text-dark-gray rounded-full shadow-md hover:bg-[#8CD283] transition-colors font-bold flex items-center justify-center"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
                 사진등록
               </button>
             </div>
@@ -1433,19 +1448,5 @@ const closeBirthdayPhoto = () => {
 </template>
 
 <style scoped>
-.bg-point {
-  background-color: #FFD600;
-}
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.text-dark-gray {
-  color: #353535;
-}
-.text-point {
-  color: #FFD600;
-}
-.border-point {
-  border-color: #FFD600;
-}
+/* calendar.css에서 공통 스타일을 사용합니다 */
 </style>

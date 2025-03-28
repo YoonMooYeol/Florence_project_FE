@@ -1,9 +1,14 @@
 import { ref, computed } from 'vue'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import { koLocale, formatDate, isSameDay } from '@/utils/dateUtils'
+import { koLocale } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
-import { normalizeDate } from '@/utils/dateUtils'
+import { 
+  getEventClassNames, 
+  createEventContent, 
+  createDayCellContent,
+  isMultiDayEvent
+} from '@/utils/calendarUtils'
 
 /**
  * FullCalendar 설정 및 관련 기능을 제공하는 컴포저블
@@ -11,34 +16,11 @@ import { normalizeDate } from '@/utils/dateUtils'
  * @param {Function} handleEventClick - 이벤트 클릭 핸들러
  * @returns {Object} 캘린더 설정 및 관련 함수들
  */
-export function useCalendarConfig (handleDateClick, handleEventClick) {
+export function useCalendarConfig(handleDateClick, handleEventClick) {
   const calendarStore = useCalendarStore()
 
   // 캘린더 참조
   const calendarRef = ref(null)
-
-  // 날짜 셀 컨텐츠 렌더링
-  const dayCellContent = (info) => {
-    // 날짜를 YYYY-MM-DD 형식으로 변환
-    const dateStr = normalizeDate(info.date)
-    
-    // 날짜 텍스트에서 '일' 제거
-    const dayNumber = info.dayNumberText.replace('일', '')
-    
-    // LLM 요약과 아기 일기 존재 여부 확인
-    const hasLLM = calendarStore.hasLLMSummary(dateStr)
-    const hasBabyDiary = calendarStore.hasBabyDiary(dateStr)
-    
-    return {
-      html: `
-        <div class="day-cell-content">
-          <span class="fc-daygrid-day-number">${dayNumber}</span>
-          ${hasLLM ? '<span class="llm-indicator">•</span>' : ''}
-          ${hasBabyDiary ? '<span class="baby-diary-indicator">♥︎</span>' : ''}
-        </div>
-      `
-    }
-  }
 
   // 캘린더 옵션
   const calendarOptions = computed(() => ({
@@ -48,7 +30,7 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
     height: 'auto',
     fixedWeekCount: false,
     selectable: true,
-    dayMaxEvents: 2,
+    dayMaxEvents: 3,
     eventMaxStack: 2,
     eventMinHeight: 22,
     eventShortHeight: 22,
@@ -58,108 +40,78 @@ export function useCalendarConfig (handleDateClick, handleEventClick) {
       hour12: false
     },
     displayEventTime: false,
-    displayEventEnd: true,  // 종료 시간 표시 활성화
-    eventDisplay: 'block',  // 'auto'에서 'block'으로 변경 - 멀티데이 이벤트에 더 효과적
+    displayEventEnd: true,
+    eventDisplay: 'block',
     eventBackgroundColor: '#ffd600',
     eventBorderColor: '#ffd600',
     eventTextColor: '#353535',
-    eventClassNames: function(arg) {
-      // 멀티데이 이벤트에 특별한 클래스 추가
-      const classes = ['custom-event'];
-      const startDate = arg.event.start;
-      const endDate = arg.event.end;
-      
-      // end가 있고, start와 같은 날짜가 아니면 멀티데이 이벤트로 간주
-      if (endDate && startDate && !isSameDay(startDate, endDate)) {
-        classes.push('multi-day-event');
-        
-        // 이벤트의 시작, 중간, 끝 부분에 추가 클래스
-        if (arg.isStart) {
-          classes.push('event-start');
-        }
-        if (arg.isEnd) {
-          classes.push('event-end');
-        }
-        if (!arg.isStart && !arg.isEnd) {
-          classes.push('event-middle');
-        }
-      }
-      
-      // 특별한 속성이 있는 이벤트에 추가 클래스
-      if (arg.event.extendedProps && arg.event.extendedProps._isMultiDay) {
-        classes.push('special-multi-day-event');
-      }
-      
-      return classes;
-    },
+    // 이벤트 클래스 설정
+    eventClassNames: getEventClassNames,
     locale: koLocale,
     dateClick: handleDateClick,
     eventClick: handleEventClick,
-    eventContent: (arg) => {
-      // Remove recurring marker [매월] from the event title
-      const title = arg.event.title.replace(/\[(매일|매주|매년|매월)\]/g, '').trim();
-      
-      // 멀티데이 이벤트 특수 마킹
-      const startDate = arg.event.start;
-      const endDate = arg.event.end;
-      const isMultiDayEvent = endDate && startDate && !isSameDay(startDate, endDate);
-      
-      if (isMultiDayEvent) {
-        return {
-          html: `<div class="multi-day-event-content">
-                   <span class="event-title" title="${title}">${title}</span>
-                 </div>`
-        };
-      }
-      
-      return {
-        html: `<div class="custom-event-content">
-                 <span class="event-title" title="${title}">${title}</span>
-               </div>`
-      };
-    },
+    // 이벤트 내용 생성
+    eventContent: (arg) => createEventContent(arg),
+    // 날짜 변경 이벤트 핸들링
     datesSet: (dateInfo) => {
       const currentDate = new Date(dateInfo.view.currentStart)
       calendarStore.updateCurrentYearMonth(
         currentDate.getFullYear(),
         currentDate.getMonth() + 1
       )
+      
+      // 뷰가 변경되었을 때 이벤트 다시 가져오지 않고 유지하도록 설정
+      // 월 변경 버튼 클릭 시 loadMonthEvents 함수가 이미 호출되므로 여기서는 생략
     },
-    dayCellContent,
+    // 날짜 셀 내용 생성
+    dayCellContent: (info) => createDayCellContent(
+      info, 
+      calendarStore.hasLLMSummary,
+      calendarStore.hasBabyDiary
+    ),
     events: calendarStore.events,
     initialDate: new Date(),
-    nextDayThreshold: '23:59:59',
+    nextDayThreshold: '00:00:00', // 자정을 다음 날의 시작점으로 정의
     eventDurationEditable: false,
     contentHeight: 'auto',
     expandRows: true,
     stickyHeaderDates: true,
     dayMaxEventRows: true,
-    firstDay: 0,
+    firstDay: 0, // 일요일부터 시작
     locales: [koLocale],
-    locale: 'ko',
-    allDaySlot: false,
-    slotMinTime: '00:00:00',
-    slotMaxTime: '24:00:00',
-    slotDuration: '01:00:00',
-    slotLabelFormat: {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    },
+    defaultAllDay: true, // 기본적으로 종일 이벤트로 처리
+    forceEventDuration: true, // 이벤트 지속 시간 강제 적용
     viewDidMount: (arg) => {
       if (calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
         calendarApi.render()
       }
     },
-    // 멀티데이 이벤트 설정 개선
-    displayEventEnd: true,     // 종료 시간 표시
-    nextDayThreshold: '00:00:00', // 자정을 다음 날의 시작점으로 정의
-    defaultAllDay: true,       // 기본적으로 종일 이벤트로 처리
-    forceEventDuration: true,  // 이벤트 지속 시간 강제 적용
-    eventBackgroundColor: '#ffd600', // 이벤트 배경색
-    eventBorderColor: '#ffd600', // 이벤트 경계색
-    eventTextColor: '#353535', // 이벤트 텍스트 색상
+    eventDidMount: (info) => {
+      const { event, el, view } = info
+      
+      // 모든 이벤트에 둥근 모서리 스타일 적용 (기존 CSS 스타일보다 우선적용)
+      if (isMultiDayEvent(event.start, event.end)) {
+        // 멀티데이 이벤트
+        if (info.isStart) {
+          el.style.borderTopLeftRadius = '25px !important';
+          el.style.borderBottomLeftRadius = '25px !important';
+        } 
+        
+        if (info.isEnd) {
+          el.style.borderTopRightRadius = '25px !important';
+          el.style.borderBottomRightRadius = '25px !important';
+        }
+        
+        // 시작과 종료가 모두 있는 이벤트 (첫날과 마지막 날이 모두 표시되는 이벤트)
+        if (info.isStart && info.isEnd) {
+          el.style.borderRadius = '25px !important';
+        }
+      } else {
+        // 단일 일정은 모든 코너가 둥글게
+        el.style.borderRadius = '25px !important';
+      }
+    }
   }))
 
   // 현재 표시 중인 날짜 정보 업데이트 함수

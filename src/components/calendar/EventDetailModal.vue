@@ -424,16 +424,5 @@ const formatEventDate = (event) => {
 </template>
 
 <style scoped>
-.bg-point {
-  background-color: #FFD600;
-}
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.text-dark-gray {
-  color: #353535;
-}
-.text-point {
-  color: #FFD600;
-}
+/* calendar.css에서 공통 스타일을 사용합니다 */
 </style>

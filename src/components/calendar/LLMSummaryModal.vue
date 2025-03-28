@@ -125,10 +125,5 @@ const closeModal = () => {
 </template>
 
 <style scoped>
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.text-dark-gray {
-  color: #353535;
-}
+/* calendar.css에서 공통 스타일을 사용합니다 */
 </style>
