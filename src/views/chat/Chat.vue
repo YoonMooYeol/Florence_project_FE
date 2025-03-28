@@ -588,14 +588,31 @@ async function submitStreamAnswer () {
         // 완결된 응답
         if (payload.complete) {
           if (payload.response) {
-            accumulatedText = payload.response
+            // 포괄적인 JSON 필터링 (여러 패턴 대응)
+            let filteredResponse = payload.response;
+            
+            // 1. 코드 블록 내 JSON 필터링
+            filteredResponse = filteredResponse.replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g, '');
+            
+            // 2. 일반 JSON 객체 필터링 (title, start_date 같은 키워드가 포함된 중괄호 블록)
+            filteredResponse = filteredResponse.replace(/\{[\s\S]*?(title|start_date|event_type)[\s\S]*?\}/g, '');
+            
+            // 3. 일정 등록 관련 문구 정리
+            filteredResponse = filteredResponse.replace(/일정을 등록하겠습니다\.?\s*[\r\n]*/g, '');
+            filteredResponse = filteredResponse.replace(/[\r\n]*\s*일정이 등록되었습니다\.?$/g, ' 일정이 성공적으로 등록되었습니다!');
+            
+            // 4. 중복 줄바꿈 정리
+            filteredResponse = filteredResponse.replace(/(\r?\n){3,}/g, '\n\n');
+            
+            // 최종 필터링된 응답 설정
+            accumulatedText = filteredResponse.trim();
             updateBotMessage(loadingMessageId, accumulatedText)
             await nextTick()
             scrollToBottom()
-
+            
             // 메시지 완료 후 로컬 스토리지에 저장
             saveMessagesToLocalStorage()
-
+            
             // 메시지 완료 처리
             const botMsg = messages.value.find(m => m.id === loadingMessageId)
             if (botMsg) {
