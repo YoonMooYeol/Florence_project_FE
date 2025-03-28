@@ -96,11 +96,7 @@ export const useCalendarStore = defineStore('calendar', () => {
           
           if (event.end_date) {
             // end_date가 있는 경우 (멀티데이 이벤트)
-            // 반복 일정이 아닌 경우에만 하루를 더함
             const endDateObj = new Date(event.end_date)
-            if (!event.recurrence_rules) {
-              endDateObj.setDate(endDateObj.getDate() + 1) // 하루 추가
-            }
             
             if (event.end_time) {
               // 종료 시간이 있는 경우
@@ -118,11 +114,8 @@ export const useCalendarStore = defineStore('calendar', () => {
             fcEvent.allDay = false // 시간이 있으면 종일 이벤트가 아님
           } else {
             // end_date, end_time 모두 없는 경우 (하루짜리 이벤트)
-            // FullCalendar에서 end를 명시하지 않으면 하루짜리 이벤트로 처리됨
-            // 명시적으로 end를 설정하면 더 안전함
-            const nextDay = new Date(event.start_date)
-            nextDay.setDate(nextDay.getDate() + 1) // 다음날
-            fcEvent.end = nextDay.toISOString().split('T')[0]
+            // 일일 일정은 end를 start와 동일하게 설정
+            fcEvent.end = event.start_date
           }
 
           // 3. 멀티데이 이벤트 특별 처리 (연속된 바로 표시되도록)
@@ -144,10 +137,6 @@ export const useCalendarStore = defineStore('calendar', () => {
               // 확실하게 시작일부터 종료일까지 모든 날짜를 채우도록 범위 설정
               const startDate = new Date(startDateObj.getTime())
               const endDate = new Date(endDateObj.getTime())
-              // 반복 일정이 아닌 경우에만 종료일 +1
-              if (!event.recurrence_rules) {
-                endDate.setDate(endDate.getDate() + 1)
-              }
 
               fcEvent.start = startDate.toISOString().split('T')[0]
               fcEvent.end = endDate.toISOString().split('T')[0]

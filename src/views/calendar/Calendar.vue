@@ -114,6 +114,14 @@ const saveCongratulation = async () => {
   }
 }
 
+// 이벤트 날짜 처리 유틸리티 함수 추가
+const isMultiDayEvent = (startDate, endDate) => {
+  if (!endDate) return false
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  return start.getTime() !== end.getTime()
+}
+
 // 날짜 클릭 핸들러
 const handleDateClick = (info) => {
   try {
@@ -218,43 +226,37 @@ calendarOptions.dayMaxEvents = 3
 calendarOptions.eventContent = function (arg) {
   console.log('이벤트 렌더링:', arg.event.title, arg.event)
   
-  // 멀티데이 이벤트를 효과적으로 표시하기 위한 처리
-  const startDate = arg.event.start;
-  const endDate = arg.event.end;
-  const isMultiDayEvent = endDate && startDate && 
-    (endDate.getDate() !== startDate.getDate() || 
-     endDate.getMonth() !== startDate.getMonth() || 
-     endDate.getFullYear() !== startDate.getFullYear());
+  const isMultiDay = isMultiDayEvent(arg.event.start, arg.event.end)
 
   // 다중 일정을 위한 특수 마킹
-  let displayMark = '';
-  if (isMultiDayEvent) {
+  let displayMark = ''
+  if (isMultiDay) {
     if (arg.isStart && arg.isEnd) {
       // 하루짜리 이벤트 (시작이자 끝)
-      displayMark = '<span class="event-full">◆</span>';
+      displayMark = '<span class="event-full">◆</span>'
     } else if (arg.isStart) {
       // 시작 날짜
-      displayMark = '<span class="event-start">▶</span>';
+      displayMark = '<span class="event-start">▶</span>'
     } else if (arg.isEnd) {
       // 종료 날짜
-      displayMark = '<span class="event-end">◀</span>';
+      displayMark = '<span class="event-end">◀</span>'
     } else {
       // 중간 날짜
-      displayMark = '<span class="event-middle">■</span>';
+      displayMark = '<span class="event-middle">■</span>'
     }
   }
 
   // 타이틀에서 [매월] 등의 마커 제거
-  const title = arg.event.title.replace(/\[매월\]/g, '').trim();
+  const title = arg.event.title.replace(/\[매월\]/g, '').trim()
 
   // 멀티데이 이벤트 특별 처리
-  if (isMultiDayEvent) {
+  if (isMultiDay) {
     return { 
       html: `<div class="multi-day-event-content">
                ${displayMark}
                <span class="event-title" title="${title}">${title}</span>
              </div>` 
-    };
+    }
   }
   
   // 일반 이벤트 표시
@@ -262,42 +264,63 @@ calendarOptions.eventContent = function (arg) {
     html: `<div class="fc-event-main-frame">
              <span class="event-title" title="${title}">${title}</span>
            </div>` 
-  };
+  }
 }
 
-// 이벤트 소스 설정 - FullCalendar가 직접 데이터를 가져오게 함
+// 이벤트 소스 설정
 calendarOptions.eventSources = [
   {
-    // events 함수는 startStr, endStr, successCallback 파라미터를 받음
     events: async (info, successCallback, failureCallback) => {
       try {
-        const startDate = info.startStr.split('T')[0] // YYYY-MM-DD 형식으로 변환
-        const endDate = info.endStr.split('T')[0] // YYYY-MM-DD 형식으로 변환
+        const startDate = info.startStr.split('T')[0]
+        const endDate = info.endStr.split('T')[0]
         
         logger.info(CONTEXT, `이벤트 요청 범위: ${startDate} ~ ${endDate}`)
         
-        // 현재 년월 정보 업데이트
         const startDateObj = new Date(startDate)
         currentYear.value = startDateObj.getFullYear()
         currentMonth.value = startDateObj.getMonth() + 1
         calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
         
-        // API에서 직접 데이터 가져오기
         await calendarStore.fetchEvents()
         
-        // 해당 범위의 이벤트만 필터링하여 반환
-        const filteredEvents = calendarStore.events.filter(event => {
-          // 이벤트의 시작과 끝 날짜
-          const eventStart = new Date(event.start);
-          const eventEnd = event.end ? new Date(event.end) : new Date(event.start);
+        // 이벤트 변환 및 필터링
+        const filteredEvents = calendarStore.events.map(event => {
+          const eventStart = new Date(event.start)
+          let eventEnd = event.end ? new Date(event.end) : new Date(event.start)
           
-          // info 시작과 끝 날짜
-          const viewStart = new Date(startDate);
-          const viewEnd = new Date(endDate);
+          // 일일 일정인 경우 end date를 start date와 동일하게 설정
+          if (!isMultiDayEvent(event.start, event.end)) {
+            eventEnd = new Date(eventStart)
+          }
+
+          // 이벤트 추가 시 display 속성 조정
+          const display = isMultiDayEvent(event.start, event.end) ? 'block' : 'auto'
+
+          return {
+            id: event.id,
+            title: event.title,
+            start: event.start,
+            end: eventEnd.toISOString().split('T')[0],
+            allDay: true,
+            display: display,
+            backgroundColor: event.backgroundColor,
+            borderColor: event.borderColor,
+            textColor: event.textColor,
+            extendedProps: {
+              _isMultiDay: isMultiDayEvent(event.start, event.end),
+              description: event.description,
+              event_type: event.event_type
+            }
+          }
+        }).filter(event => {
+          const eventStart = new Date(event.start)
+          const eventEnd = new Date(event.end)
+          const viewStart = new Date(startDate)
+          const viewEnd = new Date(endDate)
           
-          // 이벤트가 보기 범위와 겹치는지 확인
-          return (eventStart < viewEnd && eventEnd >= viewStart);
-        });
+          return eventStart < viewEnd && eventEnd >= viewStart
+        })
         
         logger.info(CONTEXT, `${filteredEvents.length}개 이벤트 로드됨`)
         successCallback(filteredEvents)
@@ -354,56 +377,50 @@ const loadMonthEvents = async () => {
   try {
     logger.info(CONTEXT, `${currentYear.value}년 ${currentMonth.value}월 이벤트 로딩 시작`)
     
-    // 이벤트 데이터 로드
     const events = await calendarStore.fetchEvents()
     logger.info(CONTEXT, `이벤트 ${events.length}개 로드됨`)
     
-    // LLM 요약 데이터 로드
     const summaries = await calendarStore.fetchLLMSummaries(currentYear.value, currentMonth.value)
     logger.info(CONTEXT, `LLM 요약 ${summaries.length}개 로드됨`)
     
-    // 태교일기 데이터 로드 
     const diaries = await calendarStore.fetchBabyDiaries(currentYear.value, currentMonth.value)
     logger.info(CONTEXT, `태교일기 ${diaries.length}개 로드됨`)
     
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()
-      
-      // 기존 이벤트 모두 제거 후 다시 렌더링 (멀티데이 이벤트 정확히 표시하기 위함)
       calendarApi.removeAllEvents()
       
-      // 모든 이벤트 다시 추가 (멀티데이 이벤트 정확히 표시하기 위함)
       events.forEach(event => {
-        // 서버에서 가져온 이벤트를 FullCalendar 형식으로 변환해서 직접 추가
-        const startDate = new Date(event.start);
-        let endDate = event.end ? new Date(event.end) : new Date(event.start);
-        
-        // 멀티데이 이벤트가 아닌 경우 (일일 일정)
-        const isMultiDayEvent = event.end && startDate.getTime() !== endDate.getTime();
+        const eventStart = new Date(event.start)
+        let eventEnd = event.end ? new Date(event.end) : new Date(event.start)
         
         // 일일 일정인 경우 end date를 start date와 동일하게 설정
-        if (!isMultiDayEvent) {
-          endDate = new Date(startDate);
+        if (!isMultiDayEvent(event.start, event.end)) {
+          eventEnd = new Date(eventStart)
         }
 
+        // 이벤트 추가 시 display 속성 조정
+        const display = isMultiDayEvent(event.start, event.end) ? 'block' : 'auto'
+        
         calendarApi.addEvent({
           id: event.id,
           title: event.title,
           start: event.start,
-          end: endDate.toISOString().split('T')[0],
-          allDay: event.allDay,
-          display: isMultiDayEvent ? 'block' : 'auto',
+          end: eventEnd.toISOString().split('T')[0],
+          allDay: true,
+          display: display,
           backgroundColor: event.backgroundColor,
           borderColor: event.borderColor,
           textColor: event.textColor,
           extendedProps: {
-            _isMultiDay: isMultiDayEvent,
+            _isMultiDay: isMultiDayEvent(event.start, event.end),
             description: event.description,
             event_type: event.event_type
           }
         })
       })
       
+      // 이벤트 리패치 및 렌더링
       calendarApi.refetchEvents()
       
       // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
