@@ -48,17 +48,32 @@ export const useCalendarStore = defineStore('calendar', () => {
       const year = currentYear.value
       const month = currentMonth.value
       
-      // 월의 시작일과 종료일 계산
+      // 현재 월의 시작일 계산
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+      
+      // 현재 월의 마지막 날짜 계산
       const lastDay = new Date(year, month, 0).getDate()
+      
+      // 현재 월의 종료일
       const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
       
+      // 다음 달 계산
+      let nextMonth = month === 12 ? 1 : month + 1
+      let nextYear = month === 12 ? year + 1 : year
+      
+      // 다음 달의 마지막 날짜 계산
+      const nextMonthLastDay = new Date(nextYear, nextMonth, 0).getDate()
+      
+      // 다음 달의 종료일 
+      const extendedEndDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(nextMonthLastDay).padStart(2, '0')}`
+      
+      // API 요청 파라미터: 현재 월의 시작일부터 다음 달의 종료일까지
       const params = {
         start_date_from: startDate,
-        start_date_to: endDate
+        start_date_to: extendedEndDate // 다음 달 마지막 날짜까지 확장
       }
       
-      console.log('이벤트 조회 파라미터:', params)
+      console.log('이벤트 조회 확장 파라미터:', params)
       
       const response = await api.get('calendars/events/', { params })
       
@@ -72,7 +87,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         
         // 이벤트 목록 갱신
         events.value = formattedEvents
-        console.log(`${formattedEvents.length}개 이벤트 로드됨`)
+        console.log(`${formattedEvents.length}개 이벤트 로드됨 (현재 달 + 다음 달)`)
         return formattedEvents
       }
       return []

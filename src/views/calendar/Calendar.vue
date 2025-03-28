@@ -234,27 +234,26 @@ calendarOptions.eventSources = [
         currentMonth.value = startDateObj.getMonth() + 1
         calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
         
-        // 이벤트 로드
+        // 확장된 범위의 이벤트 로드 (API가 현재 달과 다음 달 이벤트를 함께 가져옴)
         const events = await calendarStore.fetchEvents()
         
-        // 필터링 - 현재 보이는 범위에 포함된 이벤트만 표시
+        // 뷰에 표시되는 이벤트 필터링
         const filteredEvents = events.filter(event => {
           const eventStart = new Date(event.start)
-          const eventEnd = new Date(event.end || event.start)
+          let eventEnd = new Date(event.end || event.start)
           
-          // 멀티데이 이벤트의 경우 종료일에 하루를 추가 (FullCalendar의 exclusive end date 처리)
-          if (isMultiDayEvent(event.start, event.end) && !event.end.includes('T')) {
-            // 시간 정보가 없는 경우만 하루 추가 (이미 store에서 처리했을 수 있으므로 중복 처리 방지)
-            // 추가 체크는 하지 않음
-          }
-          
+          // 뷰의 범위를 넓게 설정하여 다음 달 이벤트도 포함하도록 함
           const viewStart = new Date(startDate)
-          const viewEnd = new Date(endDate)
           
+          // endDate를 기준으로 최소 한 달 이상 확장
+          const viewEnd = new Date(endDate)
+          viewEnd.setMonth(viewEnd.getMonth() + 1)
+          
+          // 이벤트가 확장된 뷰 범위에 포함되는지 확인
           return eventStart < viewEnd && eventEnd >= viewStart
         })
         
-        logger.info(CONTEXT, `${filteredEvents.length}개 이벤트 로드됨`)
+        logger.info(CONTEXT, `${filteredEvents.length}개 이벤트 로드됨 (확장 범위 포함)`)
         successCallback(filteredEvents)
       } catch (error) {
         logger.error(CONTEXT, '이벤트 로드 중 오류 발생:', error)
@@ -311,7 +310,7 @@ const loadMonthEvents = async () => {
     
     // 이벤트, 요약, 일기 데이터 동시에 로드 (병렬 처리)
     const [events, summaries, diaries] = await Promise.all([
-      calendarStore.fetchEvents(),
+      calendarStore.fetchEvents(), // 확장된 fetchEvents 함수는 이미 다음 달 이벤트도 가져옴
       calendarStore.fetchLLMSummaries(currentYear.value, currentMonth.value),
       calendarStore.fetchBabyDiaries(currentYear.value, currentMonth.value)
     ])
@@ -329,7 +328,7 @@ const loadMonthEvents = async () => {
       events.forEach(event => {
         if (event.end) {
           // 종료일이 있으면 그대로 사용 (이미 store에서 +1일 처리됨)
-          const eventEnd = event.end
+          // 아무 처리도 하지 않음 - formatEventForCalendar 함수에서 이미 +1일 처리함
         } else {
           // 종료일이 없으면 시작일과 동일하게 설정
           event.end = event.start
@@ -339,10 +338,12 @@ const loadMonthEvents = async () => {
       // 새 이벤트 일괄 추가
       calendarApi.addEventSource(events)
       
-      // 한 번만 렌더링
-      requestAnimationFrame(() => {
-        calendarApi.render()
-      })
+      // 리렌더링 후에도 이벤트가 사라지지 않도록 설정
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          calendarApi.render()
+        })
+      }, 100)
     }
     
     return events
@@ -360,24 +361,15 @@ onMounted(async () => {
   try {
     // 임신 정보 초기화
     await calendarStore.initPregnancyInfo()
-
-    // 이전에 저장된 임신 ID가 있으면 설정
-    const storedPregnancyId = localStorage.getItem('pregnancyId')
-    if (storedPregnancyId) {
-      calendarStore.setPregnancyId(storedPregnancyId)
-    }
-
-    // API 응답 완료 후 임신 정보 상태 확인
+    
     // 임신 ID가 존재하는지 확인하기 전에 짧은 지연을 추가하여 모든 상태 업데이트가 완료되도록 함
     await new Promise(resolve => setTimeout(resolve, 100))
     
     // 임신 정보 초기화 성공 로깅
     if (calendarStore.pregnancyId && calendarStore.pregnancyId.value) {
       logger.info(CONTEXT, '임신 정보 초기화 성공:', calendarStore.pregnancyId.value)
-      savePregnancyId(calendarStore.pregnancyId.value)
-    } else if (process.env.NODE_ENV !== 'production') {
-      // 개발 환경에서만 경고 표시 (불필요한 사용자 경고 방지)
-      logger.debug(CONTEXT, '임신 정보가 설정되지 않았습니다 - 일부 기능이 제한될 수 있습니다')
+    } else {
+      logger.warn(CONTEXT, '임신 정보 초기화 실패 또는 임신 정보 없음')
     }
 
     // 메인 캘린더 데이터 로드
@@ -392,26 +384,30 @@ onMounted(async () => {
         // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
         requestAnimationFrame(() => {
           calendarApi.render()
-          logger.info(CONTEXT, '캘린더 멀티데이 이벤트 렌더링 완료')
         })
       }
-    }, 500)
-
-    // 저장된 모달 상태가 있는지 확인하고 있으면 모달 다시 열기
-    const savedModalState = sessionStorage.getItem('modalState')
-    if (savedModalState) {
-      const modalState = JSON.parse(savedModalState)
-      if (modalState.open && modalState.date) {
-        logger.info(CONTEXT, '저장된 모달 상태 복원:', modalState)
+    }, 300)
+    
+    // 세션 스토리지에 저장된 모달 상태가 있는지 확인하고 복원
+    const storedModalState = sessionStorage.getItem('modalState')
+    if (storedModalState) {
+      try {
+        const modalState = JSON.parse(storedModalState)
         
-        // 날짜 설정
-        calendarStore.setSelectedDate(modalState.date)
-        
-        // 모달 열기
-        modalManager.openDayEventsModal(modalState.date)
-        
-        // 사용 후 삭제
-        sessionStorage.removeItem('modalState')
+        if (modalState.open && modalState.date) {
+          logger.info(CONTEXT, '저장된 모달 상태 복원:', modalState)
+          
+          // 날짜 설정
+          calendarStore.setSelectedDate(modalState.date)
+          
+          // 모달 열기
+          modalManager.openDayEventsModal(modalState.date)
+          
+          // 사용 후 삭제
+          sessionStorage.removeItem('modalState')
+        }
+      } catch (error) {
+        logger.error(CONTEXT, '모달 상태 복원 중 오류 발생:', error)
       }
     }
     
@@ -604,10 +600,11 @@ watch(() => calendarStore.babyDiaries, () => {
   }
 }, { deep: true })
 
-// 캘린더 새로고침 핸들러
-const handleCalendarRefresh = async (event) => {
-  logger.info(CONTEXT, '캘린더 새로고침 이벤트 받음')
+// 캘린더 새로고침 이벤트 핸들러
+const handleCalendarRefresh = async () => {
   try {
+    logger.info(CONTEXT, '캘린더 새로고침 이벤트 처리 시작')
+    
     // 이벤트 데이터 로드
     await loadMonthEvents()
     
@@ -618,11 +615,15 @@ const handleCalendarRefresh = async (event) => {
       // 이벤트 새로고침 및 렌더링
       calendarApi.refetchEvents()
       
-      // requestAnimationFrame을 사용하여 다음 렌더링 사이클에서 렌더링
-      requestAnimationFrame(() => {
-        calendarApi.render()
-        logger.info(CONTEXT, '캘린더 렌더링 완료')
-      })
+      // 멀티데이 이벤트가 제대로 렌더링되도록 지연 후 재렌더링
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          calendarApi.render()
+          logger.info(CONTEXT, '캘린더 새로고침 렌더링 완료')
+        })
+      }, 200)
+    } else {
+      logger.warn(CONTEXT, '캘린더 새로고침 실패: 캘린더 참조 없음')
     }
   } catch (error) {
     logger.error(CONTEXT, '캘린더 새로고침 중 오류 발생:', error)

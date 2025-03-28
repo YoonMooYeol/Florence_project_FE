@@ -59,6 +59,9 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
         currentDate.getFullYear(),
         currentDate.getMonth() + 1
       )
+      
+      // 뷰가 변경되었을 때 이벤트 다시 가져오지 않고 유지하도록 설정
+      // 월 변경 버튼 클릭 시 loadMonthEvents 함수가 이미 호출되므로 여기서는 생략
     },
     // 날짜 셀 내용 생성
     dayCellContent: (info) => createDayCellContent(
