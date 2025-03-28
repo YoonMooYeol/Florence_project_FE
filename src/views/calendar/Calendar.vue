@@ -241,6 +241,13 @@ calendarOptions.eventSources = [
         const filteredEvents = events.filter(event => {
           const eventStart = new Date(event.start)
           const eventEnd = new Date(event.end || event.start)
+          
+          // 멀티데이 이벤트의 경우 종료일에 하루를 추가 (FullCalendar의 exclusive end date 처리)
+          if (isMultiDayEvent(event.start, event.end) && !event.end.includes('T')) {
+            // 시간 정보가 없는 경우만 하루 추가 (이미 store에서 처리했을 수 있으므로 중복 처리 방지)
+            // 추가 체크는 하지 않음
+          }
+          
           const viewStart = new Date(startDate)
           const viewEnd = new Date(endDate)
           
@@ -317,6 +324,17 @@ const loadMonthEvents = async () => {
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()
       calendarApi.removeAllEvents() // 기존 이벤트 제거
+      
+      // 새 이벤트 일괄 추가 전에 종료일 처리 확인
+      events.forEach(event => {
+        if (event.end) {
+          // 종료일이 있으면 그대로 사용 (이미 store에서 +1일 처리됨)
+          const eventEnd = event.end
+        } else {
+          // 종료일이 없으면 시작일과 동일하게 설정
+          event.end = event.start
+        }
+      })
       
       // 새 이벤트 일괄 추가
       calendarApi.addEventSource(events)

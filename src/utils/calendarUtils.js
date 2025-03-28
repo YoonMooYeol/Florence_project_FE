@@ -78,6 +78,12 @@ export function getEventClassNames(arg) {
   const startDate = new Date(arg.event.start)
   const endDate = arg.event.end ? new Date(arg.event.end) : null
   
+  // 이벤트 유형에 따라 다른 클래스 추가
+  const eventType = arg.event.extendedProps?.event_type || ''
+  if (eventType) {
+    classes.push(`event-type-${eventType}`)
+  }
+  
   // 멀티데이 이벤트 처리
   if (endDate && !isSameDay(startDate, endDate)) {
     classes.push('multi-day-event')
@@ -90,11 +96,12 @@ export function getEventClassNames(arg) {
     } else {
       classes.push('event-middle')
     }
-    
-    // 일정 유형에 따라 다른 클래스 추가
-    const eventType = arg.event.extendedProps?.event_type || ''
-    if (eventType) {
-      classes.push(`event-type-${eventType}`)
+  } else {
+    // 단일 일정인 경우 둥근 모서리 클래스 추가
+    classes.push('single-day-event')
+    // 시작과 끝이 같은 이벤트는 양쪽 모두 둥글게
+    if (arg.isStart && arg.isEnd) {
+      classes.push('event-start-end')
     }
   }
   

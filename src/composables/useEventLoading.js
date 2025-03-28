@@ -4,6 +4,7 @@
 import { ref } from 'vue'
 import * as logger from '@/utils/logger'
 import { handleError } from '@/utils/errorHandler'
+import { isMultiDayEvent } from '@/utils/calendarUtils'
 
 // 컨텍스트 상수
 const CONTEXT = 'useEventLoading'
@@ -29,6 +30,14 @@ export function useEventLoading(calendarStore, calendarRef, currentYear, current
       if (calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
         calendarApi.removeAllEvents() // 기존 이벤트 제거
+        
+        // 모든 이벤트 확인 및 종료일 처리
+        events.forEach(event => {
+          // 종료일이 없으면 시작일과 동일하게 설정
+          if (!event.end) {
+            event.end = event.start
+          }
+        })
         
         // 새 이벤트 일괄 추가
         calendarApi.addEventSource(events)
@@ -70,7 +79,22 @@ export function useEventLoading(calendarStore, calendarRef, currentYear, current
             // 필터링 - 현재 보이는 범위에 포함된 이벤트만 표시
             const filteredEvents = events.filter(event => {
               const eventStart = new Date(event.start)
-              const eventEnd = new Date(event.end || event.start)
+              let eventEnd = new Date(event.end || event.start)
+              
+              // 멀티데이 이벤트의 경우 종료일에 하루를 추가 (FullCalendar의 exclusive end date 처리)
+              if (isMultiDayEvent(event.start, event.end) && event.end && !event.end.includes('T')) {
+                // 시간 정보가 없는 경우만 확인해서 store에서 이미 처리했는지 확인
+                const originalEndDate = new Date(event.end_date || event.end)
+                const currentEndDate = new Date(event.end)
+                
+                // 종료일이 원래 종료일보다 1일 큰지 확인하고 아니면 추가
+                if (currentEndDate.getDate() === originalEndDate.getDate()) {
+                  // Store에서 처리되지 않은 경우 여기서 처리
+                  eventEnd = new Date(event.end)
+                  eventEnd.setDate(eventEnd.getDate() + 1)
+                }
+              }
+              
               const viewStart = new Date(startDate)
               const viewEnd = new Date(endDate)
               

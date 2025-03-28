@@ -6,7 +6,8 @@ import { useCalendarStore } from '@/store/calendar'
 import { 
   getEventClassNames, 
   createEventContent, 
-  createDayCellContent 
+  createDayCellContent,
+  isMultiDayEvent
 } from '@/utils/calendarUtils'
 
 /**
@@ -81,6 +82,31 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       if (calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
         calendarApi.render()
+      }
+    },
+    eventDidMount: (info) => {
+      const { event, el, view } = info
+      
+      // 모든 이벤트에 둥근 모서리 스타일 적용 (기존 CSS 스타일보다 우선적용)
+      if (isMultiDayEvent(event.start, event.end)) {
+        // 멀티데이 이벤트
+        if (info.isStart) {
+          el.style.borderTopLeftRadius = '25px !important';
+          el.style.borderBottomLeftRadius = '25px !important';
+        } 
+        
+        if (info.isEnd) {
+          el.style.borderTopRightRadius = '25px !important';
+          el.style.borderBottomRightRadius = '25px !important';
+        }
+        
+        // 시작과 종료가 모두 있는 이벤트 (첫날과 마지막 날이 모두 표시되는 이벤트)
+        if (info.isStart && info.isEnd) {
+          el.style.borderRadius = '25px !important';
+        }
+      } else {
+        // 단일 일정은 모든 코너가 둥글게
+        el.style.borderRadius = '25px !important';
       }
     }
   }))

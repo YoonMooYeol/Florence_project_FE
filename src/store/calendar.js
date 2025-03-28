@@ -65,7 +65,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (response.data) {
         // 서버 응답 데이터를 FullCalendar 형식으로 변환
         const formattedEvents = response.data.map(event => {
-          // 새 유틸리티 함수 사용
+          // formatEventForCalendar 함수는 멀티데이 이벤트의 종료일에 +1일 처리를 포함하고 있음
+          // 이 부분이 calendarUtils.js의 57-60번째 줄에 있음
           return formatEventForCalendar(event)
         })
         
