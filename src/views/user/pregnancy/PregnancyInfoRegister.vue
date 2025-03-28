@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { calculateWeekFromDueDate, calculateDueDateFromWeek, calculateFromLastPeriod } from '@/utils/dateUtils'
@@ -85,6 +85,12 @@ watch(() => pregnancyInfo.value.lastPeriodDate, (newDate) => {
     pregnancyInfo.value.currentWeek = currentWeek
     pregnancyInfo.value.dueDate = dueDate
   }
+})
+
+// 게산된 속성을 추가하여 오늘 날짜를 YYYY-MM-DD 형식으로 반환
+const todayDate = computed(() => {
+  const today = new Date()
+  return today.toISOString().split('T')[0]
 })
 
 // 임신 정보 저장 함수
@@ -364,6 +370,7 @@ const showHighRiskInfoModal = ref(false)
                 v-model="pregnancyInfo.lastPeriodDate"
                 type="date"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+                :max="todayDate"
               >
               <p class="text-xs text-gray-500 mt-1">
                 마지막 생리 시작일을 기준으로 임신 주차와 출산 예정일을 계산합니다.

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import SvgIcon from '@jamescoyle/vue-icon'
@@ -38,6 +38,12 @@ const isEditMode = ref(false) // 수정 모드 상태
 
 // 현재 주차 옵션
 const weekOptions = Array.from({ length: 40 }, (_, i) => i + 1)
+
+// todayDate 계산된 속성 추가
+const todayDate = computed(() => {
+  const today = new Date()
+  return today.toISOString().split('T')[0]
+})
 
 // 임신 정보 불러오기
 const fetchPregnancyInfo = async () => {
@@ -506,6 +512,7 @@ watch(() => lastPeriodDate.value, () => {
               v-model="lastPeriodDate"
               type="date"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :max="todayDate"
             >
             <p class="text-xs text-gray-500 mt-1">
               마지막 생리 시작일을 입력하시면 임신 주차와 출산예정일이 자동으로 계산됩니다. 정확하지 않으니 반드시 의사와 상담하세요.
