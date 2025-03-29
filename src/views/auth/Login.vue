@@ -144,18 +144,15 @@ const handleSubmit = async () => {
   isSubmitting.value = true
 
   try {
-    // 로그인 API 호출
-    const userData = await loginApi(formData.email, formData.password)
-
-    // 로그인 정보와 토큰 저장
-    saveLoginState(userData)
-
-    // 로그인 성공 메시지 표시
-    alert(userData.message)
-
-    // 캘린더 페이지로 이동
-    router.push('/calendar')
+    // authStore의 login 메서드 직접 사용
+    await authStore.login(formData.email, formData.password, formData.rememberMe)
+    
+    // 라우터 인스턴스 설정 (로그인 성공 후 페이지 이동을 위해)
+    authStore.setRouter(router)
+    
+    console.log('로그인 성공')
   } catch (error) {
+    console.error('로그인 오류:', error)
     errors.form = '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.'
   } finally {
     isSubmitting.value = false
