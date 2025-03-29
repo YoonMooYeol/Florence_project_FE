@@ -232,7 +232,7 @@ const deletePregnancyInfo = async () => {
     alert('임신 정보가 삭제되었습니다.')
 
     // 임신 정보 등록 페이지로 리다이렉트
-    router.push('/pregnancy/register')
+    router.push('/profile')
 
   } catch (error) {
     errorMessage.value = error.response?.data?.detail || '임신 정보 삭제 중 오류가 발생했습니다.'
