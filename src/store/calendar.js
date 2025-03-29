@@ -1158,7 +1158,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         console.log('[initPregnancyInfo] 임신 정보 없음')
         // 임신 정보가 없는 경우 초기화
         isPregnant.value = false
-        babyNickname.value = '그리움' // 임신 정보가 없어도 태명은 '그리움'으로 설정
+        babyNickname.value = null // 임신 정보가 없어도 태명은 '그리움'으로 설정
         pregnancyId.value = null
         
         // 태명 관련 스토리지 정보 삭제
@@ -1170,7 +1170,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     } catch (err) {
       console.error('[initPregnancyInfo] 임신 정보 초기화 오류:', err)
       // 오류 발생 시에도 기본 태명 설정
-      babyNickname.value = '그리움'
+      babyNickname.value = null
       return false
     }
   }
