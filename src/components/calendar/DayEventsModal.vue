@@ -1066,7 +1066,12 @@ onMounted(async () => {
 
 // 태명과 조사를 안전하게 표시하는 계산된 속성 추가
 const babyTabLabel = computed(() => {
-  // 태명이 없거나 null인 경우 '(태명)'을 사용
+  // pregnancyId가 있고 is_active가 false인 경우 '그리움'으로 표시
+  if (calendarStore.pregnancyId && calendarStore.isPregnant === false) {
+    return '그리움과의 하루'
+  }
+  
+  // 그 외의 경우 태명 사용 (태명이 없거나 null인 경우 '(태명)'을 사용)
   const nickname = calendarStore.babyNickname || '(태명)'
   const josa = calendarStore.getJosa(nickname, '과', '와')
   console.log('태명 탭 레이블 계산:', nickname, josa)

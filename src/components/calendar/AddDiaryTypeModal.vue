@@ -84,7 +84,12 @@ const handleBabyDiaryClick = () => {
           <div class="flex items-center">
             <span class="text-xl mr-3">👶</span>
             <span class="font-medium text-dark-gray">
-              {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
+              <template v-if="calendarStore.pregnancyId && calendarStore.isPregnant === false">
+                그리움과의 하루
+              </template>
+              <template v-else>
+                {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
+              </template>
             </span>
           </div>
         </button>

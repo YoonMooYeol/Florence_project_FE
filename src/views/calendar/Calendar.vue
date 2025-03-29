@@ -812,7 +812,12 @@ const handleCalendarRefresh = async () => {
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
             />
           </svg>
-          {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
+          <template v-if="calendarStore.pregnancyId && calendarStore.isPregnant === false">
+            그리움과의 하루
+          </template>
+          <template v-else>
+            {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
+          </template>
         </button>
       </div>
     </div> -->
