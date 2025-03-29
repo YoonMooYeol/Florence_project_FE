@@ -2,28 +2,32 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
+import calendarImage from '@/assets/images/calendar.jpg'
+import chatImage from '@/assets/images/chat.jpg'
+import searchImage from '@/assets/images/search.jpg'
+import userImage from '@/assets/images/user.jpg'
 
 const router = useRouter()
 const currentSlide = ref(0)
 
 const slides = [
   {
-    image: '@/src/assets/images/calendar.jpg',
+    image: calendarImage,
     title: '📍 메인 페이지 - 캘린더',
     description: '이전/현재/다음 달로 이동하며 일정을 확인하고 일정을 클릭시 상세 내용을 볼 수 있어요 📅'
   },
   {
-    image: '@/src/assets/images/chat.jpg',
+    image: chatImage,
     title: '📍 채팅 페이지',
     description: '하루동안의 채팅을 AI 에이전트 "플로렌스"와 함께 나눠보세요 🍀'
   },
   {
-    image: '@/src/assets/images/search.jpg',
+    image: searchImage,
     title: '📍 검색 페이지',
     description: '팔로잉 하고싶은 아이디를 검색하여 팔로잉할 수 있어요 🔍'
   },
   {
-    image: '@/src/assets/images/user.jpg',
+    image: userImage,
     title: '📍 마이 페이지',
     description: '사용자 정보와 임신 정보를 관리할 수 있어요 👼'
   }
