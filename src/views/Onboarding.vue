@@ -15,7 +15,7 @@ const slides = [
   {
     image: '/src/assets/images/chat.jpg',
     title: '📍 채팅 페이지',
-    description: 'AI 에이전트 "플로렌스"와 함께\n 하루동안의 고민을 나눠보세요 🍀'
+    description: 'AI 에이전트 "플로렌스"와 함께\n 하루 동안의 고민을 나눠보세요 🍀'
   },
   {
     image: '/src/assets/images/search.jpg',
