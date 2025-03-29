@@ -347,13 +347,13 @@ const formatEventDate = (event) => {
       <!-- 모달 푸터 -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-2">
         <button
-          class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          class="px-4 py-2 bg-red-300 text-white rounded-lg hover:bg-red-400 transition-colors"
           @click="handleDelete"
         >
           삭제
         </button>
         <button
-          class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors"
+          class="px-4 py-2 bg-yellow-200 text-dark-gray rounded-lg hover:bg-yellow-300 transition-colors"
           @click="handleEdit"
         >
           수정

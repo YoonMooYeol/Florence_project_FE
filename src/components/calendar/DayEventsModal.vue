@@ -1333,7 +1333,7 @@ const closeBirthdayPhoto = () => {
               <!-- 일기 작성/수정 버튼 -->
               <div class="flex space-x-2">
                 <button
-                  class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-full shadow-md hover:bg-yellow-500 transition-colors font-bold flex items-center justify-center"
+                  class="flex-1 px-4 py-2 bg-yellow-200 text-dark-gray rounded-full shadow-md hover:bg-yellow-300 transition-colors font-bold flex items-center justify-center"
                   @click="openDiaryModal(babyDiary.content ? 'edit' : 'create')"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1348,7 +1348,7 @@ const closeBirthdayPhoto = () => {
             <p class="text-gray-500 mb-4">기록된 일기가 없습니다.</p>
             <div class="flex flex-col items-center space-y-3 mt-4">
               <button
-                class="w-full px-4 py-3 bg-point text-dark-gray rounded-full shadow-md hover:bg-yellow-500 transition-colors font-bold flex items-center justify-center"
+                class="w-full px-4 py-3 bg-yellow-200 text-dark-gray rounded-full shadow-md hover:bg-yellow-300 transition-colors font-bold flex items-center justify-center"
                 @click="openDiaryModal('create')"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1397,14 +1397,14 @@ const closeBirthdayPhoto = () => {
           </button>
           <button
             v-if="!babyDiary || !babyDiary.id"
-                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                class="px-4 py-2 bg-yellow-200 text-dark-gray rounded-lg hover:bg-yellow-300 transition-colors font-bold"
                 @click="saveBabyDiary"
               >
                 저장하기
               </button>
           <button
             v-else
-            class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+            class="px-4 py-2 bg-yellow-200 text-dark-gray rounded-lg hover:bg-yellow-300 transition-colors font-bold"
             @click="updateDiary"
           >
             수정하기

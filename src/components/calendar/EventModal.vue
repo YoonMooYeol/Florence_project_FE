@@ -316,7 +316,7 @@ const cancelDelete = () => {
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
   >
     <div class="bg-ivory rounded-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden">
-      <div class="bg-point px-6 py-3 flex justify-between items-center">
+      <div class="bg-yellow-200 px-6 py-3 flex justify-between items-center">
         <h3 class="text-lg font-bold text-dark-gray">
           {{ props.event ? '일정 수정' : '일정 등록' }}
         </h3>
@@ -519,16 +519,16 @@ const cancelDelete = () => {
         </div>
 
         <!-- 모달 푸터 -->
-        <div class="px-5 py-2.5 bg-white border-t border-gray-200 flex justify-end gap-2">
+        <div class="px-5 py-2.5 bg-base border-t border-gray-200 flex justify-end gap-2">
           <button
             v-if="props.event"
-            class="px-6 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors font-medium"
+            class="px-6 py-2 bg-white font-bold text-dark-gray rounded-full hover:bg-red-400 transition-colors"
             @click="handleDelete"
           >
             삭제
           </button>
           <button
-            class="px-6 py-2 bg-point text-dark-gray rounded-full hover:bg-yellow-500 transition-colors font-medium"
+            class="px-6 py-2 bg-yellow-200 text-dark-gray rounded-full hover:bg-yellow-300 transition-colors font-bold"
             @click="handleSave"
           >
             저장
