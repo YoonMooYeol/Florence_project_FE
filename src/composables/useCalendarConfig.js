@@ -3,9 +3,9 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { koLocale } from '@/utils/dateUtils'
 import { useCalendarStore } from '@/store/calendar'
-import { 
-  getEventClassNames, 
-  createEventContent, 
+import {
+  getEventClassNames,
+  createEventContent,
   createDayCellContent,
   isMultiDayEvent
 } from '@/utils/calendarUtils'
@@ -16,7 +16,7 @@ import {
  * @param {Function} handleEventClick - 이벤트 클릭 핸들러
  * @returns {Object} 캘린더 설정 및 관련 함수들
  */
-export function useCalendarConfig(handleDateClick, handleEventClick) {
+export function useCalendarConfig (handleDateClick, handleEventClick) {
   const calendarStore = useCalendarStore()
 
   // 캘린더 참조
@@ -59,13 +59,13 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
         currentDate.getFullYear(),
         currentDate.getMonth() + 1
       )
-      
+
       // 뷰가 변경되었을 때 이벤트 다시 가져오지 않고 유지하도록 설정
       // 월 변경 버튼 클릭 시 loadMonthEvents 함수가 이미 호출되므로 여기서는 생략
     },
     // 날짜 셀 내용 생성
     dayCellContent: (info) => createDayCellContent(
-      info, 
+      info,
       calendarStore.hasLLMSummary,
       calendarStore.hasBabyDiary
     ),
@@ -88,28 +88,60 @@ export function useCalendarConfig(handleDateClick, handleEventClick) {
       }
     },
     eventDidMount: (info) => {
-      const { event, el, view } = info
+      const { event, el } = info
       
-      // 모든 이벤트에 둥근 모서리 스타일 적용 (기존 CSS 스타일보다 우선적용)
+      // 사용자가 선택한 색상만 적용 (DB에 저장된 색상)
+      const eventColor = event.extendedProps.event_color || '#FFD600'
+      
+      // 단일 색상만 적용 (배경색과 테두리색 동일하게)
+      el.style.backgroundColor = eventColor
+      el.style.borderColor = eventColor
+      
+      // CSS 변수로도 설정하여 하위 요소에 동일 색상 적용
+      el.style.setProperty('--event-color', eventColor)
+      
+      // 데이터 속성 추가
+      el.dataset.eventColor = eventColor
+      
+      // 모든 하위 요소에도 동일 색상 적용
+      el.querySelectorAll('.fc-event-main, .fc-event-title, .event-title').forEach(child => {
+        child.style.backgroundColor = eventColor
+      })
+      
+      // 모든 텍스트는 동일한 색상으로
+      el.querySelectorAll('.fc-event-title, .event-title').forEach(textEl => {
+        textEl.style.color = '#353535'
+      })
+      
+      // 이벤트 타입 클래스 제거 (타입별 다른 색상 방지)
+      const typeClasses = Array.from(el.classList).filter(cls => cls.startsWith('event-type-'))
+      typeClasses.forEach(cls => el.classList.remove(cls))
+      
+      // 둥근 모서리 스타일 적용
       if (isMultiDayEvent(event.start, event.end)) {
         // 멀티데이 이벤트
         if (info.isStart) {
-          el.style.borderTopLeftRadius = '25px !important';
-          el.style.borderBottomLeftRadius = '25px !important';
-        } 
-        
-        if (info.isEnd) {
-          el.style.borderTopRightRadius = '25px !important';
-          el.style.borderBottomRightRadius = '25px !important';
+          el.style.borderTopLeftRadius = '25px'
+          el.style.borderBottomLeftRadius = '25px'
+          el.style.borderTopRightRadius = '0'
+          el.style.borderBottomRightRadius = '0'
+        } else if (info.isEnd) {
+          el.style.borderTopRightRadius = '25px'
+          el.style.borderBottomRightRadius = '25px'
+          el.style.borderTopLeftRadius = '0'
+          el.style.borderBottomLeftRadius = '0'
+        } else {
+          // 중간 부분
+          el.style.borderRadius = '0'
         }
         
-        // 시작과 종료가 모두 있는 이벤트 (첫날과 마지막 날이 모두 표시되는 이벤트)
+        // 시작과 종료가 모두 있는 이벤트
         if (info.isStart && info.isEnd) {
-          el.style.borderRadius = '25px !important';
+          el.style.borderRadius = '25px'
         }
       } else {
         // 단일 일정은 모든 코너가 둥글게
-        el.style.borderRadius = '25px !important';
+        el.style.borderRadius = '25px'
       }
     }
   }))
