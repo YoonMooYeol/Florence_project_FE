@@ -129,7 +129,7 @@ const validateForm = () => {
 
   // 이름 검증
   if (!userInfo.value.name.trim()) {
-    errors.name = '닉네임을 입력해주세요'
+    errors.name = '이름을 입력해주세요'
     isValid = false
   } else {
     errors.name = ''
@@ -593,7 +593,7 @@ const cancelWithdrawal = () => {
           <label
             for="name"
             class="block mb-2 text-sm font-medium text-dark-gray"
-          >닉네임</label>
+          >이름</label>
           <input
             id="name"
             v-model="userInfo.name"

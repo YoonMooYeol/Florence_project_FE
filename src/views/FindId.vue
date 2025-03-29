@@ -27,7 +27,7 @@ const validateForm = () => {
   let isValid = true
 
   if (!formData.name.trim()) {
-    errors.name = '닉네임을 입력해주세요'
+    errors.name = '이름을 입력해주세요'
     isValid = false
   } else {
     errors.name = ''
@@ -54,7 +54,7 @@ const findIdApi = async () => {
     return response.data
   } catch (error) {
     if (error.response?.data?.non_field_errors?.[0]) {
-      const errorMessage = error.response.data.non_field_errors[0].replace('이름', '닉네임')
+      const errorMessage = error.response.data.non_field_errors[0].replace('이름', '이름')
       throw new Error(errorMessage)
     }
     throw new Error(error.response?.data?.detail || '아이디 찾기 요청 실패')
@@ -147,18 +147,18 @@ const goToLogin = () => {
         class="p-9 bg-white rounded-[10px] shadow-md"
         @submit.prevent="handleSubmit"
       >
-        <!-- 닉네임 입력 -->
+        <!-- 이름 입력 -->
         <div class="mb-4">
           <label
             for="name"
             class="block mb-2 text-xl font-medium text-dark-gray"
-          >닉네임</label>
+          >이름</label>
           <input
             id="name"
             v-model="formData.name"
             type="text"
             class="w-full px-4 py-3 border border-gray-300 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="닉네임을 입력하세요"
+            placeholder="이름을 입력하세요"
           >
           <p
             v-if="errors.name"
