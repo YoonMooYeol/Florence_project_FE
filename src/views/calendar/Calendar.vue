@@ -190,13 +190,16 @@ const handleEventClick = (info) => {
     if (eventObj) {
       console.log('찾은 이벤트:', eventObj)
 
-      // 이벤트의 날짜 정보 추출
+      // 클릭한 실제 날짜 정보 가져오기 (FullCalendar의 이벤트 객체에서)
       let eventDate = null
-      if (eventObj.start_date) {
-        // 새로운 모델 구조 사용
+      if (info.event.start) {
+        // FullCalendar에서 제공하는 클릭한 실제 날짜 사용
+        eventDate = normalizeDate(info.event.start)
+      } else if (eventObj.start_date) {
+        // 백업: 이벤트 객체의 시작 날짜 사용
         eventDate = eventObj.start_date
       } else if (eventObj.start) {
-        // FullCalendar 형식 처리
+        // 백업: FullCalendar 형식 처리
         eventDate = typeof eventObj.start === 'string' && eventObj.start.includes('T')
           ? eventObj.start.split('T')[0]
           : eventObj.start
