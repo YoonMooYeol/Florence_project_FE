@@ -774,7 +774,7 @@ const handleCalendarRefresh = async () => {
           일정 등록
         </button>
         <button
-          v-if="calendarStore.isPregnant"
+          v-if="calendarStore.pregnancyId"
           class="fab-menu-item"
           @click="handleFABMenuClick('baby')"
         >

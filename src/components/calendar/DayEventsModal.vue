@@ -1127,7 +1127,7 @@ const closeBirthdayPhoto = () => {
           오늘의 하루
         </button>
         <button
-          v-if="calendarStore.isPregnant"
+          v-if="calendarStore.pregnancyId"
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
           :class="activeTab === 'baby' ? 'text-point border-b-2 border-point bg-gray-50 font-bold' : 'text-gray-500 hover:text-gray-700'"
           data-tab="baby"
