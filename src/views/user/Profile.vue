@@ -30,6 +30,11 @@ const userInfo = ref({
 const isLoading = ref(false)
 const errorMessage = ref('')
 
+// 모달 관련 상태
+const showModal = ref(false)
+const modalTitle = ref('')
+const modalContent = ref([])
+
 // 사용자 정보 불러오기
 const fetchUserInfo = async () => {
   isLoading.value = true
@@ -199,11 +204,80 @@ const handleLogout = async () => {
   }
 }
 
-// 준비중인 기능 안내
-const test = () => {
-  alert('준비중인 기능입니다.')
+// 공지사항 모달 표시
+const showNotice = () => {
+  modalTitle.value = '공지사항'
+  modalContent.value = [
+    {
+      title: '누리달 v1.0 출시 안내',
+      date: '2025.03.29',
+      content: '누리달 앱이 정식으로 출시되었습니다! 많은 이용 부탁드립니다.'
+    },
+    {
+      title: '플로렌스 AI를 통한 일정 등록 기능 추가',
+      date: '2025.03.29',
+      content: '이제 플로렌스 AI와의 대화를 통해 일정을 등록할 수 있습니다.'
+    },
+  ]
+  showModal.value = true
 }
 
+// 자주 묻는 질문 모달 표시
+const showFAQ = () => {
+  modalTitle.value = '자주 묻는 질문'
+  modalContent.value = [
+    {
+      title: '플로렌스 AI와 채팅은 어떻게 하나요?',
+      content: '채팅 페이지에서 플로렌스 AI와 실시간으로 대화할 수 있습니다. 임신 중 겪는 증상이나 궁금한 점을 물어보세요.'
+    },
+    {
+      title: '임신 정보는 어떻게 업데이트하나요?',
+      content: '마이페이지에서 "임신 정보 관리" 메뉴를 통해 출산 예정일과 관련 정보를 수정할 수 있습니다.'
+    },
+    {
+      title: '일정 관리는 어떻게 하나요?',
+      content: '메인 페이지의 캘린더에서 날짜를 선택하여 병원 방문 일정 등을 추가할 수 있습니다.'
+    },
+    {
+      title: '다른 사용자를 팔로우하는 방법은 무엇인가요?',
+      content: '검색 페이지에서 사용자 이름이나 아이디를 검색해 팔로우할 수 있습니다. 비슷한 주차의 임산부들과 경험을 공유해보세요.'
+    },
+    {
+      title: '고위험 임신이 무엇인가요?',
+      content: '고위험 임신이란 임신 중 산모나 태아에게 건강상 위험이 높은 경우를 말합니다. 만 18세 미만이나 35세 이상의 연령, 당뇨나 고혈압 같은 기저질환, 다태임신, 이전 임신 합병증 경험 등이 해당됩니다. 최초 임신 정보 등록 시 관련 정보를 확인할 수 있으며, 의사의 진단에 따라 설정하시기 바랍니다.'
+    }
+  ]
+  showModal.value = true
+}
+
+// 앱 정보 모달 표시
+const showAppInfo = () => {
+  modalTitle.value = '앱 정보'
+  modalContent.value = [
+    {
+      title: '누리달 v1.0',
+      content: '임산부를 위한 AI 산전 관리 서비스'
+    },
+    {
+      title: '개발 정보',
+      content: '© 2025 Oightingale Team. All rights reserved.'
+    },
+    {
+      title: '문의하기',
+      content: 'gkxmqlxm2025@gmail.com'
+    },
+    {
+      title: '오픈소스 라이선스',
+      content: '본 앱에서 사용된 오픈소스 라이브러리 목록은 설정에서 확인할 수 있습니다.'
+    }
+  ]
+  showModal.value = true
+}
+
+// 모달 닫기
+const closeModal = () => {
+  showModal.value = false
+}
 </script>
 
 <template>
@@ -380,14 +454,134 @@ const test = () => {
             <span class="text-dark-gray">임신 정보 관리</span>
           </button>
 
-          <!-- 로그아웃 버튼 -->
-          <button
-            class="w-full p-4 bg-white rounded-lg shadow-md text-center text-red-500 font-medium"
-            @click="handleLogout"
+          <button 
+            class="w-full p-4 text-left flex items-center"
+            @click="showNotice"
           >
-            로그아웃
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 mr-3 text-gray-500"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span class="text-dark-gray">공지사항</span>
+          </button>
+
+          <button 
+            class="w-full p-4 text-left flex items-center"
+            @click="showFAQ"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 mr-3 text-gray-500"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span class="text-dark-gray">자주 묻는 질문</span>
+          </button>
+
+          <button 
+            class="w-full p-4 text-left flex items-center"
+            @click="showAppInfo"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 mr-3 text-gray-500"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span class="text-dark-gray">앱 정보</span>
           </button>
         </div>
+      </div>
+
+      <!-- 로그아웃 버튼 -->
+      <button
+        class="w-full p-4 bg-white rounded-lg shadow-md text-center text-red-500 font-medium"
+        @click="handleLogout"
+      >
+        로그아웃
+      </button>
+    </div>
+
+    <!-- 모달 컴포넌트 -->
+    <div
+      v-if="showModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      @click.self="closeModal"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-hidden">
+        <!-- 모달 헤더 -->
+        <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-base-yellow">
+          <h3 class="text-lg font-bold text-dark-gray">{{ modalTitle }}</h3>
+          <button
+            class="text-gray-500 hover:text-gray-700"
+            @click="closeModal"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        
+        <!-- 모달 내용 -->
+        <div class="overflow-y-auto p-4 max-h-[60vh]">
+          <div
+            v-for="(item, index) in modalContent"
+            :key="index"
+            class="mb-4 pb-4 border-b border-gray-100 last:border-0"
+          >
+            <div class="flex justify-between items-start mb-1">
+              <h4 class="font-bold text-dark-gray">{{ item.title }}</h4>
+              <span
+                v-if="item.date"
+                class="text-xs text-gray-500"
+              >{{ item.date }}</span>
+            </div>
+            <p class="text-gray-600 text-sm whitespace-pre-line">{{ item.content }}</p>
+          </div>
+        </div>
+        
+        <!-- 모달 푸터 -->
+        <div class="p-4 border-t border-gray-200 bg-gray-50">
+          <button
+            class="w-full py-2 bg-base-yellow rounded text-dark-gray font-bold"
+            @click="closeModal"
+          >
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
 
         <!-- 하단 네비게이션 바 -->
         <BottomNavBar active-tab="profile" />
