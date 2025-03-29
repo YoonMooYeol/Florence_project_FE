@@ -154,18 +154,26 @@ api.interceptors.response.use(
         })
 
         const newAccessToken = response.data.access
-        const rememberMe = localStorage.getItem('rememberMe') === 'true'
+        // 리프레시 토큰이 로컬에 있다면 rememberMe가 true, 세션에 있다면 false로 판단
+        const isRememberMe = localStorage.getItem('refreshToken') !== null || 
+                           localStorage.getItem('rememberMe') === 'true'
 
-        // 새 토큰 저장
-        if (rememberMe) {
+        // 새 토큰 저장 - 원래 리프레시 토큰이 있던 스토리지와 같은 곳에 저장
+        if (isRememberMe) {
           localStorage.setItem('accessToken', newAccessToken)
+          // 세션에서 제거
+          sessionStorage.removeItem('accessToken')
           if (response.data.refresh) {
             localStorage.setItem('refreshToken', response.data.refresh)
+            sessionStorage.removeItem('refreshToken')
           }
         } else {
           sessionStorage.setItem('accessToken', newAccessToken)
+          // 로컬에서 제거
+          localStorage.removeItem('accessToken')
           if (response.data.refresh) {
             sessionStorage.setItem('refreshToken', response.data.refresh)
+            localStorage.removeItem('refreshToken')
           }
         }
 

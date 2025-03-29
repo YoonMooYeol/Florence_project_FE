@@ -149,7 +149,7 @@ const savePregnancyInfo = async () => {
     alert('임신 정보가 성공적으로 저장되었습니다.')
 
     // 홈 페이지로 이동
-    router.push('/calendar')
+    router.push('/onboarding')
   } catch (error) {
     console.error('임신 정보 저장 오류:', error)
     errorMessage.value = error.response?.data?.detail || '임신 정보 저장 중 오류가 발생했습니다.'
@@ -162,7 +162,7 @@ const savePregnancyInfo = async () => {
 // 건너뛰기 (나중에 입력)
 const skipForNow = () => {
   if (confirm('임신 정보 입력을 건너뛰시겠습니까? 나중에 마이페이지에서 입력할 수 있습니다.')) {
-    router.push('/calendar')
+    router.push('/onboarding')
   }
 }
 

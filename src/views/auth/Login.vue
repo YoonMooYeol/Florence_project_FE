@@ -49,9 +49,10 @@ const validateForm = () => {
 
 // 로그인 정보와 토큰을 저장하는 함수
 const saveLoginState = (userData) => {
-  // 액세스 토큰과 리프레시 토큰 저장
-  authStore.setAccessToken(userData.tokens.access)
-  authStore.setRefreshToken(userData.tokens.refresh)
+  // 액세스 토큰과 리프레시 토큰 저장 - 직접 저장하지 않고 authStore의 메서드 활용
+  // rememberMe 값을 명시적으로 전달하여 올바른 스토리지에 저장되도록 함
+  authStore.setAccessToken(userData.tokens.access, formData.rememberMe)
+  authStore.setRefreshToken(userData.tokens.refresh, formData.rememberMe)
 
   // 로그인 유지를 선택한 경우 로컬 스토리지에 저장 (브라우저를 닫아도 유지)
   if (formData.rememberMe) {
@@ -62,6 +63,7 @@ const saveLoginState = (userData) => {
     localStorage.setItem('isPregnant', userData.is_pregnant)
   } else {
     // 로그인 유지를 선택하지 않은 경우 세션 스토리지에 저장 (브라우저 닫으면 삭제)
+    sessionStorage.setItem('rememberMe', 'false')
     sessionStorage.setItem('userEmail', formData.email)
     sessionStorage.setItem('userName', userData.name)
     sessionStorage.setItem('userId', userData.user_id)
@@ -73,16 +75,18 @@ const saveLoginState = (userData) => {
     localStorage.removeItem('userName')
     localStorage.removeItem('userId')
     localStorage.removeItem('isPregnant')
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
   }
 }
 
 // 저장된 로그인 정보 확인
 const checkSavedLogin = () => {
-  const savedRememberMe = localStorage.getItem('rememberMe')
+  const savedRememberMe = localStorage.getItem('rememberMe') === 'true'
   const savedEmail = localStorage.getItem('userEmail')
-  const accessToken = localStorage.getItem('accessToken') || authStore.accessToken
 
-  if (savedRememberMe === 'true' && savedEmail && accessToken) {
+  // rememberMe가 true이고 이메일이 저장되어 있으면 폼에 자동 채우기
+  if (savedRememberMe && savedEmail) {
     formData.email = savedEmail
     formData.rememberMe = true
   }
@@ -90,8 +94,16 @@ const checkSavedLogin = () => {
 
 // 이미 로그인된 사용자인지 확인
 const checkAlreadyLoggedIn = () => {
-  const accessToken = localStorage.getItem('accessToken') || authStore.accessToken || sessionStorage.getItem('accessToken')
-  const userName = localStorage.getItem('userName') || sessionStorage.getItem('userName')
+  const rememberMe = localStorage.getItem('rememberMe') === 'true'
+  
+  // rememberMe 값에 따라 다른 스토리지에서 토큰을 확인
+  const accessToken = rememberMe 
+    ? localStorage.getItem('accessToken') 
+    : sessionStorage.getItem('accessToken')
+  
+  const userName = rememberMe
+    ? localStorage.getItem('userName')
+    : sessionStorage.getItem('userName')
 
   if (accessToken && userName) {
     // 이미 로그인된 상태이므로 캘린더 페이지로 리다이렉팅

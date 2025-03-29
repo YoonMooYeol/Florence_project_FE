@@ -51,12 +51,17 @@ app.mount('#app')
 // 초기 라우팅 처리
 const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
 if (token) {
+  const currentRoute = router.currentRoute.value.path
   const onboardingCompleted = 
     localStorage.getItem('onboardingCompleted') === 'true' || 
     sessionStorage.getItem('onboardingCompleted') === 'true'
   
-  if (!onboardingCompleted) {
+  // 온보딩 페이지가 아니고, 온보딩이 완료되지 않았을 때만 리디렉션
+  if (!onboardingCompleted && currentRoute !== '/onboarding') {
     console.log('온보딩이 완료되지 않았습니다. 온보딩 페이지로 이동합니다.')
-    router.push('/onboarding')
+    // 페이지 로드 후 라우팅을 위해 setTimeout 사용
+    setTimeout(() => {
+      router.push('/onboarding')
+    }, 100)
   }
 }

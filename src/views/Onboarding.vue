@@ -46,65 +46,35 @@ const prevSlide = () => {
   }
 }
 
-// 온보딩 완료
+// 온보딩 완료 - 시작하기 버튼 클릭 시 호출
 const finishOnboarding = () => {
-  // 온보딩 완료 상태 저장 (rememberMe 상태에 따라 저장소 선택)
-  const rememberMe = localStorage.getItem('rememberMe') === 'true'
-  if (rememberMe) {
-    localStorage.setItem('onboardingCompleted', 'true')
-  } else {
-    sessionStorage.setItem('onboardingCompleted', 'true')
-  }
+  // 온보딩 완료 상태를 영구 저장 (로그아웃해도 유지)
+  localStorage.setItem('onboardingCompleted', 'true')
+  console.log('온보딩 완료 상태를 영구 저장했습니다.')
   
   // 메인 페이지(캘린더)로 이동
   router.push('/calendar')
 }
 
-// 다시 보지 않기
-const neverShowAgain = () => {
-  const rememberMe = localStorage.getItem('rememberMe') === 'true'
-  const storage = rememberMe ? localStorage : sessionStorage
+// // 슬라이드 건너뛰기 - 건너뛰기 버튼 클릭 시 호출
+// const skipOnboarding = () => {
+//   // 온보딩 건너뛰기 상태를 세션 스토리지에만 저장 (현재 세션에서만 유효)
+//   sessionStorage.setItem('onboardingCompleted', 'true')
+//   console.log('온보딩 건너뛰기 상태를 세션에만 저장했습니다.')
   
-  // 다시 보지 않기 상태 저장
-  storage.setItem('hideOnboarding', 'true')
-  
-  // 다른 스토리지에서도 제거
-  if (rememberMe) {
-    sessionStorage.removeItem('hideOnboarding')
-  } else {
-    localStorage.removeItem('hideOnboarding')
-  }
-  
-  // 온보딩 완료 상태도 저장
-  storage.setItem('onboardingCompleted', 'true')
-  
-  // 다른 스토리지에서도 온보딩 완료 상태 제거
-  if (rememberMe) {
-    sessionStorage.removeItem('onboardingCompleted')
-  } else {
-    localStorage.removeItem('onboardingCompleted')
-  }
-  
-  console.log('온보딩을 다시 보지 않도록 설정했습니다.')
-  
-  // 라우터를 통한 이동이 실패할 경우를 대비해 window.location 사용
-  window.location.href = '/calendar'
-}
-
-// 슬라이드 건너뛰기
-const skipOnboarding = () => {
-  finishOnboarding()
-}
+//   // 메인 페이지(캘린더)로 이동
+//   router.push('/calendar')
+// }
 
 onMounted(() => {
-  // 다시 보지 않기 상태 확인
-  const hideOnboarding = 
-    localStorage.getItem('hideOnboarding') === 'true' || 
-    sessionStorage.getItem('hideOnboarding') === 'true'
+  // 온보딩 완료 상태 확인
+  const onboardingCompleted = 
+    localStorage.getItem('onboardingCompleted') === 'true' || 
+    sessionStorage.getItem('onboardingCompleted') === 'true'
   
-  if (hideOnboarding) {
-    console.log('온보딩을 다시 보지 않기로 설정되어 있습니다. 캘린더로 이동합니다.')
-    window.location.href = '/calendar'
+  if (onboardingCompleted) {
+    console.log('온보딩이 이미 완료되었습니다. 캘린더로 이동합니다.')
+    router.push('/calendar')
     return
   }
 
@@ -158,36 +128,37 @@ onMounted(() => {
 
       <!-- 하단 버튼 -->
       <div class="absolute bottom-10 left-0 right-0 flex flex-col items-center space-y-4">
-        <div class="flex justify-between w-full px-8">
-          <button
-            v-if="currentSlide > 0"
-            class="px-8 py-3 text-gray-600"
-            @click="prevSlide"
-          >
-            이전
-          </button>
-          <button
-            v-if="currentSlide === 0"
-            class="px-5 py-3 text-gray-600"
-            @click="skipOnboarding"
-          >
-            건너뛰기
-          </button>
-          <button
-            class="px-4 py-1 bg-point-yellow rounded-full text-dark-gray font-bold"
-            @click="nextSlide"
-          >
-            {{ currentSlide === slides.length - 1 ? '시작하기' : '다음' }}
-          </button>
+        <div class="flex items-center w-full px-8">
+          <!-- 왼쪽 영역 -->
+          <div class="flex-1 flex justify-start items-center">
+            <button
+              v-if="currentSlide > 0"
+              class="px-8 py-3 text-gray-600"
+              @click="prevSlide"
+            >
+              이전
+            </button>
+            <div v-else class="w-[85px] h-[48px] flex items-center"></div>
+          </div>
+          
+          <!-- 오른쪽 영역 -->
+          <div class="flex-1 flex justify-end items-center">
+            <button
+              class="px-4 py-1 bg-point-yellow rounded-full text-dark-gray font-bold"
+              @click="nextSlide"
+            >
+              {{ currentSlide === slides.length - 1 ? '시작하기' : '다음' }}
+            </button>
+          </div>
         </div>
         
         <!-- 다시 보지 않기 버튼 -->
-        <button
+        <!-- <button
           class="px-5 py-2 text-gray-500 text-sm hover:text-gray-700"
           @click="neverShowAgain"
         >
           다시 보지 않기
-        </button>
+        </button> -->
       </div>
     </div>
   </div>
