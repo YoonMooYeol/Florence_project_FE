@@ -149,26 +149,5 @@ watch(() => props.currentMonth, (newMonth) => {
 .bg-base {
   background-color: var(--color-base);
 }
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.bg-point {
-  background-color: #FFD600;
-}
-.text-dark-gray {
-  color: #353535;
-}
-
-/* 드롭다운 스타일 */
-select {
-  background-color: white;
-  border-color: #e2e8f0;
-  color: #353535;
-}
-
-select:focus {
-  outline: none;
-  border-color: var(--color-point);
-  ring: 2px var(--color-point);
-}
+/* calendar.css에서 공통 스타일을 사용합니다 */
 </style>

@@ -90,10 +90,10 @@ const fetchFollowersUsers = async () => {
   }
 }
 
-// 이메일로 사용자 검색 함수
+// ID로 사용자 검색 함수
 const searchUserByEmail = async () => {
   if (!searchQuery.value.trim()) {
-    errorMessage.value = '이메일을 입력해주세요.'
+    errorMessage.value = 'ID를 입력해주세요.'
     return
   }
 
@@ -102,8 +102,8 @@ const searchUserByEmail = async () => {
   searchResult.value = null
 
   try {
-    // 이메일로 사용자 검색 (백엔드에서 이제 is_following 정보 포함)
-    const response = await api.get(`/accounts/search/?email=${searchQuery.value.trim()}`)
+    // ID로 사용자 검색 (백엔드에서 이제 is_following 정보 포함)
+    const response = await api.get(`/accounts/search/?username=${searchQuery.value.trim()}`)
 
     // 응답 데이터 로깅
     console.log('검색 응답 데이터:', response.data)
@@ -306,7 +306,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
           v-model="searchQuery"
           type="text"
           class="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
-          placeholder="이메일로 검색"
+          placeholder="ID로 검색"
           @keyup.enter="searchUserByEmail"
         >
         <button
@@ -378,7 +378,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
 
         <div class="space-y-4">
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">닉네임</span>
+            <span class="text-gray-600">ID</span>
             <span class="font-medium">{{ selectedUser.name || '정보 없음' }}</span>
           </div>
           <div class="flex justify-between items-center">
@@ -419,9 +419,9 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
               <h3 class="font-medium text-dark-gray">
                 {{ searchResult.name || '이름 없음' }}
               </h3>
-              <p class="text-sm text-gray-500 mt-1">
+              <!-- <p class="text-sm text-gray-500 mt-1">
                 {{ searchResult.email || searchResult.social_email || searchResult.user_email || '이메일 정보 없음' }}
-              </p>
+              </p> -->
             </div>
           </div>
           <button
@@ -498,9 +498,9 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
                   <h3 class="font-medium text-dark-gray">
                     {{ activeTab === 'following' ? (user.following_detail?.name || '이름 없음') : (user.follower_detail?.name || '이름 없음') }}
                   </h3>
-                  <p class="text-sm text-gray-500">
+                  <!-- <p class="text-sm text-gray-500">
                     {{ activeTab === 'following' ? user.following_detail?.email : user.follower_detail?.email }}
-                  </p>
+                  </p> -->
                 </div>
               </div>
 
@@ -593,7 +593,7 @@ const toggleFollow = async (userId, isCurrentlyFollowing) => {
       class="p-4 text-center bg-white rounded-lg shadow-md"
     >
       <p class="text-gray-500 py-8">
-        {{ activeTab === 'search' ? '이메일로 사용자를 검색해 보세요.' :
+        {{ activeTab === 'search' ? 'ID로 사용자를 검색해 보세요.' :
           activeTab === 'following' ? '팔로우하는 사용자가 없습니다.' :
           '팔로워가 없습니다.' }}
       </p>

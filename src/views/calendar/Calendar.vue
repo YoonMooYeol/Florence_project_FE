@@ -18,6 +18,10 @@ import AddEventModal from '@/components/calendar/AddEventModal.vue'
 import AddDiaryTypeModal from '@/components/calendar/AddDiaryTypeModal.vue'
 import EventModal from '@/components/calendar/EventModal.vue'
 import { savePregnancyId } from '@/utils/auth'
+import { isMultiDayEvent } from '@/utils/calendarUtils'
+import '@/assets/styles/calendar.css'
+import { useEventLoading } from '@/composables/useEventLoading'
+import { refreshCalendar } from '@/utils/calendarRenderer'
 
 // import TodoList from './TodoList.vue'
 
@@ -47,6 +51,92 @@ const popupActive = computed(() => {
          modalManager.showAddEventModal.value ||
          modalManager.showDiaryTypeModal.value
 })
+
+// 축하 화면 표시 상태 관리
+const showCongratulation = ref(false)
+
+// 컴포넌트 마운트 시 로컬 스토리지 확인
+onMounted(() => {
+  const hideForever = localStorage.getItem('hideCongratulation')
+  const isPregnant = localStorage.getItem('isPregnant') === 'true'
+  const dueDate = localStorage.getItem('dueDate')
+  
+  if (dueDate) {
+    const today = new Date()
+    const dueDateObj = new Date(dueDate)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    // 출산 예정일이 어제였고, 임신 중인 경우에만 축하 메시지 표시
+    showCongratulation.value = !hideForever && 
+                              isPregnant && 
+                              dueDateObj.toDateString() === yesterday.toDateString()
+  }
+})
+
+// 임신 정보 변경 감지
+watch(() => calendarStore.isPregnant, (newValue) => {
+  if (!newValue) {
+    showCongratulation.value = false
+  }
+})
+
+// 다시 보지 않기 함수
+const neverShowAgain = () => {
+  localStorage.setItem('hideCongratulation', 'true')
+  showCongratulation.value = false
+}
+
+// 축하 화면 닫기 함수
+const closeCongratulation = () => {
+  showCongratulation.value = false
+}
+
+// 축하 화면 저장 함수
+const saveCongratulation = async () => {
+  try {
+    // 이미지 요소 가져오기
+    const imgElement = document.querySelector('.after-due-date-image')
+    if (!imgElement) {
+      throw new Error('이미지를 찾을 수 없습니다.')
+    }
+
+    // Canvas 생성
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+
+    // Canvas 크기 설정
+    canvas.width = imgElement.naturalWidth
+    canvas.height = imgElement.naturalHeight
+
+    // 이미지를 Canvas에 그리기
+    ctx.drawImage(imgElement, 0, 0)
+
+    // Canvas를 Blob으로 변환
+    canvas.toBlob((blob) => {
+      // Blob URL 생성
+      const url = window.URL.createObjectURL(blob)
+
+      // 다운로드 링크 생성
+      const link = document.createElement('a')
+      link.href = url
+      link.download = '축하해요.png'
+
+      // 링크 클릭하여 다운로드
+      document.body.appendChild(link)
+      link.click()
+
+      // 정리
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      alert('이미지가 저장되었습니다!')
+    }, 'image/png')
+  } catch (error) {
+    console.error('이미지 저장 중 오류 발생:', error)
+    alert('이미지 저장에 실패했습니다.')
+  }
+}
 
 // 날짜 클릭 핸들러
 const handleDateClick = (info) => {
@@ -80,9 +170,9 @@ const handleDateClick = (info) => {
     const result = calendarStore.setSelectedDate(dateStr)
     logger.debug(CONTEXT, '날짜 설정 결과:', result)
 
-    // 실제 모달 열기
+    // 실제 모달 열기 - 여기가 중요: 클릭한 날짜를 전달
     logger.debug(CONTEXT, '일일 일정 모달 열기 시도')
-    modalManager.openDayEventsModal(dateStr)
+    modalManager.openDayEventsModal(dateStr) // 클릭한 날짜를 명시적으로 전달
   } catch (error) {
     logger.error(CONTEXT, '날짜 클릭 처리 중 오류 발생:', error)
     handleError(error, CONTEXT)
@@ -96,16 +186,20 @@ const handleEventClick = (info) => {
 
   try {
     // events 배열에서 해당 이벤트 찾기
-    const eventObj = calendarStore.events.find((e) => e.id === eventId)
+    const eventObj = calendarStore.events.find((e) => e.id === eventId || e.event_id === eventId)
     if (eventObj) {
       console.log('찾은 이벤트:', eventObj)
 
       // 이벤트의 날짜 정보 추출
       let eventDate = null
-      if (eventObj.start) {
+      if (eventObj.start_date) {
+        // 새로운 모델 구조 사용
+        eventDate = eventObj.start_date
+      } else if (eventObj.start) {
+        // FullCalendar 형식 처리
         eventDate = typeof eventObj.start === 'string' && eventObj.start.includes('T')
           ? eventObj.start.split('T')[0]
-          : normalizeDate(eventObj.event_day)
+          : eventObj.start
       }
 
       // 날짜가 있으면 일일 이벤트 모달 열기
@@ -142,49 +236,47 @@ const {
   goToToday
 } = useCalendarConfig(handleDateClick, handleEventClick)
 
-// 월별 view 및 이벤트 렌더링 커스터마이징
+// 월별 view 설정
 calendarOptions.initialView = 'dayGridMonth'
 calendarOptions.dayMaxEvents = 3
-calendarOptions.eventContent = function (arg) {
-  console.log('이벤트 렌더링:', arg.event.title, arg.event)
-  // 오직 타이틀만 표시합니다
-  return { html: `<span class="fc-event-title">${arg.event.title}</span>` }
-}
 
-// 이벤트 소스 설정 - FullCalendar가 직접 데이터를 가져오게 함
+// 이벤트 소스 설정
 calendarOptions.eventSources = [
   {
-    // events 함수는 startStr, endStr, successCallback 파라미터를 받음
     events: async (info, successCallback, failureCallback) => {
       try {
-        const startDate = info.startStr.split('T')[0] // YYYY-MM-DD 형식으로 변환
-        const endDate = info.endStr.split('T')[0] // YYYY-MM-DD 형식으로 변환
-        
+        const startDate = info.startStr.split('T')[0]
+        const endDate = info.endStr.split('T')[0]
+
         logger.info(CONTEXT, `이벤트 요청 범위: ${startDate} ~ ${endDate}`)
-        
-        // 현재 년월 정보 업데이트
+
+        // 날짜 범위에 따라 스토어 년/월 값 설정
         const startDateObj = new Date(startDate)
         currentYear.value = startDateObj.getFullYear()
         currentMonth.value = startDateObj.getMonth() + 1
         calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
-        
-        // API에서 직접 데이터 가져오기
-        await calendarStore.fetchEvents()
-        
-        // calendarStore.events에서 FullCalendar 형식으로 변환
-        const mappedEvents = calendarStore.events.map(event => ({
-          id: event.id,
-          title: event.title,
-          event_day: event.event_day,
-          // start: event.start,
-          backgroundColor: event.backgroundColor || '#FFD600',
-          borderColor: event.borderColor || '#FFD600',
-          textColor: event.textColor || '#353535',
-          allDay: event.allDay || false
-        }))
-        
-        logger.info(CONTEXT, `${mappedEvents.length}개 이벤트 로드됨`)
-        successCallback(mappedEvents)
+
+        // 확장된 범위의 이벤트 로드 (API가 현재 달과 다음 달 이벤트를 함께 가져옴)
+        const events = await calendarStore.fetchEvents()
+
+        // 뷰에 표시되는 이벤트 필터링
+        const filteredEvents = events.filter(event => {
+          const eventStart = new Date(event.start)
+          const eventEnd = new Date(event.end || event.start)
+
+          // 뷰의 범위를 넓게 설정하여 다음 달 이벤트도 포함하도록 함
+          const viewStart = new Date(startDate)
+
+          // endDate를 기준으로 최소 한 달 이상 확장
+          const viewEnd = new Date(endDate)
+          viewEnd.setMonth(viewEnd.getMonth() + 1)
+
+          // 이벤트가 확장된 뷰 범위에 포함되는지 확인
+          return eventStart < viewEnd && eventEnd >= viewStart
+        })
+
+        logger.info(CONTEXT, `${filteredEvents.length}개 이벤트 로드됨 (확장 범위 포함)`)
+        successCallback(filteredEvents)
       } catch (error) {
         logger.error(CONTEXT, '이벤트 로드 중 오류 발생:', error)
         failureCallback(error)
@@ -203,7 +295,7 @@ const handlePrevMonth = async () => {
   }
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   prevMonth()
-  
+
   // 월 변경 후 해당 월의 이벤트 로드
   await loadMonthEvents()
 }
@@ -217,7 +309,7 @@ const handleNextMonth = async () => {
   }
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   nextMonth()
-  
+
   // 월 변경 후 해당 월의 이벤트 로드
   await loadMonthEvents()
 }
@@ -228,90 +320,76 @@ const handleGoToToday = async () => {
   currentMonth.value = today.getMonth() + 1
   calendarStore.updateCurrentYearMonth(currentYear.value, currentMonth.value)
   goToToday()
-  
+
   // 월 변경 후 해당 월의 이벤트 로드
   await loadMonthEvents()
 }
 
-// 현재 월의 이벤트 로딩 함수
-const loadMonthEvents = async () => {
-  try {
-    logger.info(CONTEXT, `${currentYear.value}년 ${currentMonth.value}월 이벤트 로딩 시작`)
-    
-    // 이벤트 데이터 로드
-    const events = await calendarStore.fetchEvents()
-    logger.info(CONTEXT, `이벤트 ${events.length}개 로드됨`)
-    
-    // LLM 요약 데이터 로드
-    const summaries = await calendarStore.fetchLLMSummaries(currentYear.value, currentMonth.value)
-    logger.info(CONTEXT, `LLM 요약 ${summaries.length}개 로드됨`)
-    
-    // 태교일기 데이터 로드 
-    const diaries = await calendarStore.fetchBabyDiaries(currentYear.value, currentMonth.value)
-    logger.info(CONTEXT, `태교일기 ${diaries.length}개 로드됨`)
-    
-    if (calendarRef.value) {
-      const calendarApi = calendarRef.value.getApi()
-      calendarApi.refetchEvents()
-      
-      // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
-      requestAnimationFrame(() => {
-        calendarApi.render()
-        logger.info(CONTEXT, '캘린더 렌더링 완료')
-      })
-    }
-  } catch (error) {
-    logger.error(CONTEXT, '이벤트 로드 중 오류 발생:', error)
-    handleError(error, `${CONTEXT}.loadMonthEvents`)
-  }
-}
+// 기존 함수 중 loadMonthEvents 제거 및 useEventLoading에서 가져오기
+const { loadMonthEvents } = useEventLoading(calendarStore, calendarRef, currentYear, currentMonth)
 
 // 컴포넌트 마운트 시 현재 날짜 정보 초기화
 onMounted(async () => {
   logger.info(CONTEXT, '캘린더 컴포넌트 마운트')
-  
+
   try {
     // 임신 정보 초기화
     await calendarStore.initPregnancyInfo()
 
-    // 이전에 저장된 임신 ID가 있으면 설정
-    const storedPregnancyId = localStorage.getItem('pregnancyId')
-    if (storedPregnancyId) {
-      calendarStore.setPregnancyId(storedPregnancyId)
-    }
+    // 임신 ID가 존재하는지 확인하기 전에 짧은 지연을 추가하여 모든 상태 업데이트가 완료되도록 함
+    await new Promise(resolve => setTimeout(resolve, 100))
 
     // 임신 정보 초기화 성공 로깅
-    if (calendarStore.pregnancyId.value) {
+    if (calendarStore.pregnancyId && calendarStore.pregnancyId.value) {
       logger.info(CONTEXT, '임신 정보 초기화 성공:', calendarStore.pregnancyId.value)
-      savePregnancyId(calendarStore.pregnancyId.value)
     } else {
-      logger.warn(CONTEXT, '임신 정보가 없습니다')
+      logger.warn(CONTEXT, '임신 정보 초기화 실패 또는 임신 정보 없음')
     }
 
     // 메인 캘린더 데이터 로드
-    await loadMonthEvents() 
+    await loadMonthEvents()
 
-    // 저장된 모달 상태가 있는지 확인하고 있으면 모달 다시 열기
-    const savedModalState = sessionStorage.getItem('modalState')
-    if (savedModalState) {
-      const modalState = JSON.parse(savedModalState)
-      if (modalState.open && modalState.date) {
-        logger.info(CONTEXT, '저장된 모달 상태 복원:', modalState)
-        
-        // 날짜 설정
-        calendarStore.setSelectedDate(modalState.date)
-        
-        // 모달 열기
-        modalManager.openDayEventsModal(modalState.date)
-        
-        // 사용 후 삭제
-        sessionStorage.removeItem('modalState')
+    // 멀티데이 이벤트가 제대로 렌더링되도록 약간의 지연 후 캘린더 리렌더링
+    setTimeout(() => {
+      if (calendarRef.value) {
+        const calendarApi = calendarRef.value.getApi()
+        calendarApi.refetchEvents()
+
+        // 브라우저의 다음 렌더링 사이클에 렌더링을 예약
+        requestAnimationFrame(() => {
+          calendarApi.render()
+        })
+      }
+    }, 300)
+
+    // 세션 스토리지에 저장된 모달 상태가 있는지 확인하고 복원
+    const storedModalState = sessionStorage.getItem('modalState')
+    if (storedModalState) {
+      try {
+        const modalState = JSON.parse(storedModalState)
+
+        if (modalState.open && modalState.date) {
+          logger.info(CONTEXT, '저장된 모달 상태 복원:', modalState)
+
+          // 날짜 설정
+          calendarStore.setSelectedDate(modalState.date)
+
+          // 모달 열기
+          modalManager.openDayEventsModal(modalState.date)
+
+          // 사용 후 삭제
+          sessionStorage.removeItem('modalState')
+        }
+      } catch (error) {
+        logger.error(CONTEXT, '모달 상태 복원 중 오류 발생:', error)
       }
     }
-    
+
     // 캘린더 새로고침 이벤트 리스너 추가
     window.addEventListener('calendar-needs-refresh', handleCalendarRefresh)
-    
+
+    // 출산 예정일 체크
+    await calendarStore.checkDueDate()
   } catch (error) {
     logger.error(CONTEXT, '캘린더 마운트 중 오류 발생:', error)
     handleError(error, CONTEXT)
@@ -358,15 +436,15 @@ const handleLLMSummaryDeleted = (event) => {
 onUnmounted(() => {
   try {
     document.removeEventListener('llm-summary-deleted', handleLLMSummaryDeleted)
-    
+
     // 모달 상태 정리
     sessionStorage.removeItem('modalState')
-    
+
     logger.info(CONTEXT, '캘린더 컴포넌트 언마운트: 이벤트 리스너 및 상태 정리 완료')
   } catch (error) {
     logger.error(CONTEXT, '캘린더 언마운트 중 오류 발생:', error)
   }
-  
+
   // 캘린더 새로고침 이벤트 리스너 제거
   window.removeEventListener('calendar-needs-refresh', handleCalendarRefresh)
 })
@@ -388,7 +466,7 @@ const handleEventSave = async (eventData) => {
     console.log('일정 저장 시작:', eventData)
     // 입력받은 날짜를 YYYY-MM-DD 형식으로 정규화
     eventData.event_day = normalizeDate(eventData.event_day)
-    
+
     // 반복 일정 여부 확인
     if (eventData.recurring && eventData.recurring !== 'none') {
       console.log('반복 일정 감지:', eventData.recurring)
@@ -402,15 +480,7 @@ const handleEventSave = async (eventData) => {
       showEventModal.value = false
 
       // 캘린더 새로고침
-      if (calendarRef.value) {
-        const calendarApi = calendarRef.value.getApi()
-        // 이벤트를 다시 가져오고 즉시 렌더링
-        await calendarApi.refetchEvents()
-        requestAnimationFrame(() => {
-          calendarApi.render()
-          console.log('캘린더 렌더링 완료')
-        })
-      }
+      await loadMonthEvents()
     } else {
       console.error('일정 저장 실패: savedEvent가 없음')
       alert('일정 저장에 실패했습니다. 다시 시도해주세요.')
@@ -457,14 +527,7 @@ const handleEventDelete = async (eventId, isRecurring, deleteOptions = {}) => {
       modalManager.closeEventDetailModal()
 
       // 캘린더 새로고침
-      if (calendarRef.value) {
-        const calendarApi = calendarRef.value.getApi()
-        await calendarApi.refetchEvents()
-        requestAnimationFrame(() => {
-          calendarApi.render()
-          console.log('캘린더 렌더링 완료')
-        })
-      }
+      await loadMonthEvents()
     }
   } catch (error) {
     console.error('일정 삭제 중 오류:', error)
@@ -477,7 +540,7 @@ const handleDateSelect = ({ year, month }) => {
   currentYear.value = year
   currentMonth.value = month
   calendarStore.updateCurrentYearMonth(year, month)
-  
+
   if (calendarRef.value) {
     const calendarApi = calendarRef.value.getApi()
     calendarApi.gotoDate(`${year}-${String(month).padStart(2, '0')}-01`)
@@ -488,88 +551,43 @@ const handleDateSelect = ({ year, month }) => {
 // 추가: LLM 요약 및 태교일기 데이터 변경 시 캘린더를 재렌더링하여 날짜 옆 표시를 실시간 업데이트
 watch(() => calendarStore.llmSummaries, () => {
   if (calendarRef.value) {
-    const calendarApi = calendarRef.value.getApi()
-    calendarApi.render()
-    console.log('LLM 요약 변경 감지 - 캘린더 재렌더링')
+    // 전체 재렌더링 대신 날짜 표시만 업데이트
+    requestAnimationFrame(() => {
+      const calendarApi = calendarRef.value.getApi()
+      // 기존 이벤트 유지하면서 UI만 업데이트
+      calendarApi.updateSize()
+      console.log('LLM 요약 변경 감지 - 날짜 표시만 업데이트')
+    })
   }
 }, { deep: true })
 
 watch(() => calendarStore.babyDiaries, () => {
   if (calendarRef.value) {
-    const calendarApi = calendarRef.value.getApi()
-    calendarApi.render()
-    console.log('태교일기 변경 감지 - 캘린더 재렌더링')
+    // 전체 재렌더링 대신 날짜 표시만 업데이트
+    requestAnimationFrame(() => {
+      const calendarApi = calendarRef.value.getApi()
+      // 기존 이벤트 유지하면서 UI만 업데이트
+      calendarApi.updateSize()
+      console.log('태교일기 변경 감지 - 날짜 표시 업데이트')
+    })
   }
 }, { deep: true })
 
-// 캘린더 새로고침 핸들러
-const handleCalendarRefresh = async (event) => {
-  logger.info(CONTEXT, '캘린더 새로고침 이벤트 감지:', event.detail)
-  
-  if (!calendarRef.value) {
-    logger.warn(CONTEXT, '캘린더 참조가 없어 새로고침을 수행할 수 없습니다')
-    return
-  }
-  
+// handleCalendarRefresh 함수 수정
+const handleCalendarRefresh = async () => {
   try {
-    const calendarApi = calendarRef.value.getApi()
-    
-    // 1단계: 먼저 모든 이벤트 제거
-    logger.info(CONTEXT, '기존 이벤트 모두 제거 중...')
-    calendarApi.removeAllEvents()
-    
-    // 2단계: 서버에서 최신 이벤트 데이터 로드
-    logger.info(CONTEXT, '서버에서 최신 이벤트 데이터 로드 중...')
-    const timestamp = new Date().getTime() // 캐시 방지
-    await calendarStore.fetchEvents()
-    
-    // 3단계: 캘린더 API를 통해 이벤트 새로고침
-    logger.info(CONTEXT, '캘린더 API 새로고침 중...')
-    await calendarApi.refetchEvents()
-    
-    // 4단계: 캘린더 다시 렌더링 (첫 번째 렌더링)
-    logger.info(CONTEXT, '캘린더 첫 번째 렌더링 중...')
-    calendarApi.render()
-    
-    // 5단계: 모든 이벤트가 제대로 표시되었는지 확인
-    const calendarEvents = calendarApi.getEvents()
-    logger.info(CONTEXT, `캘린더 API 이벤트 개수: ${calendarEvents.length}, 스토어 이벤트 개수: ${calendarStore.events.length}`)
-    
-    // 이벤트 개수가 불일치하면 강제로 모든 이벤트를 다시 추가
-    if (calendarEvents.length !== calendarStore.events.length) {
-      logger.warn(CONTEXT, '이벤트 개수 불일치 감지. 모든 이벤트 강제 추가 중...')
-      
-      // 기존 이벤트 다시 제거
-      calendarApi.removeAllEvents()
-      
-      // 스토어에서 직접 이벤트 추가
-      calendarStore.events.forEach(event => {
-        calendarApi.addEvent({
-          id: event.id,
-          title: event.title,
-          start: event.start,
-          allDay: event.allDay,
-          backgroundColor: event.backgroundColor,
-          borderColor: event.borderColor,
-          textColor: event.textColor
-        })
-      })
+    logger.info(CONTEXT, '캘린더 새로고침 이벤트 처리 시작')
+
+    if (!calendarRef.value) {
+      logger.warn(CONTEXT, '캘린더 참조가 없어 이벤트를 처리할 수 없음')
+      return
     }
-    
-    // 6단계: 추가 안정성을 위해 다음 렌더링 사이클에서도 한 번 더 렌더링
-    setTimeout(() => {
-      calendarApi.render()
-      logger.info(CONTEXT, '캘린더 최종 렌더링 완료')
-    }, 100)
-    
-    // 7단계: 최종 업데이트를 위해 requestAnimationFrame 사용
-    requestAnimationFrame(() => {
-      calendarApi.render()
-      logger.info(CONTEXT, '캘린더 새로고침 완료 (총 이벤트 수: ' + calendarStore.events.length + ')')
-    })
+
+    // 캘린더 새로고침 유틸리티 함수 직접 사용
+    await refreshCalendar(calendarRef.value.getApi(), loadMonthEvents)
   } catch (error) {
     logger.error(CONTEXT, '캘린더 새로고침 중 오류 발생:', error)
-    handleError(error, `${CONTEXT}.handleCalendarRefresh`)
+    handleError(error, CONTEXT)
   }
 }
 
@@ -578,54 +596,54 @@ const handleCalendarRefresh = async (event) => {
 <template>
   <div class="py-4 min-h-screen bg-yellow-200">
     <!-- 달 아이콘 박스 -->
-    <div 
-      class="bg-point py-0 flex justify-center items-center cursor-pointer" 
+    <div
+      class="bg-point py-0 flex justify-center items-center cursor-pointer"
       @click="handleGoToToday"
     >
       <div class="w-12 h-8">
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          viewBox="0 0 32 32" 
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 32 32"
           class="w-full h-full"
         >
           <!-- 달 모양 -->
-          <path 
-            d="M20 4C13 4 8 9 8 16C8 22 13 28 20 28C23 28 25.5 27 27.5 25.5C23 26.5 18 24 16 20C14 16 15 10 19 7C20.5 5.5 22.5 4.5 25 4.5C23.5 4 21.5 4 20 4Z" 
+          <path
+            d="M20 4C13 4 8 9 8 16C8 22 13 28 20 28C23 28 25.5 27 27.5 25.5C23 26.5 18 24 16 20C14 16 15 10 19 7C20.5 5.5 22.5 4.5 25 4.5C23.5 4 21.5 4 20 4Z"
             fill="#353535"
           />
           <!-- 별 1 -->
-          <circle 
-            cx="30" 
-            cy="6" 
-            r="1.2" 
+          <circle
+            cx="30"
+            cy="6"
+            r="1.2"
             fill="#353535"
           />
           <!-- 별 2 -->
-          <circle 
-            cx="25" 
-            cy="15" 
-            r="1.5" 
+          <circle
+            cx="25"
+            cy="15"
+            r="1.5"
             fill="#353535"
           />
           <!-- 별 3 -->
-          <circle 
-            cx="32" 
-            cy="22" 
-            r="2" 
+          <circle
+            cx="32"
+            cy="22"
+            r="2"
             fill="#353535"
           />
           <!-- 별 4 -->
-          <circle 
-            cx="3" 
-            cy="10" 
-            r="2" 
+          <circle
+            cx="3"
+            cy="10"
+            r="2"
             fill="#353535"
           />
           <!-- 별 5 -->
-          <circle 
-            cx="7" 
-            cy="25" 
-            r="1.2" 
+          <circle
+            cx="7"
+            cy="25"
+            r="1.2"
             fill="#353535"
           />
         </svg>
@@ -652,6 +670,57 @@ const handleCalendarRefresh = async (event) => {
         >
           {{ day }}
         </span>
+      </div>
+    </div>
+
+    <!-- 출산 예정일 이후 오버레이 -->
+    <div v-if="calendarStore.isAfterDueDate && showCongratulation && calendarStore.isPregnant" class="after-due-date-overlay">
+      <div class="bg-white rounded-lg p-8 shadow-lg relative w-[90%] max-w-4xl flex flex-col items-center justify-center">
+        <!-- X 버튼 -->
+        <button
+          class="absolute top-2 right-2 z-8 bg-red-300 text-white rounded-full p-0.5 hover:bg-red-400 transition-colors"
+          @click="closeCongratulation"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+
+        <!-- 축하 이미지 컨테이너 -->
+        <div class="w-full h-full flex items-center justify-center overflow-hidden">
+          <img
+            src="/src/assets/images/Congratulation.png"
+            alt="출산 예정일 이후"
+            class="after-due-date-image"
+          >
+        </div>
+
+        <!-- 저장하기 버튼 -->
+        <button
+          class="mt-4 px-5 py-1 bg-red-300 text-white rounded-lg hover:bg-red-400 transition-colors font-bold text-l"
+          @click="saveCongratulation"
+        >
+          저장하기
+        </button>
+
+        <!-- 다시 보지 않기 버튼 -->
+        <button
+          class="mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          @click="neverShowAgain"
+        >
+          다시 보지 않기
+        </button>
       </div>
     </div>
 
@@ -806,643 +875,15 @@ const handleCalendarRefresh = async (event) => {
 </template>
 
 <style>
-/* 색상 변수 */
-:root {
-  --color-base: #ffed90;
-  --color-white: #ffffff;
-  --color-dark-gray: #353535;
-  --color-ivory: #fffae0;
-  --color-point: #ffd600;
-}
-
-/* 캘린더 컨테이너 스타일 */
-.calendar-container {
-  flex: 1;
-  background-color: var(--color-ivory);
-  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
-  padding-bottom: 0;
-  position: relative;
-  z-index: 0;
-  min-height: calc(100vh - 180px);
-  max-height: calc(100vh - 120px);
-  margin-bottom: 0;
-  overflow: hidden;
-}
-
-/* 요일 표시 영역 */
-.calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  width: 100%;
-  max-width: 100%;
-  text-align: center;
-  padding: 0 0.5rem;
-}
-
-.weekday-label {
-  width: 100%;
-  text-align: center;
-}
-
-/* FullCalendar 기본 스타일 */
-.fc {
-  font-family: "Noto Sans KR", "Roboto", sans-serif;
-  border: none;
-  background-color: transparent;
-  width: 100%;
-  height: 100%;
-  text-align: left;
-}
-
-/* 요일 헤더 영역 숨기기 */
-.fc-col-header {
-  height: 0;
-  line-height: 0;
-  visibility: hidden;
-  display: none;
-  overflow: hidden;
-  padding: 0;
-  margin: 0;
-}
-
-.fc .fc-col-header-cell-cushion {
-  display: none;
-}
-
-.fc .fc-col-header-cell {
-  height: 0;
-  padding: 0;
-  border: none;
-}
-
-/* 날짜 셀 스타일 */
-.fc-daygrid-day {
-  border: 1px solid rgba(181, 179, 179, 0.5);
-  background-color: transparent;
-  cursor: pointer;
-  position: relative;
-  min-height: 120px;
-  height: auto;
-  text-align: left;
-}
-
-.fc-daygrid-day-frame {
-  padding-top: 30px;
-  min-height: 120px;
-  height: 100%;
-  background-color: rgba(255, 255, 255, 0.6);
-}
-
-/* 토요일과 일요일 칸 스타일 */
-.fc-day-sat .fc-daygrid-day-frame,
-.fc-day-sun .fc-daygrid-day-frame {
-  background-color: rgba(255, 255, 255, 0);
-}
-
-/* 테이블 보더 스타일 */
-.fc-theme-standard td {
-  border: 1px solid rgba(181, 179, 179, 0.5);
-}
-
-.fc-theme-standard th {
-  border: 1px solid rgba(181, 179, 179, 0.3);
-}
-
-.fc-theme-standard .fc-scrollgrid {
-  border: 1px solid rgba(181, 179, 179, 0.3);
-}
-
-/* 마지막 주의 선도 유지 */
-.fc .fc-scrollgrid-section:last-child > tr > td {
-  border-bottom: 1px solid rgba(181, 179, 179, 0.3)
-}
-
-/* 날짜 상단 영역 스타일 */
-.fc .fc-daygrid-day-top {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: flex-start;
-  height: 24px;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-/* 이 스타일도 추가 */
-div.fc-daygrid-day-top > a.fc-daygrid-day-number {
-  left: 5px;
-  text-align: left;
-  position: absolute;
-}
-
-/* 날짜 숫자에 대한 더 구체적인 선택자 */
-.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
-.fc .fc-daygrid-day .fc-daygrid-day-number {
-  float: left;
-  padding-left: 2px;
-  padding-right: 0;
-  text-align: left;
-  width: auto;
-  position: static;
-}
-
-/* 날짜 숫자 스타일 */
-.fc .fc-daygrid-day-number {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  margin: 0;
-  padding: 2px;
-  text-align: left;
-  cursor: pointer;
-  color: var(--color-dark-gray);
-  font-weight: 400;
-  font-size: 0.85rem;
-  position: absolute;
-  left: 5px;
-  top: 2px;
-}
-
-/* 오늘 날짜 스타일 */
-.fc-day-today {
-  background-color: #ffed90;
-}
-
-.fc-day-today .fc-daygrid-day-frame {
-  background-color: #fff5c2;
-}
-
-.fc-day-today .fc-daygrid-day-number {
-  color: var(--color-dark-gray);
-  font-weight: 600;
-}
-
-/* LLM 요약 표시 스타일 */
-.llm-indicator {
-  font-size: 2rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #3986ce;
-  width: 20px;
-  height: 20px;
-  position: absolute;
-  left: 17px;
-  top: 5px;
-}
-
-/* 아기 일기 표시 스타일 */
-.baby-diary-indicator {
-  font-size: 0.8rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  color: #f05454;
-  width: 20px;
-  height: 18px;
-  position: absolute;
-  left: 27px;
-  top: 4.5px;
-}
-
-/* 이벤트 스타일 */
-.fc-daygrid-event {
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  margin-top: 2px;
-  margin-bottom: 2px;
-  margin-left: auto;
-  margin-right: auto;
-  width: 90%;
-  display: block;
-  text-align: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  height: auto;
-  min-height: 22px;
-  background-color: #ffd600;
-  color: #353535;
-  font-weight: 500;
-  border: none;
-}
-
-/* 이벤트 메인 콘텐츠 */
-.fc-event-main {
-  padding: 1px 3px;
-  display: block;
-  text-align: center;
-  color: #353535;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/* 이벤트 컨테이너 */
-.fc-daygrid-event-harness {
-  margin: 1px 0;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  height: auto;
-}
-
-/* 날짜 바디 영역 */
-.fc-daygrid-day-events {
-  padding: 0 2px;
-  margin-top: 2px;
-  flex-grow: 1;
-  width: 100%;
-  min-height: 25px;
-}
-
-/* 종일 이벤트 */
-.fc-daygrid-block-event {
-  margin: 2px 0;
-  width: 90%;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* dot 이벤트 스타일 */
-.fc-daygrid-dot-event {
-  display: block;
-  padding: 2px 6px;
-  background-color: #ffd600;
-  border-color: #ffd600;
-}
-
-.fc-daygrid-dot-event .fc-event-title {
-  font-weight: 500;
-  flex-grow: 1;
-  display: block;
-  color: #353535;
-}
-
-/* 이벤트 "더보기" 링크 */
-.fc-daygrid-more-link {
-  font-size: 0.8rem;
-  color: #3182ce;
-  font-weight: 500;
-  margin: 0 auto;
-  display: block;
-  text-align: center;
-}
-
-/* 커스텀 이벤트 콘텐츠 */
-.custom-event-content {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #353535;
-  text-align: center;
-  width: 100%;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.2;
-}
-
-/* 다른 월의 날짜 스타일 */
-.fc-day-other {
-  opacity: 0.4;
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-/* 반응형 설정 */
-@media screen and (max-width: 768px) {
-  .fc-daygrid-day {
-    min-height: 80px;
-  }
-  
-  .fc-daygrid-day-frame {
-    padding-top: 25px;
-    min-height: 80px;
-  }
-  
-  .fc-daygrid-day-top {
-    padding: 2px 0 0 2px;
-  }
-  
-  .fc-daygrid-day-number {
-    font-size: 0.75rem;
-    margin-left: 3px;
-  }
-}
-
-@media screen and (min-width: 1200px) {
-  .fc-daygrid-day {
-    min-height: 150px;
-  }
-  
-  .fc-daygrid-day-frame {
-    min-height: 150px;
-  }
-  
-  .fc-daygrid-day-number {
-    margin-left: 8px;
-  }
-}
-
-/* 하단 네비게이션 바 스타일 */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 30;
-  height: 64px;
-  background-color: white;
-  padding-bottom: 0px;
-}
-
-/* 플로팅 액션 버튼 스타일 */
-.floating-action-button {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  z-index: 40;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: var(--color-point);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.floating-action-button:hover {
-  transform: scale(1.05);
-}
-
-.floating-action-button::before {
-  content: '+';
-  font-size: 32px;
-  color: var(--color-dark-gray);
-  font-weight: bold;
-  line-height: 1;
-}
-
-/* 모달 z-index 관리 */
-.day-events-modal {
-  z-index: 50;
-}
-
-.detail-modal {
-  z-index: 60;
-}
-
-/* 모달 스타일 */
-.modal-container {
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
-}
-
-.modal-content {
-  background-color: var(--color-white);
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.event-detail-modal .modal-content {
-  background-color: #ffffff;
-  border: 3px solid var(--color-point);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-.event-detail-header {
-  background-color: var(--color-point);
-  color: #000000;
-  padding: 14px 18px;
-  font-weight: 700;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
-  font-size: 1.1rem;
-}
-
-.event-detail-body {
-  padding: 18px;
-  background-color: #fffef8;
-}
-
-/* 일정 상세 모달 내부 요소 */
-.event-detail-field {
-  margin-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  padding-bottom: 12px;
-}
-
-.event-detail-label {
-  font-weight: 600;
-  color: #555555;
-  margin-bottom: 4px;
-}
-
-.event-detail-value {
-  color: #000000;
-  font-size: 1.05rem;
-}
-
-/* 모달 버튼 스타일 */
-.event-detail-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 2px solid rgba(0, 0, 0, 0.1);
-}
-
-.event-detail-button {
-  padding: 8px 18px;
-  border-radius: 8px;
-  font-weight: 600;
-  margin-left: 10px;
-}
-
-.event-detail-delete {
-  background-color: #ff6b6b;
-  color: white;
-}
-
-.event-detail-close {
-  background-color: #e9e9e9;
-  color: #353535;
-}
-
-.day-events-modal .modal-content {
-  max-height: 25vh;
-  max-width: 50%;
-  width: 360px;
-  overflow-y: auto;
-  padding-bottom: 16px;
-  margin: 20px auto;
-  position: relative;
-}
-
-.day-events-modal .modal-body {
-  padding: 12px;
-  max-height: calc(25vh - 100px);
-  overflow-y: auto;
-}
-
-.day-events-modal textarea {
-  min-height: 30px;
-  max-height: 80px;
-  resize: vertical;
-  padding: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.day-events-modal .modal-footer {
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: var(--color-white);
-  padding: 8px 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  z-index: 1;
-  margin-top: 8px;
-}
-
-.day-events-modal .save-button {
-  width: 100%;
-  padding: 10px;
-  background-color: var(--color-point);
-  color: var(--color-dark-gray);
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  margin-bottom: 4px;
-}
-
-.day-events-modal .save-button:hover {
-  background-color: #ffed90;
-}
-
-/* 일정 상세 모달 스타일 */
-.event-detail-modal {
-  z-index: 70;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.fab-container {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  z-index: 1000;
-}
-
-.fab-button {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: var(--color-point);
-  color: var(--color-dark-gray);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s;
-  border: none;
-  cursor: pointer;
-}
-
-.fab-button:hover {
-  transform: scale(1.1);
-}
-
-.fab-button:disabled:hover {
-  transform: scale(1);
-}
-
-.fab-button:disabled {
-  pointer-events: none;
-}
-
-.fab-menu {
-  position: absolute;
-  bottom: 70px;
-  right: 0;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 160px;
-}
-
-.fab-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  color: var(--color-dark-gray);
-  font-weight: 500;
-  transition: background-color 0.2s;
-  border: none;
-  background: none;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-}
-
-.fab-menu-item:hover {
-  background-color: var(--color-ivory);
-}
-
-.fab-menu-item svg {
-  color: var(--color-point);
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 45;
-}
+/* 스타일이 calendar.css로 통합되었습니다 */
 
-/* 날짜 정렬 오버라이드 */
-body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top {
-  display: flex;
-  flex-direction: row;
+/* 일정 앞쪽 마진 줄이기 */
+.fc-event, .fc-daygrid-event {
+  margin-left: 0 !important;
 }
 
-body .fc .fc-daygrid-body .fc-daygrid-day .fc-daygrid-day-top a.fc-daygrid-day-number {
-  position: absolute;
-  left: 5px;
-  top: 2px;
-  text-align: left;
+/* 멀티데이 이벤트에 대한 스타일 조정 */
+.fc-daygrid-block-event .fc-event-main {
+  padding-left: 2px !important;
 }
 </style>

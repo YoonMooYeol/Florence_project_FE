@@ -66,7 +66,7 @@ onMounted(() => {
       // 원래 axios 인스턴스에 직접 헤더 설정
       axios.defaults.headers.common.Authorization = `Bearer ${token}`
       // 임시 API 호출로 토큰 검증
-      axios.get(`${apiBaseUrl}/accounts/users/me/`, {
+      axios.get(`${apiBaseUrl}accounts/users/me/`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

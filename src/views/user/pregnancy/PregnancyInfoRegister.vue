@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { calculateWeekFromDueDate, calculateDueDateFromWeek, calculateFromLastPeriod } from '@/utils/dateUtils'
@@ -87,6 +87,12 @@ watch(() => pregnancyInfo.value.lastPeriodDate, (newDate) => {
   }
 })
 
+// 게산된 속성을 추가하여 오늘 날짜를 YYYY-MM-DD 형식으로 반환
+const todayDate = computed(() => {
+  const today = new Date()
+  return today.toISOString().split('T')[0]
+})
+
 // 임신 정보 저장 함수
 const savePregnancyInfo = async () => {
   // 유효성 검사
@@ -149,7 +155,7 @@ const savePregnancyInfo = async () => {
     alert('임신 정보가 성공적으로 저장되었습니다.')
 
     // 홈 페이지로 이동
-    router.push('/calendar')
+    router.push('/onboarding')
   } catch (error) {
     console.error('임신 정보 저장 오류:', error)
     errorMessage.value = error.response?.data?.detail || '임신 정보 저장 중 오류가 발생했습니다.'
@@ -162,7 +168,7 @@ const savePregnancyInfo = async () => {
 // 건너뛰기 (나중에 입력)
 const skipForNow = () => {
   if (confirm('임신 정보 입력을 건너뛰시겠습니까? 나중에 마이페이지에서 입력할 수 있습니다.')) {
-    router.push('/calendar')
+    router.push('/onboarding')
   }
 }
 
@@ -364,6 +370,7 @@ const showHighRiskInfoModal = ref(false)
                 v-model="pregnancyInfo.lastPeriodDate"
                 type="date"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+                :max="todayDate"
               >
               <p class="text-xs text-gray-500 mt-1">
                 마지막 생리 시작일을 기준으로 임신 주차와 출산 예정일을 계산합니다.

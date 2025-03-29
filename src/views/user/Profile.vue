@@ -44,7 +44,6 @@ const fetchUserInfo = async () => {
 
     // API를 통해 본인 정보 조회
     const response = await api.get('/accounts/users/me/')
-    console.log('사용자 정보 응답:', response.data)
 
     // 사용자 기본 정보 설정
     userInfo.value.name = response.data.name || '사용자'
@@ -154,12 +153,12 @@ const getJosa = (word, josa1, josa2) => {
 
 // 임신 정보 수정 페이지로 이동
 const goToPregnancyEdit = () => {
-  if (userInfo.value.isPregnant) {
+  // 임신 정보가 없거나 비활성화된 경우 등록 페이지로 이동
+  if (!userInfo.value.isPregnant || !userInfo.value.isActive) {
+    router.push('/pregnancy-info-register')
+  } else {
     // 임신 정보가 있는 경우 수정 페이지로 이동
     router.push('/pregnancy-info-edit')
-  } else {
-    // 임신 정보가 없는 경우 등록 페이지로 이동
-    router.push('/pregnancy-info-register')
   }
 }
 
@@ -170,14 +169,18 @@ const handleLogout = async () => {
     await authStore.logout()
     
     // 로컬 스토리지의 모든 관련 데이터 삭제
-    localStorage.clear() // 전체 로컬 스토리지 데이터 삭제
+    // localStorage.clear() // 전체 로컬 스토리지 데이터 삭제
     
     // 또는 개별 항목 명시적 삭제
-    // localStorage.removeItem('userId')
-    // localStorage.removeItem('userName')
-    // localStorage.removeItem('userEmail')
-    // localStorage.removeItem('isPregnant')
-    // localStorage.removeItem('rememberMe')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('userName')
+    localStorage.removeItem('userEmail')
+    localStorage.removeItem('isPregnant')
+    localStorage.removeItem('rememberMe')
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('rememberMe')
+    localStorage.removeItem('naverLoginState')
     
     // 세션 스토리지도 삭제
     sessionStorage.clear()

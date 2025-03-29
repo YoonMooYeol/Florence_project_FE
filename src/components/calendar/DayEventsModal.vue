@@ -33,18 +33,33 @@ const props = defineProps({
 // 필요한 상태 변수들
 const isClickable = ref(false)
 const diaryContent = ref('')
-const activeTab = ref('schedule') // 초기 활성 탭을 '일정' 탭으로 되돌림
+const activeTab = ref('schedule')
 const showDiaryModal = ref(false)
 const showEventModal = ref(false)
 const showEventDetailModal = ref(false)
 const selectedEvent = ref(null)
+const showBirthdayPhoto = ref(true) // 출산예정일 다음날 사진 표시 여부
+const showPhotoModal = ref(false)
+const selectedPhotoForView = ref(null)
+
+// 큰 이미지를 보는 모달 열기
+function openPhotoModal(photo) {
+  selectedPhotoForView.value = photo
+  showPhotoModal.value = true
+}
+
+// 모달 닫기
+function closePhotoModal() {
+  showPhotoModal.value = false
+  selectedPhotoForView.value = null
+}
 
 // 모달이 열렸을 때 props 변화 감지 및 처리
 watch(() => props.show, async (newValue) => {
   if (newValue) {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
     // 모달이 열리면 항상 '일정' 탭으로 설정
-    activeTab.value = 'schedule'
+    // activeTab.value = 'schedule'
     
     // 모달이 열리면 클릭 방지 설정 (300ms 동안)
     isClickable.value = false
@@ -124,18 +139,38 @@ const viewEvent = async (event) => {
     // 원본 이벤트 객체와 서버에서 가져온 데이터 병합
     let mergedEvent = { ...event, ...updatedEvent }
     
+    // recurrence_rules에서 반복 패턴 확인 및 적용
+    if (mergedEvent.recurrence_rules && mergedEvent.recurrence_rules.pattern) {
+      console.log('서버에서 받은 반복 패턴:', mergedEvent.recurrence_rules.pattern)
+      mergedEvent.recurring = mergedEvent.recurrence_rules.pattern
+      mergedEvent.is_recurring = true
+    }
     // 제목이 [매일], [매주], [매월], [매년]으로 시작하는 경우 반복 일정으로 처리
-    if (mergedEvent.title && (
+    else if (mergedEvent.title && (
       mergedEvent.title.startsWith('[매일]') || 
       mergedEvent.title.startsWith('[매주]') || 
       mergedEvent.title.startsWith('[매월]') || 
       mergedEvent.title.startsWith('[매년]')
     )) {
       console.log('제목 패턴으로 반복 일정 판단:', mergedEvent.title)
+      
+      // 제목 패턴에 따라 반복 주기 설정
+      let recurringPattern = 'weekly'; // 기본값
+      
+      if (mergedEvent.title.startsWith('[매일]')) {
+        recurringPattern = 'daily';
+      } else if (mergedEvent.title.startsWith('[매주]')) {
+        recurringPattern = 'weekly';
+      } else if (mergedEvent.title.startsWith('[매월]')) {
+        recurringPattern = 'monthly';
+      } else if (mergedEvent.title.startsWith('[매년]')) {
+        recurringPattern = 'yearly';
+      }
+      
       mergedEvent = {
         ...mergedEvent,
         is_recurring: true,
-        recurring: 'weekly' // 기본값
+        recurring: recurringPattern
       }
     }
     
@@ -145,14 +180,17 @@ const viewEvent = async (event) => {
     
     // 업데이트된 이벤트 정보로 selectedEvent 설정
     selectedEvent.value = mergedEvent
+    
+    // 이벤트 상세 모달 대신 바로 수정 모달 열기
+    showEventModal.value = true
   } catch (error) {
     console.error('이벤트 데이터 가져오기 실패:', error)
     // 오류 발생 시 원본 이벤트 데이터 사용
     selectedEvent.value = event
+    
+    // 이벤트 상세 모달 대신 바로 수정 모달 열기
+    showEventModal.value = true
   }
-  
-  // 이벤트 상세 모달 열기
-  showEventDetailModal.value = true
 }
 
 // 반복 주기 텍스트 변환 함수
@@ -176,8 +214,24 @@ const formatEventTime = (event) => {
   if (!event) return '시간 정보 없음'
 
   try {
-    if (event.allDay) return '종일'
+    if (event.allDay) return '하루 종일'
 
+    // 새로운 모델 구조 (start_time/end_time)을 먼저 확인
+    if (event.start_time) {
+      // start_time이 있는 경우
+      const startTime = event.start_time.substring(0, 5) // HH:MM 형식만 추출
+      
+      if (event.end_time) {
+        // end_time도 있는 경우
+        const endTime = event.end_time.substring(0, 5)
+        return `${startTime} ~ ${endTime}${event.recurring && event.recurring !== 'none' ? ' (' + getRecurringText(event.recurring) + ')' : ''}`
+      } else {
+        // start_time만 있는 경우
+        return `${startTime}${event.recurring && event.recurring !== 'none' ? ' (' + getRecurringText(event.recurring) + ')' : ''}`
+      }
+    }
+    
+    // 기존 모델 구조 (start/end ISO 문자열)
     if (event.start && event.end) {
       return `${formatTime(event.start)} ~ ${formatTime(event.end)}${event.recurring && event.recurring !== 'none' ? ' (' + getRecurringText(event.recurring) + ')' : ''}`
     } else if (event.start) {
@@ -186,7 +240,7 @@ const formatEventTime = (event) => {
       return '시간 정보 없음'
     }
   } catch (error) {
-    console.error('이벤트 시간 형식 변환 중 오류:', error)
+    console.error('이벤트 시간 형식 변환 중 오류:', error, event)
     return '시간 정보 오류'
   }
 }
@@ -343,7 +397,6 @@ const canUploadMorePhotos = computed(() => {
 
 // 파일 선택 이벤트 핸들러
 const handleFileSelect = async (event) => {
-  event.preventDefault()
   console.log('파일 선택 이벤트 발생')
 
   // FileList 객체 로깅
@@ -481,7 +534,7 @@ const uploadPhotoToDiary = async (diaryId) => {
     }))
     
     // 페이지 새로고침
-    window.location.reload()
+    // window.location.reload()
   } catch (error) {
     console.error('사진 업로드 실패:', error.response || error)
 
@@ -556,7 +609,7 @@ const updatePhoto = async (photoId, file) => {
     }))
     
     // 페이지 새로고침
-    window.location.reload()
+    // window.location.reload()
   } catch (error) {
     console.error('사진 업데이트 실패:', error)
     let errorMessage = '사진 업데이트에 실패했습니다.'
@@ -599,7 +652,7 @@ const deletePhoto = async (photoId) => {
     }))
     
     // 페이지 새로고침
-    window.location.reload()
+    // window.location.reload()
     } catch (error) {
     console.error('사진 삭제 실패:', error)
     let errorMessage = '사진 삭제에 실패했습니다.'
@@ -666,42 +719,47 @@ watch(diaryContent, () => {
   }
 })
 
-// 썸네일 URL로 변환하는 함수 개선
+// 썸네일 URL로 변환하는 함수
 const getThumbnailUrl = (imageUrl) => {
-  // 이미지 URL이 없으면 기본 이미지 경로 반환
-  if (!imageUrl) return '/images/photo_placeholder.png'
-  
-  // 이미 캐시 방지 파라미터가 있는지 확인
+  // 1) 기본 placeholder
+  if (!imageUrl) {
+    return '/images/photo_placeholder.png'
+  }
+
+  // 2) 캐시 파라미터가 이미 붙어 있는지 확인
   if (imageUrl.includes('_cache=')) {
     return imageUrl
   }
 
-  // 이미지 URL 캐시 방지 및 무작위 쿼리 파라미터 추가
-  const randomParam = new Date().getTime()
+  // 3) env에서 미디어용 주소 불러오기 (뒤에 / 있으면 제거)
+  const baseMediaUrl = (import.meta.env.VITE_MEDIA_BASE_URL || '').replace(/\/$/, '')
 
-  // 이미지 URL이 상대 경로인 경우 절대 경로로 변환
+  // 4) 만약 imageUrl이 절대 경로(http로 시작)라면 그대로 사용,
+  //    아니라면 baseMediaUrl과 합쳐줌 (예: /media/... => http://127.0.0.1:8000/media/...)
   let fullUrl = imageUrl
-  // localhost 또는 127.0.0.1 포함 체크
-  if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/media')) {
-    fullUrl = window.location.origin + imageUrl
+  if (!imageUrl.startsWith('http')) {
+    // /로 시작하지 않으면 앞에 / 붙여서 "/media/..." 형태 만들기
+    if (!imageUrl.startsWith('/')) {
+      fullUrl = '/' + imageUrl
+    }
+    fullUrl = baseMediaUrl + fullUrl
   }
-  
-  // 썸네일 경로가 포함된 경우 원본 이미지 경로로 변환
+
+  // 5) _thumbnail → 원본으로 교체 (사용 중이라면 필요)
   if (fullUrl.includes('_thumbnail')) {
     fullUrl = fullUrl.replace('_thumbnail', '')
   }
 
-  // URL에 이미 쿼리 파라미터가 있는지 확인
+  // 6) 캐시 방지 파라미터 추가
+  const randomParam = Date.now()
   const separator = fullUrl.includes('?') ? '&' : '?'
-
-  // 캐시 방지를 위한 타임스탬프 추가
   return `${fullUrl}${separator}_cache=${randomParam}`
 }
 
 // 이미지 로드 오류 처리 함수 개선
 function handleImageError(event) {
-  // fallback 이미지 URL (실제 사용 중인 기본 이미지 경로로 수정하세요)
-  const fallback = '/assets/default-diary-thumbnail.png';
+  // fallback 이미지 URL (실제 사용 중인 기본 이미지 경로로 수정)
+  const fallback = '/src/assets/images/photo_placeholder.png';
   // 만약 이미 fallback 이미지가 설정되어 있다면 중복 처리하지 않음
   if (event.target.src === fallback) {
     console.log('이미 기본 이미지로 설정되어 있습니다.');
@@ -740,23 +798,8 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     // 서버에서 최신 이벤트 정보 가져오기
     console.log('서버에서 최신 이벤트 정보 확인 중...')
     const eventDetail = await calendarStore.fetchEventDetail(eventId)
-    
-    // 실제 반복 일정인지 확인 - 명시적으로 반복 속성이 있는 경우 또는 [매*] 패턴의 제목인 경우
-    const isActuallyRecurring = eventDetail && (
-      // 직접적인 반복 속성이 있는 경우
-      (eventDetail.recurring && eventDetail.recurring !== 'none') ||
-      eventDetail.is_recurring === true ||
-      (eventDetail.recurrence_pattern && eventDetail.recurrence_pattern !== 'none') ||
-      eventDetail.recurringEventId || 
-      eventDetail.parentId ||
-      // 제목이 [매일], [매주], [매월], [매년]으로 시작하는 경우
-      (eventDetail.title && (
-        eventDetail.title.startsWith('[매일]') || 
-        eventDetail.title.startsWith('[매주]') || 
-        eventDetail.title.startsWith('[매월]') || 
-        eventDetail.title.startsWith('[매년]')
-      ))
-    )
+    console.log('서버에서 최신 이벤트 정보 확인 결과:', eventDetail)
+    const isActuallyRecurring = eventDetail && eventDetail.recurrence_rules;
     
     // 클라이언트 상태와 서버 상태가 다를 때 처리 (반복 일정이지만 반복 일정으로 처리되지 않은 경우)
     if (isActuallyRecurring && !isRecurring) {
@@ -782,36 +825,23 @@ const handleDeleteEvent = async (eventId, isRecurring, deleteOptions) => {
     
     // 반복 일정 및 삭제 옵션에 따른 처리
     let success = false
+    let savedEvent = null
     
     if (isActuallyRecurring || isRecurring) {
       console.log('반복 일정 삭제:', deleteOptions?.option)
-      
-      if (deleteOptions?.option === 'all_future') {
-        if (!deleteOptions.untilDate) {
-          // 자동으로 현재 날짜를 untilDate로 설정
-          if (selectedEvent.value && selectedEvent.value.start) {
-            deleteOptions.untilDate = typeof selectedEvent.value.start === 'string' && selectedEvent.value.start.includes('T') 
-              ? selectedEvent.value.start.split('T')[0] 
-              : selectedEvent.value.start
             
-            console.log('이후 모든 일정 삭제: 자동으로 기준일 설정됨:', deleteOptions.untilDate)
-          } else {
-            alert('유지할 마지막 날짜를 선택해주세요.')
-            return
-          }
-        }
-        console.log('이후 모든 일정 삭제 시도 - 기준날짜:', deleteOptions.untilDate)
-        success = await calendarStore.deleteRecurringEventsUntil(eventId, deleteOptions.untilDate)
-      } else if (deleteOptions?.option === 'this_only') {
+      if (deleteOptions?.option === 'this_only') {
         console.log('이 일정만 삭제 시도')
-        success = await calendarStore.deleteRecurringEventThisOnly(eventId)
+        await calendarStore.deleteRecurringEventThisOnly(eventId)
+        success = true
+      } else if (deleteOptions?.option === 'this_and_future') {
+        console.log('이후 모든 일정 삭제 시도')
+        await calendarStore.deleteRecurringEventsThisAndFuture(eventId)
+        success = true
       } else if (deleteOptions?.option === 'all') {
         console.log('모든 반복 일정 삭제 시도')
-        success = await calendarStore.deleteRecurringEvents(eventId)
-      } else {
-        console.warn('알 수 없는 삭제 옵션:', deleteOptions?.option)
-        alert('삭제 옵션을 선택해주세요.')
-        return
+        await calendarStore.deleteRecurringEventsAll(eventId)
+        success = true
       }
     } else {
       // 일반 일정 삭제
@@ -892,7 +922,8 @@ const handleSaveEvent = async (eventData) => {
     // 시간 정보가 있는 경우 event_time 필드 추가
     const newEventData = {
       ...eventData,
-      event_time: eventData.startTime
+      event_time: eventData.startTime,
+      event_date: props.date // 선택한 날짜 추가
     }
 
     if (!eventData.allDay) {
@@ -906,31 +937,54 @@ const handleSaveEvent = async (eventData) => {
     console.log('반복 일정 여부:', newEventData.recurring && newEventData.recurring !== 'none')
     console.log('반복 일정 수정 옵션:', eventData.updateOption)
 
-    let savedEvent
-    if (eventData.id) {
-      // 기존 이벤트 수정
-      if (eventData.recurring && eventData.recurring !== 'none') {
-        // 반복 일정인 경우 특별한 API 사용
-        const updateOption = eventData.updateOption || 'this_and_future'
-        console.log(`반복 일정 수정 시도 - 옵션: ${updateOption}`)
-        savedEvent = await calendarStore.updateRecurringEvent(newEventData, updateOption)
-      } else {
-        // 일반 일정 수정
-        console.log('일반 일정 수정 시도')
-        savedEvent = await calendarStore.updateEvent(newEventData)
+    // 서버에서 최신 이벤트 정보 가져오기
+    console.log('서버에서 최신 이벤트 정보 확인 중...')
+    const eventDetail = await calendarStore.fetchEventDetail(eventData.id)
+    console.log('서버에서 최신 이벤트 정보 확인 결과:', eventDetail)
+    
+    // 반복 일정 여부 확인 - 여러 방법으로 체크
+    const isActuallyRecurring = (
+      (eventDetail && eventDetail.recurrence_rules) || // 서버 응답에 recurrence_rules가 있는 경우
+      (eventDetail && eventDetail.recurring && eventDetail.recurring !== 'none') || // recurring 속성이 있는 경우
+      (eventData.recurring && eventData.recurring !== 'none') || // 사용자 입력 폼에서 recurring 값이 설정된 경우
+      (eventData.title && (
+        eventData.title.startsWith('[매일]') || 
+        eventData.title.startsWith('[매주]') || 
+        eventData.title.startsWith('[매월]') || 
+        eventData.title.startsWith('[매년]')
+      )) // 제목에 반복 패턴이 있는 경우
+    );
+    
+    console.log('반복 일정 여부 확인 결과:', isActuallyRecurring);
+
+    // 반복 일정 및 삭제 옵션에 따른 처리
+    let success = false
+    let savedEvent = null
+    
+    if (isActuallyRecurring) {
+      console.log('반복 일정 수정:', eventData.updateOption)
+      
+      // 현재 선택된 날짜 설정 (event_date 파라미터로 사용)
+      newEventData.event_date = props.date;
+      
+      if (eventData.updateOption === 'this_only') {
+        console.log('이 일정만 수정 시도, 선택된 날짜:', props.date)
+        savedEvent = await calendarStore.updateRecurringEventThisOnly(newEventData)
+        success = true
+      } else if (eventData.updateOption === 'this_and_future') {
+        console.log('이후 모든 일정 수정 시도, 시작일:', props.date)
+        savedEvent = await calendarStore.updateRecurringEventsThisAndFuture(newEventData)
+        success = true
+      } else if (eventData.updateOption === 'all') {
+        console.log('모든 반복 일정 수정 시도')
+        savedEvent = await calendarStore.updateRecurringEventsAll(newEventData)
+        success = true
       }
     } else {
-      // 새 이벤트 추가
-      console.log('새 이벤트 추가 시도')
-      console.log('새 이벤트의 반복 설정:', newEventData.recurring)
-      savedEvent = await calendarStore.addEvent(newEventData)
-    }
-    
-    if (savedEvent) {
-      console.log('이벤트 저장 성공:', savedEvent)
-      console.log('저장된 이벤트의 반복 설정:', savedEvent.recurring, savedEvent.is_recurring)
-    } else {
-      console.warn('이벤트는 저장되었지만 반환된 데이터가 없습니다')
+      // 일반 일정 수정
+      console.log('단일 일정 수정 시도')
+      savedEvent = await calendarStore.updateEvent(newEventData)
+      success = !!savedEvent
     }
     
     // 모달 닫기
@@ -1000,10 +1054,10 @@ onMounted(async () => {
   console.log('DayEventsModal - 임신 상태(isPregnant):', calendarStore.isPregnant)
   console.log('DayEventsModal - 태명(babyNickname):', calendarStore.babyNickname)
   
-  // 태명이 없으면 '그리움'으로 설정 (앞서 null인 경우 store에서 '그리움'으로 설정된 경우가 많겠지만, 이중 확인)
+  // 태명이 없을 경우에만 기본값 설정
   if (!calendarStore.babyNickname) {
-    console.log('DayEventsModal - 태명이 없어 기본값 설정')
-    calendarStore.babyNickname = '그리움'
+    console.log('DayEventsModal - 태명이 설정되지 않아 기본값 사용')
+    calendarStore.babyNickname = '(태명)'
   }
   
   // 기본 탭을 일정으로 설정
@@ -1013,11 +1067,16 @@ onMounted(async () => {
 // 태명과 조사를 안전하게 표시하는 계산된 속성 추가
 const babyTabLabel = computed(() => {
   // 태명이 없거나 null인 경우 '(태명)'을 사용
-  const nickname = calendarStore.babyNickname || '그리움'
+  const nickname = calendarStore.babyNickname || '(태명)'
   const josa = calendarStore.getJosa(nickname, '과', '와')
   console.log('태명 탭 레이블 계산:', nickname, josa)
   return `${nickname}${josa}의 하루`
 })
+
+// 출산예정일 다음날 사진 닫기 함수
+const closeBirthdayPhoto = () => {
+  showBirthdayPhoto.value = false
+}
 </script>
 
 <template>
@@ -1052,25 +1111,25 @@ const babyTabLabel = computed(() => {
       </div>
 
       <!-- 탭 메뉴 -->
-      <div class="flex border-b border-gray-200">
+      <div class="flex border-b border-gray-300 bg-white">
         <button
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
-          :class="activeTab === 'schedule' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+          :class="activeTab === 'schedule' ? 'text-point border-b-2 border-point bg-gray-50 font-bold' : 'text-gray-500 hover:text-gray-700'"
           @click="activeTab = 'schedule'"
         >
           일정
         </button>
         <button
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
-          :class="activeTab === 'daily' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+          :class="activeTab === 'daily' ? 'text-point border-b-2 border-point bg-gray-50 font-bold' : 'text-gray-500 hover:text-gray-700'"
           @click="activeTab = 'daily'"
         >
           오늘의 하루
         </button>
         <button
-          v-if="calendarStore.pregnancyId"
+          v-if="calendarStore.isPregnant"
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
-          :class="activeTab === 'baby' ? 'text-point border-b-2 border-point' : 'text-gray-500 hover:text-gray-700'"
+          :class="activeTab === 'baby' ? 'text-point border-b-2 border-point bg-gray-50 font-bold' : 'text-gray-500 hover:text-gray-700'"
           data-tab="baby"
           @click="activeTab = 'baby'"
         >
@@ -1078,7 +1137,7 @@ const babyTabLabel = computed(() => {
         </button>
       </div>
 
-      <div class="h-96 p-6 bg-ivory overflow-y-auto">
+      <div class="h-96 p-6 bg-ivory overflow-y-auto relative">
         <!-- 일정 탭 -->
         <div
           v-if="activeTab === 'schedule'"
@@ -1116,12 +1175,16 @@ const babyTabLabel = computed(() => {
               등록된 일정이 없습니다.
             </p>
           </div>
-          <div class="flex justify-center">
+          
+          <!-- 일정 추가 플로팅 버튼 -->
+          <div class="absolute bottom-6 right-6">
             <button
-              class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+              class="w-14 h-14 rounded-full bg-point shadow-lg flex items-center justify-center hover:bg-yellow-500 transition-colors transform hover:scale-105 focus:outline-none"
               @click="addEvent"
             >
-              일정 추가
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-dark-gray" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
             </button>
           </div>
         </div>
@@ -1138,93 +1201,76 @@ const babyTabLabel = computed(() => {
         </div>
 
         <!-- 아기와의 하루 탭 -->
-        <div
-          v-if="activeTab === 'baby'"
-          class="space-y-4"
-        >
-          <div
-            v-if="babyDiary && babyDiary.id && babyDiary.content"
-            class="space-y-6"
-          >
-            <!-- 사진 갤러리 -->
+        <div v-if="activeTab === 'baby'" class="space-y-4">
+          <!-- 아래 하나의 섹션에서 사진 모두 관리 -->
+          <div v-if="babyDiary && babyDiary.id" class="space-y-6 relative">
+
+
+            <!-- 태교일기 사진 -->
             <div class="space-y-3">
-              <div class="flex justify-between items-center">
+              <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
                 <h4 class="text-sm font-medium text-gray-600">
                   태교일기 사진 ({{ currentPhotoCount }}/{{ MAX_PHOTOS }})
                 </h4>
                 <button
                   v-if="canUploadMorePhotos"
                   @click="fileInput.click()"
-                  class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs hover:bg-blue-600 transition-colors"
+                  class="w-8 h-8 rounded-full bg-[#A4E49B] text-dark-gray flex items-center justify-center shadow-md hover:bg-[#8CD283] transition-colors"
                 >
-                  사진 추가
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
                 </button>
               </div>
-              
+
               <div v-if="babyDiary.photos && babyDiary.photos.length > 0" class="grid grid-cols-1 gap-4">
                 <div
                   v-for="photo in babyDiary.photos"
                   :key="photo.id"
-                  class="relative rounded-lg overflow-hidden shadow-sm group border-2 border-gray-200"
+                  class="relative rounded-lg overflow-hidden shadow-md group border-2 border-gray-200"
                   style="aspect-ratio: 16/9; height: 180px;"
                 >
                   <img
                     :src="getThumbnailUrl(photo.image)"
                     :alt="'태교일기 사진'"
-                    class="w-full h-full object-cover"
+                    class="w-full h-full object-cover cursor-pointer"
                     loading="eager"
                     @error="handleImageError($event)"
                     @load="handleImageLoad($event, photo)"
+                    @dblclick="openPhotoModal(photo)"
                   >
-
                   <!-- 마우스 오버 효과 -->
-                  <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-200" />
-
-                  <!-- 버튼 -->
-                  <div class="absolute top-1 right-1 flex space-x-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-200
+          pointer-events-none" />
+                  <!-- 수정/삭제 버튼들 -->
+                  <div class="absolute top-1 right-1 flex space-x-1 z-10 opacity-0 group-hover:opacity-100 
+          transition-opacity duration-200
+          pointer-events-none group-hover:pointer-events-auto">
                     <button
                       class="bg-blue-500 text-white rounded-full p-1.5 shadow-md"
                       title="사진 수정"
                       @click.prevent.stop="openUpdatePhoto(photo.id)"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                           viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                       </svg>
                     </button>
-
                     <button
                       class="bg-red-500 text-white rounded-full p-1.5 shadow-md"
                       title="사진 삭제"
                       @click.prevent.stop="deletePhoto(photo.id)"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                           viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"/>
                       </svg>
                     </button>
                   </div>
 
+                  <!-- 업데이트 중 -->
                   <div
                     v-if="isUpdating && selectedPhotoId === photo.id"
                     class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20"
@@ -1234,68 +1280,85 @@ const babyTabLabel = computed(() => {
                     </div>
                   </div>
                 </div>
+
+                <!-- 큰 이미지 모달 -->
+                <div v-if="showPhotoModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+                  <!-- 배경 클릭 시 닫기 -->
+                  <div class="absolute inset-0" @click="closePhotoModal" />
+                  <div class="relative bg-white p-4 rounded shadow-md z-10 max-w-4xl w-full max-h-[90vh] overflow-auto">
+                    <!-- 닫기 버튼 -->
+                    <button
+                      class="absolute top-2 right-2 bg-gray-100 rounded-full p-1.5 text-gray-600 hover:bg-gray-200"
+                      @click="closePhotoModal"
+                    >
+                      ✕
+                    </button>
+                    <!-- 원본 이미지 표시 -->
+                    <img
+                      v-if="selectedPhotoForView"
+                      :src="getThumbnailUrl(selectedPhotoForView.image)"
+                      alt="원본 이미지"
+                      class="block max-w-full h-auto m-auto"
+                    >
+                  </div>
+                </div>
               </div>
-              
-              <!-- 사진이 없고 추가할 수 있는 경우 사진 추가 버튼 표시 -->
-              <div v-else-if="canUploadMorePhotos" class="flex justify-center my-4">
-                <button
-                  @click="fileInput.click()"
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  사진 등록하기(기능 구현중)
-                </button>
-              </div>
-              
+
               <!-- 업로드 중 표시 -->
               <div v-if="isUploading" class="flex justify-center my-2">
                 <div class="text-blue-500 text-sm flex items-center">
-                  <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg"
+                       fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                            stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                   </svg>
                   사진 업로드 중...
                 </div>
               </div>
-            </div>
 
-            <!-- 일기 내용 -->
-            <div class="bg-white p-4 rounded-lg shadow">
-              <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
-                {{ babyDiary.content }}
-              </p>
-            </div>
-            
-            <!-- 일기 작성/수정 버튼 -->
-            <div class="flex space-x-2">
-              <button
-                class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-medium"
-                @click="openDiaryModal('edit')"
-              >
-                일기 수정
-              </button>
+              <!-- 일기 내용 -->
+              <div v-if="babyDiary.content" class="bg-white p-4 rounded-lg shadow-md">
+                <p class="text-dark-gray whitespace-pre-line break-words overflow-auto max-h-none">
+                  {{ babyDiary.content }}
+                </p>
+              </div>
+
+              <!-- 일기 작성/수정 버튼 -->
+              <div class="flex space-x-2">
+                <button
+                  class="flex-1 px-4 py-2 bg-point text-dark-gray rounded-full shadow-md hover:bg-yellow-500 transition-colors font-bold flex items-center justify-center"
+                  @click="openDiaryModal(babyDiary.content ? 'edit' : 'create')"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  {{ babyDiary.content ? '일기 수정' : '기록하기' }}
+                </button>
+              </div>
             </div>
           </div>
-          <div
-            v-else
-            class="text-center py-4"
-          >
-            <p class="text-gray-500">
-              기록된 일기가 없습니다.
-            </p>
+          <div v-else class="text-center py-4 bg-white rounded-lg shadow-md p-6">
+            <p class="text-gray-500 mb-4">기록된 일기가 없습니다.</p>
             <div class="flex flex-col items-center space-y-3 mt-4">
               <button
-                class="px-4 py-2 bg-point text-dark-gray rounded-lg hover:bg-yellow-500 transition-colors font-bold"
+                class="w-full px-4 py-3 bg-point text-dark-gray rounded-full shadow-md hover:bg-yellow-500 transition-colors font-bold flex items-center justify-center"
                 @click="openDiaryModal('create')"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
                 기록하기
               </button>
-              
-              <!-- 일기가 없는 경우에도 사진 등록 버튼 표시 -->
               <button
                 @click="fileInput.click()"
-                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                class="w-full px-4 py-3 bg-[#A4E49B] text-dark-gray rounded-full shadow-md hover:bg-[#8CD283] transition-colors font-bold flex items-center justify-center"
               >
-                사진 등록하기(기능 구현중)
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                사진등록
               </button>
             </div>
           </div>
@@ -1379,24 +1442,11 @@ const babyTabLabel = computed(() => {
     :event="selectedEvent"
     :date="date"
     @close="showEventModal = false"
+    @delete="handleDeleteEvent"
     @save="handleSaveEvent"
   />
 </template>
 
 <style scoped>
-.bg-point {
-  background-color: #FFD600;
-}
-.bg-ivory {
-  background-color: #FFFAE0;
-}
-.text-dark-gray {
-  color: #353535;
-}
-.text-point {
-  color: #FFD600;
-}
-.border-point {
-  border-color: #FFD600;
-}
+/* calendar.css에서 공통 스타일을 사용합니다 */
 </style>

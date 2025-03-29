@@ -6,6 +6,7 @@ import GoogleCallback from '../views/auth/callback/GoogleCallback.vue'
 import SocialCallback from '../views/auth/callback/SocialCallback.vue'
 import ChatAgent from '../views/chat/Chat.vue'
 import PasswordChange from '../views/user/PasswordChange.vue'
+import Onboarding from '@/views/Onboarding.vue'
 
 const routes = [
   {
@@ -138,6 +139,12 @@ const routes = [
     name: 'ResetPassword',
     component: () => import('../views/ResetPassword.vue'),
     meta: { requiresAuth: false }
+  },
+  {
+    path: '/onboarding',
+    name: 'Onboarding',
+    component: Onboarding,
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -161,13 +168,36 @@ router.beforeEach((to, from, next) => {
   if (!token) {
     token = sessionStorage.getItem('accessToken')
     if (token) {
-      console.log('세션 스토리지에서 토큰 발견, 로컬 스토리지에 복사')
-      // localStorage.setItem('accessToken', token)
+      console.log('세션 스토리지에서 토큰 발견')
     }
   }
   
   console.log('라우터 가드 - 현재 경로:', to.path)
   console.log('라우터 가드 - 토큰 존재:', !!token)
+  
+  // 온보딩 페이지 접근 시 특별 처리
+  if (to.path === '/onboarding') {
+    if (!token) {
+      console.log('온보딩 페이지 접근 - 토큰 없음, 로그인 페이지로 이동')
+      next('/login')
+      return
+    }
+    
+    // 온보딩 완료 여부 확인
+    const onboardingCompleted = 
+      localStorage.getItem('onboardingCompleted') === 'true' || 
+      sessionStorage.getItem('onboardingCompleted') === 'true'
+    
+    if (onboardingCompleted) {
+      console.log('온보딩 페이지 접근 - 이미 완료됨, 캘린더로 이동')
+      next('/calendar')
+      return
+    }
+    
+    console.log('온보딩 페이지 접근 - 온보딩 진행')
+    next()
+    return
+  }
   
   // 로그인 후 리다이렉션 확인
   const redirectPath = sessionStorage.getItem('redirectAfterLogin')
@@ -191,7 +221,7 @@ router.beforeEach((to, from, next) => {
     '/pregnancy-info-register'
   ]
   
-  // 현재 경로가 인증이 필요한지 확인
+  // 인증이 필요한 경로인지 확인
   const authRequired = !publicPages.includes(to.path)
   
   // 인증이 필요하고 토큰이 없는 경우 로그인 페이지로 리디렉션
@@ -201,6 +231,20 @@ router.beforeEach((to, from, next) => {
     sessionStorage.setItem('redirectAfterLogin', to.fullPath)
     next('/login')
     return
+  }
+
+  // 사용자가 로그인되어 있고 온보딩이 필요한 상태일 때 자동으로 온보딩 페이지로 이동
+  if (token && to.path !== '/onboarding' && to.path !== '/pregnancy-info-register') {
+    // 온보딩 완료 여부 확인
+    const onboardingCompleted = 
+      localStorage.getItem('onboardingCompleted') === 'true' || 
+      sessionStorage.getItem('onboardingCompleted') === 'true'
+    
+    if (!onboardingCompleted) {
+      console.log('온보딩이 완료되지 않았습니다. 온보딩 페이지로 이동합니다.')
+      next('/onboarding')
+      return
+    }
   }
 
   // 이미 로그인된 상태에서 로그인 페이지로 가려고 하면 홈으로 리다이렉트

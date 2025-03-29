@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import SvgIcon from '@jamescoyle/vue-icon'
@@ -39,6 +39,12 @@ const isEditMode = ref(false) // 수정 모드 상태
 // 현재 주차 옵션
 const weekOptions = Array.from({ length: 40 }, (_, i) => i + 1)
 
+// todayDate 계산된 속성 추가
+const todayDate = computed(() => {
+  const today = new Date()
+  return today.toISOString().split('T')[0]
+})
+
 // 임신 정보 불러오기
 const fetchPregnancyInfo = async () => {
   isLoading.value = true
@@ -51,6 +57,12 @@ const fetchPregnancyInfo = async () => {
     if (response.data && response.data.length > 0) {
       const data = response.data[0] // 가장 최근 임신 정보 사용
 
+      // 임신 정보가 비활성화된 경우 리다이렉트
+      if (!data.is_active) {
+        router.push('/pregnancy/register')
+        return
+      }
+
       pregnancyInfo.value = {
         babyName: data.baby_name,
         dueDate: data.due_date,
@@ -58,21 +70,20 @@ const fetchPregnancyInfo = async () => {
         highRisk: data.high_risk,
         isPregnant: true,
         pregnancyId: data.pregnancy_id,
-        isFromRegistration: data.is_from_registration || false, // 회원가입 시 등록 여부
-        isActive: data.is_active // is_active 상태 저장
+        isFromRegistration: data.is_from_registration || false,
+        isActive: data.is_active
       }
 
-      // 수정 모드 초기값 설정: 항상 true(수정 모드)로 시작
+      // 수정 모드 초기값 설정
       isEditMode.value = true
     } else {
-      // 임신 정보가 없는 경우
-      pregnancyInfo.value.isPregnant = false
-      isEditMode.value = true // 정보가 없으면 바로 입력 가능하도록 수정 모드 활성화
+      // 임신 정보가 없는 경우 리다이렉트
+      router.push('/pregnancy/register')
     }
   } catch (error) {
     errorMessage.value = error.response?.data?.detail || '임신 정보를 불러오는 중 오류가 발생했습니다.'
-    // 오류 발생 시에도 입력 폼을 보여주기 위해 수정 모드로 설정할 수 있습니다.
-    isEditMode.value = true;
+    // 오류 발생 시에도 리다이렉트
+    router.push('/pregnancy/register')
   } finally {
     isLoading.value = false
   }
@@ -210,7 +221,7 @@ const deletePregnancyInfo = async () => {
     const resetData = {
       baby_name: null,        // 태명 초기화
       due_date: null,         // 출산예정일 초기화
-      current_week: null,     // 임신 주차 초기화
+      current_week: 1,     // 임신 주차 초기화
       high_risk: false,       // 고위험 임신 여부 false로 설정
       is_active: false        // 비활성화
     }
@@ -220,8 +231,8 @@ const deletePregnancyInfo = async () => {
     // 성공 메시지
     alert('임신 정보가 삭제되었습니다.')
 
-    // 프로필 페이지로 이동
-    router.push('/profile')
+    // 임신 정보 등록 페이지로 리다이렉트
+    router.push('/pregnancy/register')
 
   } catch (error) {
     errorMessage.value = error.response?.data?.detail || '임신 정보 삭제 중 오류가 발생했습니다.'
@@ -506,6 +517,7 @@ watch(() => lastPeriodDate.value, () => {
               v-model="lastPeriodDate"
               type="date"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-point-yellow"
+              :max="todayDate"
             >
             <p class="text-xs text-gray-500 mt-1">
               마지막 생리 시작일을 입력하시면 임신 주차와 출산예정일이 자동으로 계산됩니다. 정확하지 않으니 반드시 의사와 상담하세요.

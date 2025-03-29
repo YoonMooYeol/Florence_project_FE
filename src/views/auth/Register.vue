@@ -5,8 +5,7 @@ import axios from 'axios'
 import { useAuthStore } from '@/store/auth'
 import api from '@/utils/axios'
 
-// Global emailRegex declaration moved here
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -42,35 +41,47 @@ const isSubmitting = ref(false)
 const showSuccessMessage = ref(false)
 const registeredUser = ref(null)
 
+
 // 이메일 인증 관련 로직 추가
 const verificationPopupVisible = ref(false)
 const verificationCode = ref('')
 const isSendingCode = ref(false)
 const isVerifyingCode = ref(false)
 const verificationStatus = ref('')
+const emailButtonLabel = ref("중복 확인");
 
-const email = ref('');
-const isEmailVerified = ref(false);
+const email = ref('')
+const isEmailVerified = ref(false)
+
+const isUsernameDisabled = ref(false);
+const usernameStatus = ref('')
+
+const usernameAvailabilityMessage = ref('');
+const usernameButtonLabel = ref('확인');
+
+const emailStatus = ref('')
+const phoneNumberStatus = ref('')
+const isPhoneNumberDisabled = ref(false);
+const phoneNumberButtonLabel = ref('중복확인');
+const phoneNumberAvailabilityMessage = ref('');
 
 const handleEmailVerification = async () => {
   if (!formData.email.trim()) {
-    errors.email = '이메일을 입력하세요';
-    return;
+    errors.email = '이메일을 입력하세요'
+    return
   }
   if (!emailRegex.test(formData.email)) {
-    errors.email = '유효한 이메일 주소를 입력해주세요';
-    return;
+    errors.email = '유효한 이메일 주소를 입력해주세요'
+    return
   }
   if (isEmailVerified.value) {
     // 재입력 클릭: 이메일 수정 가능하도록 상태 초기화
-    isEmailVerified.value = false;
+    isEmailVerified.value = false
   } else {
     // 인증 요청 클릭: 실제 이메일 전송 API 호출
-    await sendVerificationCode();
+    await sendVerificationCode()
   }
-};
-
-// 이미 로그인된 사용자인지 확인
+}
 const checkAlreadyLoggedIn = () => {
   const accessToken = localStorage.getItem('accessToken') || authStore.accessToken || sessionStorage.getItem('accessToken')
   const userName = localStorage.getItem('userName') || sessionStorage.getItem('userName')
@@ -135,6 +146,9 @@ const validateForm = () => {
   if (!formData.username.trim()) {
     errors.username = '아이디를 입력해주세요'
     isValid = false
+  } else if (usernameStatus.value !== 'available') {  // 중복 체크 상태
+    errors.username = '이미 사용 중인 아이디입니다'
+    isValid = false
   } else {
     errors.username = ''
   }
@@ -171,6 +185,9 @@ const validateForm = () => {
     isValid = false
   } else if (!phoneRegex.test(formData.phone_number)) {
     errors.phone_number = '올바른 전화번호 형식(000-0000-0000)으로 입력해주세요'
+    isValid = false
+  } else if (phoneNumberStatus.value !== 'available') {  // 중복 체크 상태
+    errors.phone_number = '이미 사용 중인 전화번호입니다'
     isValid = false
   } else {
     errors.phone_number = ''
@@ -294,7 +311,7 @@ const handleSubmit = async () => {
       if (formData.is_pregnant) {
         router.push('/pregnancy-info-register')
       } else {
-        router.push('/calendar')
+        router.push('/onboarding')
       }
     } catch (loginError) {
       console.error('자동 로그인 실패:', loginError)
@@ -434,7 +451,7 @@ const verifyCode = async () => {
     verificationPopupVisible.value = false
     isEmailVerified.value = true
     isSendingCode.value = false
-    verificationCode.value = ''  // 인증번호 입력 필드 초기화
+    verificationCode.value = ''
     alert('이메일 인증이 완료되었습니다.')
   } catch (error) {
     console.error('인증번호 확인 실패', error)
@@ -454,133 +471,152 @@ const handleVerificationCancel = () => {
   // 인증 상태 초기화
   isEmailVerified.value = false
 }
+
+
+
+const checkUsername = async () => {
+  if (!formData.username || formData.username.trim() === '') {
+    console.error("아이디를 입력하세요.");
+    errors.username = "아이디를 입력하세요.";
+    usernameAvailabilityMessage.value = '';  // 상태 메시지 초기화
+    return;
+  }
+
+  try {
+    const response = await api.post('/accounts/register/check-username/', {
+      username: formData.username.trim()
+    }, {
+      headers: { "Content-Type": "application/json" }
+    });
+
+    if (response.status === 200) {
+      usernameStatus.value = 'available';
+      errors.username = '';
+      usernameAvailabilityMessage.value = '사용 가능한 아이디입니다.'; // 사용 가능할 때 메시지 표시
+      usernameButtonLabel.value = "재입력";
+    } 
+  } catch (error) {
+    if (error.response && error.response.status === 400) {
+      if (usernameStatus.value !== 'exists') {  // 중복 메시지 방지
+        usernameStatus.value = 'exists';
+        errors.username = '이미 사용중인 아이디입니다.';
+        usernameAvailabilityMessage.value = '';
+        usernameButtonLabel.value = "중복 확인";
+      }
+    } else {
+      console.error('Error:', error.response ? error.response.data : error);
+    }
+  }
+};
+
+
+const checkPhoneNumber = async () => {
+  if (!formData.phone_number || formData.phone_number.trim() === '') {
+    console.error("전화번호를 입력하세요.");
+    errors.phone_number = "전화번호를 입력하세요.";
+    phoneNumberAvailabilityMessage.value = ''; // 상태 메시지 초기화
+    return;
+  }
+
+  try {
+    const response = await api.post('/accounts/register/check-phone-number/', {
+      phone_number: formData.phone_number.trim()
+    }, {
+      headers: { "Content-Type": "application/json" }
+    });
+
+    if (response.status === 200) {
+      if (response.data.exists) {
+        if (phoneNumberStatus.value !== 'exists') { // 중복 메시지 방지
+          phoneNumberStatus.value = 'exists';
+          errors.phone_number = '이미 사용 중인 전화번호입니다.';
+          phoneNumberAvailabilityMessage.value = '';  
+          isPhoneNumberDisabled.value = false; 
+          phoneNumberButtonLabel.value = "재입력";
+        }
+      } else {
+        phoneNumberStatus.value = 'available';
+        errors.phone_number = '';
+        phoneNumberAvailabilityMessage.value = '사용 가능한 전화번호입니다.';
+        isPhoneNumberDisabled.value = true;
+        phoneNumberButtonLabel.value = "전화번호 인증";
+      }
+    }
+  } catch (error) {
+    if (error.response && error.response.status === 400) {
+      if (phoneNumberStatus.value !== 'exists') { // 중복 메시지 방지
+        phoneNumberStatus.value = 'exists';
+        errors.phone_number = '이미 사용 중인 전화번호입니다.';
+        phoneNumberAvailabilityMessage.value = '';  
+        isPhoneNumberDisabled.value = false;
+        phoneNumberButtonLabel.value = "재입력";
+      }
+    } else {
+      console.error('Error:', error.response ? error.response.data : error);
+    }
+  }
+};
+
 </script>
 
 <template>
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-ivory">
     <div class="w-full max-w-md">
-      <!-- 성공 메시지 모달 -->
-      <div
-        v-if="showSuccessMessage"
-        class="fixed inset-0 flex items-center justify-center z-50"
-      >
-        <!-- 배경 오버레이 -->
+      <div v-if="showSuccessMessage" class="fixed inset-0 flex items-center justify-center z-50">
         <div class="absolute inset-0 bg-black bg-opacity-50" />
 
         <!-- 모달 컨텐츠 -->
         <div class="bg-white rounded-[20px] shadow-xl p-6 max-w-md w-full mx-4 z-10 relative">
           <div class="flex justify-center mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-16 w-16 text-green-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">
-            회원가입이 완료되었습니다!
-          </h2>
+          <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">회원가입이 완료되었습니다!</h2>
           <p class="text-center text-gray-600 mb-6">
             아래 버튼을 클릭하여 {{ formData.is_pregnant ? '임신 정보를 등록' : '로그인 페이지로 이동' }}하세요.
           </p>
 
-          <div
-            v-if="registeredUser"
-            class="bg-gray-50 p-4 rounded-md mb-6"
-          >
-            <p class="mb-2">
-              <strong>이름:</strong> {{ registeredUser.name }}
-            </p>
-            <p class="mb-2">
-              <strong>이메일:</strong> {{ registeredUser.email }}
-            </p>
+          <div v-if="registeredUser" class="bg-gray-50 p-4 rounded-md mb-6">
+            <p class="mb-2"><strong>이름:</strong> {{ registeredUser.name }}</p>
+            <p class="mb-2"><strong>이메일:</strong> {{ registeredUser.email }}</p>
             <p><strong>전화번호:</strong> {{ registeredUser.phone_number }}</p>
           </div>
 
           <div class="text-center">
-            <button
-              class="px-6 py-2 bg-point-yellow text-dark-gray font-medium rounded-[20px] hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-colors"
-              @click="navigateAfterRegistration"
-            >
+            <button class="px-6 py-2 bg-point-yellow text-dark-gray font-medium rounded-[20px] hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-colors" @click="navigateAfterRegistration">
               {{ formData.is_pregnant ? '임신 정보 등록하기' : '로그인 페이지로 이동' }}
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 폼 에러 메시지 -->
-      <div
-        v-if="errors.form"
-        class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-md"
-      >
+      <div v-if="errors.form" class="p-4 mb-6 text-center text-red-700 bg-red-100 rounded-md">
         {{ errors.form }}
       </div>
 
       <!-- 회원가입 폼 -->
 
       <div class="mb-3 text-center">
-        <h1 class="text-3xl font-bold text-dark-gray">
-          누리달
-        </h1>
-        <p class="mt-1 text-dark-gray">
-          회원가입
-        </p>
+        <h1 class="text-3xl font-bold text-dark-gray">누리달</h1>
+        <p class="mt-1 text-dark-gray">회원가입</p>
       </div>
 
-      <form
-        class="p-5 bg-white rounded-lg shadow-md"
-        @submit.prevent="handleSubmit"
-      >
-        <!-- 사용자명 입력 -->
+      <form class="p-5 bg-white rounded-lg shadow-md" @submit.prevent="handleSubmit">
         <div class="mb-4">
-          <label
-            for="username"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >아이디</label>
-          <input
-            id="username"
-            v-model="formData.username"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="아이디를 입력하세요"
-            @input="clearFieldError('username')"
-          >
-          <p
-            v-if="errors.username"
-            class="mt-1 text-sm text-red-600"
-          >
-            {{ errors.username }}
-          </p>
+          <label for="username" class="block mb-2 text-sm font-medium text-dark-gray">아이디</label>
+          <div class="relative">
+            <input id="username" v-model="formData.username" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="아이디를 입력하세요" @input="clearFieldError('username')">
+            <button type="button" @click="checkUsername" class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-dark-gray bg-yellow-300 rounded font-bold text-sm">중복확인</button>
+          </div>
+          <p v-if="usernameAvailabilityMessage" :class="usernameMessageClass" class="mt-1 text-sm text-green-600 font-bold">
+            {{ usernameAvailabilityMessage }}</p>
+          <p v-if="errors.username" class="mt-1 text-sm text-red-600">{{ errors.username }}</p>
         </div>
-
-        <!-- 이름 입력 -->
         <div class="mb-4">
-          <label
-            for="name"
-            class="block mb-2 text-sm font-medium text-dark-gray"
-          >닉네임</label>
-          <input
-            id="name"
-            v-model="formData.name"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-            placeholder="이름을 입력하세요"
-            @input="clearFieldError('name')"
-          >
-          <p
-            v-if="errors.name"
-            class="mt-1 text-sm text-red-600"
-          >
-            {{ errors.name }}
-          </p>
+          <label for="name" class="block mb-2 text-sm font-medium text-dark-gray">이름</label>
+          <input id="name" v-model="formData.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow" placeholder="이름을 입력하세요" @input="clearFieldError('name')">
+          <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name }}</p>
         </div>
 
         <!-- 이메일 입력 -->
@@ -613,31 +649,36 @@ const handleVerificationCancel = () => {
             ✓ 이메일 인증이 완료되었습니다
           </p>
         </div>
+  
 
         <!-- 전화번호 입력 -->
         <div class="mb-4">
-          <label class="block mb-2 text-sm font-medium text-dark-gray">전화번호</label>
-          <div class="relative">
-            <input
-              id="phone_number"
-              v-model="formData.phone_number"
-              type="tel"
-              maxlength="13"
-              class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
-              placeholder="010-0000-0000"
-              @input="handlePhoneInput"
-            >
-          </div>
-          <p
-            v-if="errors.phone_number"
-            class="mt-1 text-sm text-red-600"
+        <label for="phone_number" class="block mb-2 text-sm font-medium text-dark-gray">전화번호</label>
+        <div class="relative">
+          <input
+            id="phone_number"
+            v-model="formData.phone_number"
+            type="tel"
+            maxlength="13"
+            class="w-full px-3 py-2 border border-gray-300 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-point-yellow"
+            placeholder="010-0000-0000"
+            @input="handlePhoneInput"
           >
-            {{ errors.phone_number }}
-          </p>
-          <p class="mt-1 text-xs text-gray-500">
-            휴대폰 번호는 '-'없이 숫자만 입력하셔도 됩니다
-          </p>
+          <button type="button" @click="checkPhoneNumber" class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-dark-gray bg-yellow-300 rounded font-bold text-sm">중복확인</button>
         </div>
+
+        <!-- 전화번호 중복 확인 상태 메시지 출력 -->
+        <p v-if="phoneNumberAvailabilityMessage" :class="availabilityMessageClass" class="mt-1 text-sm text-green-600 font-bold">
+          {{ phoneNumberAvailabilityMessage }}
+        </p>
+        
+        <!-- 전화번호 오류 메시지 출력 -->
+        <p v-if="errors.phone_number" class="mt-1 text-sm text-red-600">{{ errors.phone_number }}</p>
+
+        <p class="mt-1 text-xs text-gray-500">
+          휴대폰 번호는 '-'없이 숫자만 입력하셔도 됩니다.
+        </p>
+      </div>
 
         <!-- 비밀번호 입력 -->
         <div class="mb-4">
@@ -877,3 +918,5 @@ export default {
   }
 }
 </script>
+
+
