@@ -336,8 +336,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       if (response.data) {
         // 스토어의 이벤트 목록 업데이트
-        const index = events.value.findIndex(e => e.id === updatedEvent.id)
-        if (index !== -1) {
+    const index = events.value.findIndex(e => e.id === updatedEvent.id)
+    if (index !== -1) {
           events.value[index] = response.data
         }
         return response.data
@@ -982,7 +982,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       
       // 로컬 상태에서도 삭제
       const index = llmSummaries.value.findIndex(s => s.summary_id === summaryId)
-      if (index !== -1) {
+    if (index !== -1) {
         llmSummaries.value.splice(index, 1)
       }
       
@@ -1025,9 +1025,9 @@ export const useCalendarStore = defineStore('calendar', () => {
       // 유효한 날짜 문자열인지 확인
       if (!date || typeof date !== 'string') {
         console.error('유효하지 않은 날짜 형식:', date)
-        return false
-      }
-      
+    return false
+  }
+
       // YYYY-MM-DD 형식인지 확인
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/
       if (!dateRegex.test(date)) {
@@ -1036,7 +1036,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       }
       
       console.log(`선택된 날짜를 ${date}로 설정합니다.`)
-      selectedDate.value = date
+    selectedDate.value = date
       
       // 해당 날짜의 이벤트 로드
       fetchDayEvents(date)
