@@ -18,7 +18,8 @@ const pregnancyInfo = ref({
   highRisk: false,
   pregnancyId: null,
   isPregnant: false, // 임신 여부
-  lastPeriodDate: '' // 마지막 생리 시작일
+  lastPeriodDate: '', // 마지막 생리 시작일
+  is_active: true // 임신 활성화 여부
 })
 
 // 단계별 상태 관리
@@ -137,7 +138,8 @@ const savePregnancyInfo = async () => {
       due_date: pregnancyInfo.value.dueDate,
       current_week: pregnancyInfo.value.currentWeek,
       high_risk: pregnancyInfo.value.highRisk,
-      is_from_registration: true // 회원가입 시 등록임을 표시
+      // is_from_registration: true, // 회원가입 시 등록임을 표시
+      is_active: true
     }
 
     // 임신 정보 등록 API 호출

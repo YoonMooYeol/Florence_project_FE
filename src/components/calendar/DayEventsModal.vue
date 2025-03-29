@@ -58,8 +58,19 @@ function closePhotoModal() {
 watch(() => props.show, async (newValue) => {
   if (newValue) {
     console.log('DayEventsModal 컴포넌트에서 - 일일 일정 모달이 열렸습니다:', props.date, '이벤트 수:', props.events ? props.events.length : 0)
-    // 모달이 열리면 항상 '일정' 탭으로 설정
-    // activeTab.value = 'schedule'
+    
+    // calendarStore 상태 확인
+    console.log('[DayEventsModal] 모달 열림 - calendarStore 상태 확인:')
+    console.log('  isPregnant:', calendarStore.isPregnant)
+    console.log('  pregnancyId:', calendarStore.pregnancyId)
+    console.log('  babyNickname:', calendarStore.babyNickname)
+    
+    // 태명 체크 (임신 정보는 있지만 태명이 null인 경우)
+    if (calendarStore.pregnancyId && calendarStore.babyNickname === null) {
+      console.log('[DayEventsModal] 모달 열림 - 임신 정보는 있지만 태명이 null -> "그리움과의 하루" 표시')
+    } else if (calendarStore.babyNickname) {
+      console.log('[DayEventsModal] 모달 열림 - 태명이 있음:', calendarStore.babyNickname)
+    }
     
     // 모달이 열리면 클릭 방지 설정 (300ms 동안)
     isClickable.value = false
@@ -1053,11 +1064,11 @@ onMounted(async () => {
   console.log('DayEventsModal - 임신 정보 초기화 결과:', success)
   console.log('DayEventsModal - 임신 상태(isPregnant):', calendarStore.isPregnant)
   console.log('DayEventsModal - 태명(babyNickname):', calendarStore.babyNickname)
+  console.log('DayEventsModal - 임신 ID(pregnancyId):', calendarStore.pregnancyId)
   
-  // 태명이 없을 경우에만 기본값 설정
-  if (!calendarStore.babyNickname) {
-    console.log('DayEventsModal - 태명이 설정되지 않아 기본값 사용')
-    calendarStore.babyNickname = '(태명)'
+  // 명시적으로 null 체크 (임신 정보는 있지만 태명이 null인 경우)
+  if (calendarStore.pregnancyId && calendarStore.babyNickname === null) {
+    console.log('DayEventsModal - 임신 정보는 있지만 태명이 null -> "그리움과의 하루" 표시됨')
   }
   
   // 기본 탭을 일정으로 설정
@@ -1066,15 +1077,19 @@ onMounted(async () => {
 
 // 태명과 조사를 안전하게 표시하는 계산된 속성 추가
 const babyTabLabel = computed(() => {
-  // pregnancyId가 있고 is_active가 false인 경우 '그리움'으로 표시
-  if (calendarStore.pregnancyId && calendarStore.isPregnant === false) {
+  // 디버깅 로그 추가
+  console.log('[babyTabLabel] 계산 시작 - isPregnant:', calendarStore.isPregnant, 'pregnancyId:', calendarStore.pregnancyId, 'babyNickname:', calendarStore.babyNickname)
+  
+  // 태명이 null인 경우에만 "그리움과의 하루"로 표시
+  if (calendarStore.babyNickname === null) {
+    console.log('[babyTabLabel] 태명이 null이어서 "그리움과의 하루" 표시')
     return '그리움과의 하루'
   }
   
-  // 그 외의 경우 태명 사용 (태명이 없거나 null인 경우 '(태명)'을 사용)
+  // 그 외의 경우 태명 사용 (태명이 없거나 undefined인 경우 '(태명)'을 사용)
   const nickname = calendarStore.babyNickname || '(태명)'
   const josa = calendarStore.getJosa(nickname, '과', '와')
-  console.log('태명 탭 레이블 계산:', nickname, josa)
+  console.log('[babyTabLabel] 태명 탭 레이블 계산:', nickname, josa)
   return `${nickname}${josa}의 하루`
 })
 
@@ -1136,7 +1151,10 @@ const closeBirthdayPhoto = () => {
           class="flex-1 py-3 px-4 text-center font-medium transition-colors text-sm"
           :class="activeTab === 'baby' ? 'text-point border-b-2 border-point bg-gray-50 font-bold' : 'text-gray-500 hover:text-gray-700'"
           data-tab="baby"
-          @click="activeTab = 'baby'"
+          @click="() => { 
+            console.log('[babyTab click] 현재 태명 상태:', calendarStore.babyNickname, '임신 상태:', calendarStore.isPregnant);
+            activeTab = 'baby';
+          }"
         >
           {{ babyTabLabel }}
         </button>
