@@ -3,6 +3,8 @@
   margin: 1px 0 !important;
   overflow: hidden !important;
   height: 22px !important;
+  background-color: var(--event-color, #ffd600) !important;
+  border-color: var(--event-color, #ffd600) !important;
 }
 
 /* 이벤트 시작 날짜 스타일 */
@@ -15,7 +17,9 @@
   border-bottom-right-radius: 0 !important;
   margin-right: 0 !important;
   border-right: 0 !important;
-  padding-left: 6px !important;
+  padding-left: 4px !important;
+  background-color: var(--event-color, #ffd600) !important;
+  border-color: var(--event-color, #ffd600) !important;
 }
 
 /* 이벤트 중간 날짜 스타일 */
@@ -25,6 +29,8 @@
   margin-right: 0 !important;
   border-left: 0 !important;
   border-right: 0 !important;
+  background-color: var(--event-color, #ffd600) !important;
+  border-color: var(--event-color, #ffd600) !important;
 }
 
 /* 이벤트 종료 날짜 스타일 */
@@ -37,7 +43,10 @@
   border-bottom-left-radius: 0 !important;
   margin-left: 0 !important;
   border-left: 0 !important;
-  padding-right: 6px !important;
+  z-index: 5 !important;
+  background-color: var(--event-color, #ffd600) !important;
+  border-color: var(--event-color, #ffd600) !important;
+  padding-right: 115px !important;
 }
 
 /* 단일 일정 스타일 (시작과 종료가 같은 날짜) */
@@ -47,9 +56,71 @@
 .single-day-event,
 .event-start-end {
   border-radius: 25px !important;
-  padding-left: 6px !important;
+  padding-left: 4px !important;
   padding-right: 6px !important;
   overflow: hidden !important;
+  background-color: var(--event-color, #ffd600) !important;
+  border-color: var(--event-color, #ffd600) !important;
+}
+
+/* 모든 일정에 컬러 변수 적용 */
+.fc-event, .fc-daygrid-event {
+  background-color: var(--event-color, #ffd600) !important;
+  border-color: var(--event-color, #ffd600) !important;
+  margin-left: 0 !important;
+  padding-left: 2px !important;
+  color: #353535 !important;
+}
+
+/* 이벤트 내용 영역에도 색상 적용 */
+.fc-event-main {
+  background-color: var(--event-color, #ffd600) !important;
+  color: #353535 !important;
+  padding-left: 2px !important;
+}
+
+/* 이벤트 타이틀에도 색상 적용 */
+.fc-event-title {
+  color: #353535 !important;
+  font-weight: 500 !important;
+}
+
+/* 모든 이벤트 유형에 높은 우선순위로 색상 적용 */
+.fc-daygrid-event[data-event-color],
+.fc-event[data-event-color] {
+  background-color: attr(data-event-color) !important;
+  border-color: attr(data-event-color) !important;
+}
+
+/* 이벤트 유형별 기본 색상 */
+.event-type-appointment {
+  --event-color: #4ECDC4 !important;
+  background-color: var(--event-color) !important;
+  border-color: var(--event-color) !important;
+}
+
+.event-type-medication {
+  --event-color: #96CEB4 !important;
+  background-color: var(--event-color) !important;
+  border-color: var(--event-color) !important;
+}
+
+.event-type-symptom {
+  --event-color: #FF6B6B !important;
+  background-color: var(--event-color) !important;
+  border-color: var(--event-color) !important;
+}
+
+.event-type-exercise {
+  --event-color: #2ECC71 !important;
+  background-color: var(--event-color) !important;
+  border-color: var(--event-color) !important;
+}
+
+.event-type-other {
+  --event-color: #FFD600 !important;
+  background-color: var(--event-color) !important;
+  border-color: var(--event-color) !important;
 }
 
 /* 일반 이벤트 스타일 강화 - 모든 싱글 이벤트에 둥근 모서리 적용 */
@@ -107,11 +178,6 @@
   border-color: #29b6f6 !important;
 }
 
-.event-type-medication {
-  background-color: #81c784 !important;
-  border-color: #66bb6a !important;
-}
-
 .event-type-checkup {
   background-color: #ffb74d !important;
   border-color: #ffa726 !important;
@@ -165,11 +231,11 @@
   width: 100%;
   height: 100%;
   text-align: left;
+  
 }
 
 /* 멀티데이 이벤트를 위한 스타일 */
 .fc-event-main {
-  padding: 2px 4px;
   overflow: hidden;
   white-space: nowrap;
 }
@@ -583,24 +649,16 @@ div.fc-daygrid-day-top > a.fc-daygrid-day-number {
 }
 
 /* 이벤트 유형별 색상 */
-.event-type-appointment {
-  border-left-color: #FF6B6B !important;
-  background-color: rgba(255, 107, 107, 0.2) !important;
-}
-
-.event-type-medication {
-  border-left-color: #4ECDC4 !important;
-  background-color: rgba(78, 205, 196, 0.2) !important;
-}
-
-.event-type-symptom {
-  border-left-color: #9B59B6 !important;
-  background-color: rgba(155, 89, 182, 0.2) !important;
-}
-
-.event-type-exercise {
-  border-left-color: #2ECC71 !important;
-  background-color: rgba(46, 204, 113, 0.2) !important;
+.event-type-appointment,
+.event-type-medication,
+.event-type-symptom,
+.event-type-exercise,
+.event-type-other,
+.event-type-clinic,
+.event-type-checkup {
+  border-left-color: var(--event-color) !important;
+  background-color: var(--event-color) !important;
+  border-color: var(--event-color) !important;
 }
 
 /* 반응형 스타일 */
@@ -772,4 +830,71 @@ select:focus option:checked {
   line-height: 1.5;
   color: #333;
   border-left: 3px solid var(--color-point);
+}
+
+/* 중요: 색상을 입힐 때 투명도 제거하기 (하위에 추가) */
+.fc-daygrid-event {
+  background-color: var(--event-color, #FFD600) !important;
+  border-color: var(--event-color, #FFD600) !important;
+  opacity: 1 !important;
+}
+
+/* 모든 일정에 단일 색상 적용 - 중복 및 충돌 방지 */
+.fc-event, 
+.fc-daygrid-event, 
+.fc-daygrid-dot-event,
+.fc-list-event,
+.fc-timegrid-event {
+  background-color: var(--event-color, #FFD600) !important;
+  border-color: var(--event-color, #FFD600) !important;
+  color: #353535 !important;
+  font-weight: 500 !important;
+  border-radius: 25px !important;
+  margin-top: 1px !important;
+  margin-bottom: 1px !important;
+}
+
+/* 일정 내부 요소 스타일 단일화 */
+.fc-event-main,
+.fc-event-head,
+.fc-event-title,
+.fc-event-time,
+.event-title,
+.event-continuation,
+.multi-day-event-content,
+.custom-event-content {
+  background-color: var(--event-color, #FFD600) !important;
+  color: #353535 !important;
+}
+
+/* 이벤트 타입별 스타일 비활성화 - 충돌 방지 */
+.event-type-appointment,
+.event-type-medication,
+.event-type-symptom,
+.event-type-exercise,
+.event-type-other,
+.event-type-clinic,
+.event-type-checkup,
+.event-type-meal,
+.event-type-reminder {
+  /* 타입별 스타일 재정의 금지 */
+  background-color: inherit !important;
+  border-color: inherit !important;
+}
+
+/* 멀티데이 이벤트도 단일 색상 적용 */
+.multi-day-event,
+.event-start,
+.event-middle,
+.event-end,
+.event-start-end {
+  background-color: var(--event-color, #FFD600) !important;
+  border-color: var(--event-color, #FFD600) !important;
+}
+
+/* 투명도 제거 및 우선순위 설정 */
+.fc-daygrid-event {
+  opacity: 1 !important;
+  background-color: var(--event-color, #FFD600) !important;
+  border-color: var(--event-color, #FFD600) !important;
 } 

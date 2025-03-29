@@ -154,7 +154,8 @@ const saveEvent = () => {
     endTime: isAllDay.value ? '23:59' : endTime.value,
     event_color: eventColor.value,
     start_date: startDate.value,
-    end_date: endDate.value
+    end_date: endDate.value,
+    event_type: 'other'
   }
 
   // 시간 정보 설정
@@ -170,6 +171,7 @@ const saveEvent = () => {
   newEvent.notification = notification.value
 
   console.log('생성된 이벤트:', newEvent)
+  console.log('이벤트 색상:', eventColor.value)
   
   // 부모 컴포넌트로 이벤트 전달
   emit('save', newEvent)

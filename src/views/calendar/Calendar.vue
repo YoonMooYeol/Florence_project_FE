@@ -863,15 +863,10 @@ const handleCalendarRefresh = async () => {
 /* 일정 앞쪽 마진 줄이기 */
 .fc-event, .fc-daygrid-event {
   margin-left: 0 !important;
-  padding-left: 4px !important;
-}
-
-.fc-event-main {
-  padding-left: 4px !important;
 }
 
 /* 멀티데이 이벤트에 대한 스타일 조정 */
 .fc-daygrid-block-event .fc-event-main {
-  padding-left: 4px !important;
+  padding-left: 2px !important;
 }
 </style>

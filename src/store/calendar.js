@@ -255,8 +255,11 @@ export const useCalendarStore = defineStore('calendar', () => {
         end_date: newEvent.end_date || newEvent.end?.split('T')[0] || null,
         description: newEvent.description || '',
         event_type: newEvent.event_type || 'other',
+        // 색상 값 반드시 포함
         event_color: newEvent.event_color || '#FFD600'
       }
+      
+      console.log('일정 색상:', payload.event_color) // 색상 로깅 추가
       
       // 시간 정보가 있으면 추가
       if (newEvent.startTime) {
@@ -306,8 +309,11 @@ export const useCalendarStore = defineStore('calendar', () => {
         end_date: updatedEvent.end?.split('T')[0] || updatedEvent.end_date,
         description: updatedEvent.description || '',
         event_type: updatedEvent.event_type || 'other',
+        // 색상 값 반드시 포함 및 기본값 설정
         event_color: updatedEvent.event_color || '#FFD600'
       }
+      
+      console.log('일정 색상:', payload.event_color) // 색상 로깅 추가
       
       // 시간 정보가 있으면 추가
       if (updatedEvent.startTime || updatedEvent.start_time) {

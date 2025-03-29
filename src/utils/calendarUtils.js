@@ -66,16 +66,26 @@ export function processEndDate(fcEvent, event) {
  * @returns {Object} FullCalendar 이벤트 객체
  */
 export function processEventDates(event) {
+  // 색상값 확인 (사용자가 선택한 색상만 사용)
+  const eventColor = event.event_color || '#FFD600'
+  
   // 기본 이벤트 객체 생성
   const fcEvent = {
     id: event.event_id,
     title: event.title,
-    backgroundColor: event.event_color || '#FFD600',
-    borderColor: event.event_color || '#FFD600',
+    // 배경색과 테두리색은 동일하게 설정
+    backgroundColor: eventColor,
+    borderColor: eventColor,
     textColor: '#353535',
     event_type: event.event_type,
     description: event.description || '',
-    recurrence_rules: event.recurrence_rules
+    recurrence_rules: event.recurrence_rules,
+    // 색상 정보 저장
+    event_color: eventColor,
+    // CSS 변수 적용 (이벤트 요소와 하위 요소에 색상 적용)
+    css: {
+      '--event-color': eventColor
+    }
   }
 
   // 시작일 처리
