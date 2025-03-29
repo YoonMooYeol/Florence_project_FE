@@ -10,17 +10,17 @@ const slides = [
   {
     image: '/src/assets/images/calendar.jpg',
     title: '📍 메인 페이지 - 캘린더',
-    description: '이전/현재/다음 달로 이동하며 일정을 확인하고 일정을 클릭시 상세 내용을 볼 수 있어요 📅'
+    description: '이전/현재/다음 달로 이동하며 일정을 확인하고\n 일정 클릭시 상세 내용을 볼 수 있어요 📅'
   },
   {
     image: '/src/assets/images/chat.jpg',
     title: '📍 채팅 페이지',
-    description: '하루동안의 채팅을 AI 에이전트 "플로렌스"와 함께 나눠보세요 🍀'
+    description: 'AI 에이전트 "플로렌스"와 함께\n 하루동안의 고민을 나눠보세요 🍀'
   },
   {
     image: '/src/assets/images/search.jpg',
     title: '📍 검색 페이지',
-    description: '팔로잉 하고싶은 아이디를 검색하여 팔로잉할 수 있어요 🔍'
+    description: '팔로잉 하고싶은 아이디를 검색하여\n 팔로잉할 수 있어요 🔍'
   },
   {
     image: '/src/assets/images/user.jpg',
@@ -108,7 +108,7 @@ onMounted(() => {
               <h2 class="text-2xl font-bold text-dark-gray mb-1">
                 {{ slide.title }}
               </h2>
-              <p class="text-gray-600 text-center mb-8">
+              <p class="text-gray-600 text-center mb-8" style="white-space: pre-line;">
                 {{ slide.description }}
               </p>
             </div>
