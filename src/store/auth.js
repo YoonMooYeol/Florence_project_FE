@@ -146,8 +146,11 @@ export const useAuthStore = defineStore('auth', {
         })
 
         // 토큰 저장 - 직접 저장하지 않고 메서드 활용
-        this.setAccessToken(response.data.access, rememberMe)
-        this.setRefreshToken(response.data.refresh, rememberMe)
+        this.setAccessToken(response.data.tokens.access, rememberMe)
+        this.setRefreshToken(response.data.tokens.refresh, rememberMe)
+        
+        // 사용자 정보 저장
+        this.setUserInfo(response.data, rememberMe)
         
         // rememberMe 상태 저장
         if (rememberMe) {
@@ -158,6 +161,17 @@ export const useAuthStore = defineStore('auth', {
           sessionStorage.setItem('rememberMe', 'false')
           // 로컬에서 제거
           localStorage.removeItem('rememberMe')
+        }
+
+        // 임신 정보 초기화 - calendarStore를 동적으로 가져와서 임신 정보 초기화
+        try {
+          console.log('[login] 로그인 성공 후 임신 정보 초기화 시작')
+          const { useCalendarStore } = await import('./calendar')
+          const calendarStore = useCalendarStore()
+          const result = await calendarStore.initPregnancyInfo()
+          console.log('[login] 임신 정보 초기화 결과:', result)
+        } catch (pregnancyError) {
+          console.error('[login] 임신 정보 초기화 중 오류:', pregnancyError)
         }
 
         // 다시 보지 않기 상태 확인

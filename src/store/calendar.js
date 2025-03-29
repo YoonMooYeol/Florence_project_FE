@@ -1070,22 +1070,63 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   function setPregnancyInfo (isPregnantStatus, nickname, id = null) {
-    console.log('[setPregnancyInfo] 임신 정보 설정:', isPregnantStatus, nickname, id)
-    isPregnant.value = isPregnantStatus
+    console.log('[setPregnancyInfo] 임신 정보 설정 시작:', isPregnantStatus, nickname, id)
+    console.log('[setPregnancyInfo] 처리 전 현재 상태 - isPregnant:', isPregnant.value, 'babyNickname:', babyNickname.value, 'pregnancyId:', pregnancyId.value)
     
-    // 태명이 비어있는 경우 "그리움"으로 설정
-    if (!nickname || nickname.trim() === '') {
-      console.log('[setPregnancyInfo] 태명이 비어있어 "그리움"으로 설정')
+    // ==== 1. 임신 상태(isPregnant) 설정 ====
+    // 명시적으로 boolean 타입으로 변환
+    isPregnant.value = isPregnantStatus === true
+    console.log('[setPregnancyInfo] isPregnant 설정:', isPregnant.value)
+    
+    // ==== 2. 태명 설정: 가장 중요! ====
+    // 입력 태명 유효성 검사
+    const hasValidNickname = nickname && nickname.trim() !== '';
+    
+    // 태명 설정 로직: 입력 태명 > isPregnant 기반 설정
+    if (hasValidNickname) {
+      // 태명이 있으면 무조건 그 값 사용 (최우선)
+      babyNickname.value = nickname.trim()
+      console.log('[setPregnancyInfo] 태명 입력값으로 설정:', babyNickname.value)
+    } else if (!isPregnant.value) {
+      // 태명이 없고 isPregnant가 false인 경우에만 null(그리움)으로 설정
       babyNickname.value = null
+      console.log('[setPregnancyInfo] 태명이 없고 isPregnant가 false여서 null로 설정(그리움)')
     } else {
-    babyNickname.value = nickname
+      // 태명이 없고 isPregnant가 true인 경우 기본값
+      babyNickname.value = '(태명)'
+      console.log('[setPregnancyInfo] 태명이 없고 isPregnant가 true여서 (태명)으로 설정')
     }
     
+    // ==== 3. 임신 ID 설정 ====
     if (id !== null) {
       pregnancyId.value = id
+      console.log('[setPregnancyInfo] 임신 ID 설정:', pregnancyId.value)
     }
     
-    console.log('[setPregnancyInfo] 설정 결과:', isPregnant.value, babyNickname.value, pregnancyId.value)
+    // ==== 4. 스토리지 저장 ====
+    const rememberMe = localStorage.getItem('rememberMe') === 'true'
+    
+    // 로컬/세션 스토리지 저장 (rememberMe에 따라)
+    const storage = rememberMe ? localStorage : sessionStorage;
+    
+    // 임신 ID 저장
+    if (pregnancyId.value) {
+      storage.setItem('pregnancyId', pregnancyId.value)
+    } else {
+      storage.removeItem('pregnancyId')
+    }
+    
+    // isPregnant 상태 저장
+    storage.setItem('isPregnant', isPregnant.value ? 'true' : 'false')
+    
+    // 태명 저장/삭제
+    if (babyNickname.value) {
+      storage.setItem('babyNickname', babyNickname.value)
+    } else {
+      storage.removeItem('babyNickname')
+    }
+    
+    console.log('[setPregnancyInfo] 설정 완료 - isPregnant:', isPregnant.value, 'babyNickname:', babyNickname.value, 'pregnancyId:', pregnancyId.value)
   }
 
   function setPregnancyId (id) {
@@ -1095,136 +1136,181 @@ export const useCalendarStore = defineStore('calendar', () => {
   async function initPregnancyInfo () {
     try {
       console.log('[initPregnancyInfo] 임신 정보 초기화 시작')
+      console.log('[initPregnancyInfo] 처리 전 현재 상태 - isPregnant:', isPregnant.value, 'babyNickname:', babyNickname.value, 'pregnancyId:', pregnancyId.value)
       
-      // 초기화 전에 기존 태명 정보 임시 저장
-      const prevBabyNickname = babyNickname.value
-      
-      // 모든 태명 관련 값 초기화
-      babyNickname.value = null // 기본값을 '그리움'으로 설정
-      
-      // 이미 임신 ID가 있으면 재사용
+      // 1. 기존 임신 ID로 정보 조회
       if (pregnancyId.value) {
-        console.log('[initPregnancyInfo] 이미 스토어에 임신 ID 있음:', pregnancyId.value)
-        console.log('[initPregnancyInfo] 현재 태명:', babyNickname.value)
+        console.log('[initPregnancyInfo] 스토어에 임신 ID 존재:', pregnancyId.value)
         
-        // 기존 ID가 있다면 서버에서 최신 정보 가져오기
         try {
           const detailResponse = await api.get(`/accounts/pregnancies/${pregnancyId.value}/`)
+          console.log('[initPregnancyInfo] 기존 ID로 서버 응답:', detailResponse.data)
+          
           if (detailResponse.data) {
+            // 서버 정보로 상태 업데이트 (태명 포함)
             updatePregnancyInfo(detailResponse.data)
+            return true
           }
         } catch (err) {
           console.error('[initPregnancyInfo] 기존 임신 ID로 정보 조회 실패:', err)
-          // 에러 발생 시 임신 ID 초기화
+          // 에러 발생 시 ID 초기화
           pregnancyId.value = null
         }
-        
-        return true
       }
       
-      // 스토리지에 저장된 임신 ID
+      // 2. 스토리지에서 임신 ID 확인
       const storedPregnancyId = localStorage.getItem('pregnancyId') || sessionStorage.getItem('pregnancyId')
       
-      // 스토리지에 임신 ID가 있는 경우
       if (storedPregnancyId) {
+        console.log('[initPregnancyInfo] 스토리지에서 임신 ID 발견:', storedPregnancyId)
+        
         try {
-          // 임신 ID로 상세 정보 조회
-          console.log('[initPregnancyInfo] 저장된 임신 ID로 상세 정보 조회 시도')
           const detailResponse = await api.get(`/accounts/pregnancies/${storedPregnancyId}/`)
+          console.log('[initPregnancyInfo] 스토리지 ID로 서버 응답:', detailResponse.data)
           
           if (detailResponse.data) {
-            // 서버에서 가져온 임신 정보로 업데이트
+            // 서버 정보로 상태 업데이트 (태명 포함)
             updatePregnancyInfo(detailResponse.data)
             return true
           }
         } catch (detailErr) {
-          // 저장된 ID가 유효하지 않은 경우, 스토리지에서 제거
-          console.error('[initPregnancyInfo] 임신 상세 정보 조회 실패:', detailErr)
-          localStorage.removeItem('pregnancyId')
-          sessionStorage.removeItem('pregnancyId')
+          console.error('[initPregnancyInfo] 스토리지 임신 ID로 정보 조회 실패:', detailErr)
+          // 오류 시 스토리지 정보 제거
+          clearPregnancyStorage()
         }
       }
       
-      // 임신 정보 API 호출
-      console.log('[initPregnancyInfo] 임신 정보 목록 API 호출 시도')
+      // 3. 임신 정보 목록 API 호출 (가장 최근 임신 정보)
+      console.log('[initPregnancyInfo] 임신 정보 목록 API 호출')
+      
       const response = await api.get('/accounts/pregnancies/')
-      console.log('[initPregnancyInfo] 임신 정보 API 응답:', response.data)
+      console.log('[initPregnancyInfo] 임신 정보 목록 응답:', response.data)
       
       if (response.data && response.data.length > 0) {
-        // 서버에서 가져온 임신 정보로 업데이트
+        // 첫 번째(최신) 임신 정보로 업데이트
         updatePregnancyInfo(response.data[0])
         return true
       } else {
         console.log('[initPregnancyInfo] 임신 정보 없음')
-        // 임신 정보가 없는 경우 초기화
-        isPregnant.value = false
-        babyNickname.value = null // 임신 정보가 없어도 태명은 '그리움'으로 설정
-        pregnancyId.value = null
         
-        // 태명 관련 스토리지 정보 삭제
-        localStorage.removeItem('babyNickname')
-        sessionStorage.removeItem('babyNickname')
+        // 임신 정보가 없는 경우 상태 초기화
+        resetPregnancyState()
+        
+        // 스토리지 초기화
+        clearPregnancyStorage()
         
         return false
       }
     } catch (err) {
       console.error('[initPregnancyInfo] 임신 정보 초기화 오류:', err)
-      // 오류 발생 시에도 기본 태명 설정
-      babyNickname.value = null
+      
+      // 오류 발생 시 상태 및 스토리지 초기화
+      resetPregnancyState()
+      clearPregnancyStorage()
+      
       return false
     }
   }
   
+  // 임신 관련 상태 초기화 헬퍼 함수
+  function resetPregnancyState() {
+    isPregnant.value = false
+    babyNickname.value = null // "그리움"으로 표시
+    pregnancyId.value = null
+    console.log('[resetPregnancyState] 임신 상태 초기화 완료')
+  }
+  
+  // 임신 관련 스토리지 초기화 헬퍼 함수
+  function clearPregnancyStorage() {
+    // 로컬 스토리지에서 제거
+    localStorage.removeItem('pregnancyId')
+    localStorage.removeItem('babyNickname')
+    localStorage.removeItem('isPregnant')
+    
+    // 세션 스토리지에서도 제거
+    sessionStorage.removeItem('pregnancyId')
+    sessionStorage.removeItem('babyNickname')
+    sessionStorage.removeItem('isPregnant')
+    
+    console.log('[clearPregnancyStorage] 임신 관련 스토리지 초기화 완료')
+  }
+
   // 서버에서 가져온 임신 정보로 상태 업데이트하는 헬퍼 함수
   function updatePregnancyInfo(pregnancyData) {
     if (!pregnancyData) return
     
-    // 임신 관련 정보 설정
-    isPregnant.value = pregnancyData.is_active !== undefined ? pregnancyData.is_active : true
+    // 서버 정보 로깅 (디버깅용)
+    console.log('[updatePregnancyInfo] 서버에서 받은 임신 정보:', pregnancyData)
+    console.log('[updatePregnancyInfo] 처리 전 현재 상태 - isPregnant:', isPregnant.value, 'babyNickname:', babyNickname.value, 'pregnancyId:', pregnancyId.value)
     
-    // 태명 찾기 (여러 필드 순서대로 확인)
-    if (pregnancyData.baby_name) {
-      babyNickname.value = pregnancyData.baby_name
-      console.log('[updatePregnancyInfo] 태명 설정 (baby_name):', babyNickname.value)
-    } else if (pregnancyData.baby_nickname) {
-      babyNickname.value = pregnancyData.baby_nickname
-      console.log('[updatePregnancyInfo] 태명 설정 (baby_nickname):', babyNickname.value)
-    } else if (pregnancyData.nickname) {
-      babyNickname.value = pregnancyData.nickname
-      console.log('[updatePregnancyInfo] 태명 설정 (nickname):', babyNickname.value)
-    } else {
-      console.log('[updatePregnancyInfo] 태명 없음, "그리움"으로 설정')
+    // ==== 1. 임신 상태(is_active) 설정 ====
+    // 명시적으로 boolean 타입으로 변환
+    const newIsPregnant = pregnancyData.is_active === true
+    console.log('[updatePregnancyInfo] 서버의 is_active:', pregnancyData.is_active, '변환된 isPregnant:', newIsPregnant)
+    isPregnant.value = newIsPregnant
+    
+    // ==== 2. 태명 설정: 가장 중요! ====
+    // 서버에서 받은 태명을 찾음 (여러 필드 확인)
+    let serverBabyName = null;
+    
+    // 태명 필드 존재 확인 및 중요! 빈 문자열 체크
+    if (pregnancyData.baby_name && pregnancyData.baby_name.trim() !== '') {
+      serverBabyName = pregnancyData.baby_name.trim()
+    } else if (pregnancyData.baby_nickname && pregnancyData.baby_nickname.trim() !== '') {
+      serverBabyName = pregnancyData.baby_nickname.trim()
+    } else if (pregnancyData.nickname && pregnancyData.nickname.trim() !== '') {
+      serverBabyName = pregnancyData.nickname.trim()
+    }
+    
+    console.log('[updatePregnancyInfo] 서버에서 추출한 태명:', serverBabyName)
+    
+    // 태명 설정 로직: 서버 태명 > isPregnant 기반 설정
+    if (serverBabyName) {
+      // 서버에서 태명이 있으면 무조건 그 값 사용 (최우선)
+      babyNickname.value = serverBabyName
+      console.log('[updatePregnancyInfo] 서버에서 태명을 받아서 설정:', babyNickname.value)
+    } else if (!newIsPregnant) {
+      // 태명이 없고 isPregnant가 false인 경우에만 null(그리움)으로 설정
       babyNickname.value = null
+      console.log('[updatePregnancyInfo] 태명이 없고 isPregnant가 false여서 null로 설정(그리움)')
+    } else {
+      // 태명이 없고 isPregnant가 true인 경우 기본값
+      babyNickname.value = '(태명)'
+      console.log('[updatePregnancyInfo] 태명이 없고 isPregnant가 true여서 (태명)으로 설정')
     }
     
-    // 태명이 있다면 스토리지에 저장
-    if (babyNickname.value) {
-      const rememberMe = localStorage.getItem('rememberMe') === 'true'
-      if (rememberMe) {
-        localStorage.setItem('babyNickname', babyNickname.value)
-      } else {
-        sessionStorage.setItem('babyNickname', babyNickname.value)
-      }
-    }
-    
-    // 임신 ID 설정 (id와 pregnancy_id 필드 모두 확인)
+    // ==== 3. 임신 ID 설정 ====
     if (pregnancyData.id) {
       pregnancyId.value = pregnancyData.id
-      console.log('[updatePregnancyInfo] 임신 ID 설정 (id):', pregnancyId.value)
     } else if (pregnancyData.pregnancy_id) {
       pregnancyId.value = pregnancyData.pregnancy_id
-      console.log('[updatePregnancyInfo] 임신정보 업데이트성공')
+    }
+    console.log('[updatePregnancyInfo] 임신 ID 설정:', pregnancyId.value)
+    
+    // ==== 4. 스토리지 저장 ====
+    const rememberMe = localStorage.getItem('rememberMe') === 'true'
+    
+    // 로컬/세션 스토리지 저장 (rememberMe에 따라)
+    const storage = rememberMe ? localStorage : sessionStorage;
+    
+    // 임신 ID 저장
+    if (pregnancyId.value) {
+      storage.setItem('pregnancyId', pregnancyId.value)
+    } else {
+      storage.removeItem('pregnancyId')
     }
     
-    // 자동 로그인 여부에 따라 적절한 스토리지에 저장
-    const rememberMe = localStorage.getItem('rememberMe') === 'true'
-    if (rememberMe) {
-      localStorage.setItem('pregnancyId', pregnancyId.value)
-      localStorage.setItem('isPregnant', 'true')
+    // isPregnant 상태 저장
+    storage.setItem('isPregnant', isPregnant.value ? 'true' : 'false')
+    
+    // 태명 저장/삭제
+    if (babyNickname.value) {
+      storage.setItem('babyNickname', babyNickname.value)
     } else {
-      sessionStorage.setItem('pregnancyId', pregnancyId.value)
-      sessionStorage.setItem('isPregnant', 'true')
+      storage.removeItem('babyNickname')
     }
+    
+    console.log('[updatePregnancyInfo] 업데이트 완료 - isPregnant:', isPregnant.value, 'babyNickname:', babyNickname.value, 'pregnancyId:', pregnancyId.value)
   }
 
   // 받침 유무에 따라 적절한 조사 선택 함수
@@ -1771,6 +1857,98 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
+  // 임신 정보 API 요청 (인증된 사용자가 로그인했을 때)
+  async function fetchPregnancyInfo () {
+    try {
+      console.log('[fetchPregnancyInfo] 임신 정보 조회 시작')
+      const response = await api.get('/accounts/pregnancies/')
+      console.log('[fetchPregnancyInfo] 서버 응답:', response.data)
+      
+      if (response.data && response.data.length > 0) {
+        console.log('[fetchPregnancyInfo] 임신 정보 존재, 첫 번째 정보 사용:', response.data[0])
+        updatePregnancyInfo(response.data[0])
+        return response.data[0]
+      } else {
+        console.log('[fetchPregnancyInfo] 임신 정보 없음, 태명 null로 설정 (그리움으로 표시)')
+        isPregnant.value = false
+        babyNickname.value = null
+        pregnancyId.value = null
+        return null
+      }
+    } catch (error) {
+      console.error('[fetchPregnancyInfo] 임신 정보 조회 오류:', error)
+      isPregnant.value = false
+      babyNickname.value = null
+      pregnancyId.value = null
+      return null
+    }
+  }
+  
+  // 임신 정보 생성 API 요청
+  async function createPregnancyInfo (pregnancyData) {
+    try {
+      console.log('[createPregnancyInfo] 임신 정보 생성 요청, 데이터:', pregnancyData)
+      const response = await api.post('/accounts/pregnancies/', pregnancyData)
+      console.log('[createPregnancyInfo] 서버 응답:', response.data)
+      
+      if (response.data) {
+        console.log('[createPregnancyInfo] 임신 정보 생성 성공, updatePregnancyInfo 호출')
+        updatePregnancyInfo(response.data)
+        return response.data
+      }
+      return null
+    } catch (error) {
+      console.error('[createPregnancyInfo] 임신 정보 생성 오류:', error)
+      return null
+    }
+  }
+  
+  // 임신 정보 수정 API 요청
+  async function updatePregnancyInfoByApi (id, pregnancyData) {
+    try {
+      console.log('[updatePregnancyInfoByApi] 임신 정보 수정 요청, ID:', id, '데이터:', pregnancyData)
+      const response = await api.patch(`/accounts/pregnancies/${id}/`, pregnancyData)
+      console.log('[updatePregnancyInfoByApi] 서버 응답:', response.data)
+      
+      if (response.data) {
+        console.log('[updatePregnancyInfoByApi] 임신 정보 수정 성공, updatePregnancyInfo 호출')
+        updatePregnancyInfo(response.data)
+        return response.data
+      }
+      return null
+    } catch (error) {
+      console.error('[updatePregnancyInfoByApi] 임신 정보 수정 오류:', error)
+      return null
+    }
+  }
+
+  // 임신 정보 삭제 API 요청
+  async function deletePregnancyInfo (id) {
+    try {
+      console.log('[deletePregnancyInfo] 임신 정보 삭제 요청, ID:', id)
+      await api.delete(`/accounts/pregnancies/${id}/`)
+      console.log('[deletePregnancyInfo] 임신 정보 삭제 성공, 상태 초기화')
+      
+      // 임신 정보 초기화
+      isPregnant.value = false
+      babyNickname.value = null
+      pregnancyId.value = null
+      
+      // 스토리지에서도 제거
+      localStorage.removeItem('pregnancyId')
+      localStorage.removeItem('babyNickname')
+      localStorage.removeItem('isPregnant')
+      sessionStorage.removeItem('pregnancyId')
+      sessionStorage.removeItem('babyNickname')
+      sessionStorage.removeItem('isPregnant')
+      
+      return true
+    } catch (error) {
+      console.error('[deletePregnancyInfo] 임신 정보 삭제 오류:', error)
+      return false
+    }
+  }
+
   return {
     // 상태
     events,
@@ -1825,6 +2003,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     updateRecurringEventsAll,
     deleteAccount,
     checkDueDate,
+    fetchPregnancyInfo,
+    createPregnancyInfo,
+    updatePregnancyInfoByApi,
+    deletePregnancyInfo,
 
     // 게터
     eventsForSelectedDate,

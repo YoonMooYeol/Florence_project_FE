@@ -1,6 +1,7 @@
 <script setup>
 import { useCalendarStore } from '@/store/calendar'
 import { useModalManager } from '@/composables/useModalManager'
+import { computed, watch } from 'vue'
 
 const props = defineProps({
   show: {
@@ -12,6 +13,33 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 const calendarStore = useCalendarStore()
 const modalManager = useModalManager()
+
+// 모달이 열릴 때마다 상태 확인
+watch(() => props.show, (isVisible) => {
+  if (isVisible) {
+    console.log('[AddDiaryTypeModal] 모달 열림 - calendarStore 상태 확인:')
+    console.log('  isPregnant:', calendarStore.isPregnant)
+    console.log('  pregnancyId:', calendarStore.pregnancyId)
+    console.log('  babyNickname:', calendarStore.babyNickname)
+  }
+})
+
+// 태명 라벨 계산
+const babyDiaryLabel = computed(() => {
+  console.log('[AddDiaryTypeModal] 태명 라벨 계산 - isPregnant:', calendarStore.isPregnant, 'pregnancyId:', calendarStore.pregnancyId, 'babyNickname:', calendarStore.babyNickname)
+  
+  // 태명이 null인 경우에만 "그리움과의 하루"로 표시
+  if (calendarStore.babyNickname === null) {
+    console.log('[AddDiaryTypeModal] 태명이 null이어서 "그리움과의 하루" 표시')
+    return '그리움과의 하루'
+  }
+  
+  // 그 외의 경우 태명 사용 (태명이 없거나 undefined인 경우 '(태명)'을 사용)
+  const nickname = calendarStore.babyNickname || '(태명)'
+  const josa = calendarStore.getJosa(nickname, '과', '와')
+  console.log('[AddDiaryTypeModal] 태명 탭 레이블 계산:', nickname, josa)
+  return `${nickname}${josa}의 하루`
+})
 
 const closeModal = () => {
   emit('close')
@@ -84,12 +112,7 @@ const handleBabyDiaryClick = () => {
           <div class="flex items-center">
             <span class="text-xl mr-3">👶</span>
             <span class="font-medium text-dark-gray">
-              <template v-if="calendarStore.pregnancyId && !calendarStore.isActive">
-                그리움과의 하루
-              </template>
-              <template v-else>
-                {{ calendarStore.babyNickname }}{{ calendarStore.getJosa(calendarStore.babyNickname, '과', '와') }}의 하루
-              </template>
+              {{ babyDiaryLabel }}
             </span>
           </div>
         </button>
