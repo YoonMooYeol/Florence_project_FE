@@ -77,7 +77,7 @@ const handleBabyDiaryClick = () => {
         </button>
 
         <button
-          v-if="calendarStore.isPregnant"
+          v-if="calendarStore.pregnancyId"
           class="w-full py-3 px-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow text-left relative group"
           @click="handleBabyDiaryClick"
         >
