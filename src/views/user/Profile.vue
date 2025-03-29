@@ -583,10 +583,8 @@ const closeModal = () => {
       </div>
     </div>
 
-        <!-- 하단 네비게이션 바 -->
-        <BottomNavBar active-tab="profile" />
-      </div>
-    </div>
+    <!-- 하단 네비게이션 바 -->
+    <BottomNavBar active-tab="profile" />
   </div>
 </template>
 
