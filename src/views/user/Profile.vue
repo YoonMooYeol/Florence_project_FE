@@ -91,6 +91,7 @@ const fetchUserInfo = async () => {
 const fetchPregnancyInfo = async () => {
   try {
     const response = await api.get('/accounts/pregnancies/')
+    console.log(response.data)
 
     // 임신 정보가 있는 경우
     if (response.data && response.data.length > 0) {
@@ -104,6 +105,8 @@ const fetchPregnancyInfo = async () => {
       userInfo.value.pregnancyId = data.pregnancy_id
       userInfo.value.isFromRegistration = data.is_from_registration || false // 회원가입 시 등록 여부 설정
       userInfo.value.isActive = data.is_active // is_active 상태 저장
+
+      console.log(userInfo.value)
       // 임신 상태 저장
       localStorage.setItem('isPregnant', 'true')
       sessionStorage.setItem('isPregnant', 'true')
@@ -112,6 +115,8 @@ const fetchPregnancyInfo = async () => {
       userInfo.value.isPregnant = false
       localStorage.setItem('isPregnant', 'false')
       sessionStorage.setItem('isPregnant', 'false')
+      localStorage.setItem('isActive', 'false')
+      sessionStorage.setItem('isActive', 'false')
     }
   } catch (error) {
     console.error('임신 정보 불러오기 오류:', error)
@@ -120,7 +125,9 @@ const fetchPregnancyInfo = async () => {
 }
 
 // 컴포넌트 마운트 시 사용자 정보 불러오기
-onMounted(fetchUserInfo)
+onMounted(() => {
+  fetchUserInfo()
+})
 
 // 출산 예정일까지 남은 일수 계산 함수
 const getDaysUntilDueDate = () => {
@@ -353,7 +360,7 @@ const closeModal = () => {
           <div class="flex justify-between items-center mb-4">
             <!-- 임신 정보가 있을 때만 표시 -->
             <h2
-              v-if="userInfo.isPregnant"
+              v-if="userInfo.pregnancyId && userInfo.isActive"
               class="text-lg font-bold text-dark-gray"
             >
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
@@ -361,7 +368,7 @@ const closeModal = () => {
           </div>
 
           <div
-            v-if="userInfo.isPregnant"
+            v-if="userInfo.pregnancyId && userInfo.isActive"
             class="space-y-4"
           >
             <div class="flex justify-between items-center">
