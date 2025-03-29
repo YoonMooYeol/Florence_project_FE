@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia'
 import api from '../utils/axios'
 import { clearAuthData } from '../utils/auth'
+import { useRouter } from 'vue-router'
 
 export const useAuthStore = defineStore('auth', {
   state: () => {
@@ -23,7 +24,8 @@ export const useAuthStore = defineStore('auth', {
         : sessionStorage.getItem('accessToken') || null,
       refreshToken: rememberMe 
         ? localStorage.getItem('refreshToken') 
-        : sessionStorage.getItem('refreshToken') || null
+        : sessionStorage.getItem('refreshToken') || null,
+      router: null // 라우터 인스턴스를 저장할 상태 추가
     }
   },
 
@@ -133,6 +135,87 @@ export const useAuthStore = defineStore('auth', {
         return false
       } finally {
         this.loading = false
+      }
+    },
+
+    // 라우터 설정 함수 추가
+    setRouter(router) {
+      this.router = router
+    },
+
+    async login(email, password, rememberMe = false) {
+      try {
+        const response = await api.post('/accounts/login/', {
+          email,
+          password
+        })
+
+        // 토큰 저장
+        if (rememberMe) {
+          localStorage.setItem('accessToken', response.data.access)
+          localStorage.setItem('refreshToken', response.data.refresh)
+          localStorage.setItem('rememberMe', 'true')
+        } else {
+          sessionStorage.setItem('accessToken', response.data.access)
+          sessionStorage.setItem('refreshToken', response.data.refresh)
+          sessionStorage.setItem('rememberMe', 'false')
+        }
+
+        // 다시 보지 않기 상태 확인
+        const hideOnboarding = 
+          localStorage.getItem('hideOnboarding') === 'true' || 
+          sessionStorage.getItem('hideOnboarding') === 'true'
+
+        if (!hideOnboarding) {
+          // 다시 보지 않기를 선택하지 않은 경우 온보딩 페이지로 이동
+          console.log('온보딩 페이지로 이동합니다.')
+          if (!this.router) {
+            // 라우터가 없는 경우 새로고침
+            window.location.href = '/onboarding'
+            return false
+          }
+          await this.router.push('/onboarding')
+          return true
+        }
+
+        // 임신 정보 확인
+        try {
+          const pregnancyResponse = await api.get('/accounts/pregnancies/')
+          const hasPregnancyInfo = pregnancyResponse.data && 
+                                  pregnancyResponse.data.length > 0 && 
+                                  pregnancyResponse.data[0].is_active
+          
+          if (!hasPregnancyInfo) {
+            // 임신 정보가 없는 경우 임신 정보 등록 페이지로 이동
+            console.log('임신 정보 등록 페이지로 이동')
+            if (!this.router) {
+              window.location.href = '/pregnancy-info-register'
+              return false
+            }
+            await this.router.push('/pregnancy-info-register')
+          } else {
+            // 모든 정보가 있는 경우 캘린더로 이동
+            console.log('캘린더로 이동')
+            if (!this.router) {
+              window.location.href = '/calendar'
+              return false
+            }
+            await this.router.push('/calendar')
+          }
+        } catch (error) {
+          console.error('임신 정보 조회 오류:', error)
+          // 임신 정보 조회 실패 시 임신 정보 등록 페이지로 이동
+          if (!this.router) {
+            window.location.href = '/pregnancy-info-register'
+            return false
+          }
+          await this.router.push('/pregnancy-info-register')
+        }
+
+        return true
+      } catch (error) {
+        console.error('로그인 오류:', error)
+        throw error
       }
     }
   },
