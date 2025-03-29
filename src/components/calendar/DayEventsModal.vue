@@ -1067,7 +1067,7 @@ onMounted(async () => {
 // 태명과 조사를 안전하게 표시하는 계산된 속성 추가
 const babyTabLabel = computed(() => {
   // pregnancyId가 있고 is_active가 false인 경우 '그리움'으로 표시
-  if (calendarStore.pregnancyId && calendarStore.isPregnant === false) {
+  if (calendarStore.pregnancyId && !calendarStore.isActive) {
     return '그리움과의 하루'
   }
   

@@ -84,7 +84,7 @@ const handleBabyDiaryClick = () => {
           <div class="flex items-center">
             <span class="text-xl mr-3">👶</span>
             <span class="font-medium text-dark-gray">
-              <template v-if="calendarStore.pregnancyId && calendarStore.isPregnant === false">
+              <template v-if="calendarStore.pregnancyId && !calendarStore.isActive">
                 그리움과의 하루
               </template>
               <template v-else>
