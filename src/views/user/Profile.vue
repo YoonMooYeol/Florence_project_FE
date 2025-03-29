@@ -44,7 +44,6 @@ const fetchUserInfo = async () => {
 
     // API를 통해 본인 정보 조회
     const response = await api.get('/accounts/users/me/')
-    console.log('사용자 정보 응답:', response.data)
 
     // 사용자 기본 정보 설정
     userInfo.value.name = response.data.name || '사용자'

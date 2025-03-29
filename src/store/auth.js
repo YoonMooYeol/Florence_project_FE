@@ -52,30 +52,19 @@ export const useAuthStore = defineStore('auth', {
 
     // 로그아웃 처리
     async logout () {
-      try {
-        // 서버에 로그아웃 요청
-        await api.post('/accounts/logout/')
-      } catch (error) {
-        console.error('로그아웃 요청 오류:', error)
-      } finally {
-        // 사용자 정보 초기화
-        this.userId = null
-        this.userName = null
-        this.accessToken = null
-        this.refreshToken = null
+      this.userId = null
+      this.userName = null
+      this.accessToken = null
+      this.refreshToken = null
 
-        // 모든 스토리지에서 명시적으로 토큰 제거
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        sessionStorage.removeItem('accessToken')
-        sessionStorage.removeItem('refreshToken')
+      // 모든 스토리지에서 명시적으로 토큰 제거
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      sessionStorage.removeItem('accessToken')
+      sessionStorage.removeItem('refreshToken')
 
-        // auth.js의 clearAuthData 함수를 사용하여 모든 데이터 삭제
-        clearAuthData()
-        
-        // 페이지 새로고침 (선택 사항)
-        // window.location.reload()
-      }
+      // auth.js의 clearAuthData 함수를 사용하여 모든 데이터 삭제
+      clearAuthData()
     },
 
     // 액세스 토큰 설정
