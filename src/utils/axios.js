@@ -77,7 +77,7 @@ api.interceptors.response.use(
     const url = response.config.url
     const status = response.status
     
-    console.log(`=== API 응답 수신 [${status}] ${method} ${url} ===`)
+    console.log(`=== API 응답 수신 [${method} ${status}]  ===`)
     
     // DELETE 요청에 대한 특별한 로깅
     if (method === 'DELETE') {

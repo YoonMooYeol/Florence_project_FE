@@ -73,8 +73,6 @@ export const useCalendarStore = defineStore('calendar', () => {
         start_date_to: extendedEndDate // 다음 달 마지막 날짜까지 확장
       }
       
-      console.log('이벤트 조회 확장 파라미터:', params)
-      
       const response = await api.get('calendars/events/', { params })
       
       if (response.data) {
@@ -425,15 +423,6 @@ export const useCalendarStore = defineStore('calendar', () => {
             }))
           : []
       }))
-      
-      // 변환 후 데이터 확인 로그
-      console.log('변환된 일기 데이터:', babyDiaries.value.map(d => ({ 
-        id: d.id, 
-        date: d.date, 
-        content_length: d.content ? d.content.length : 0,
-        photos_count: d.photos.length 
-      })))
-      
       return babyDiaries.value
     } catch (error) {
       console.error('아기 일기 데이터 가져오기 실패:', error)
@@ -1140,7 +1129,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       if (storedPregnancyId) {
         try {
           // 임신 ID로 상세 정보 조회
-          console.log('[initPregnancyInfo] 저장된 임신 ID로 상세 정보 조회 시도:', storedPregnancyId)
+          console.log('[initPregnancyInfo] 저장된 임신 ID로 상세 정보 조회 시도')
           const detailResponse = await api.get(`/accounts/pregnancies/${storedPregnancyId}/`)
           
           if (detailResponse.data) {
@@ -1193,8 +1182,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     // 임신 관련 정보 설정
     isPregnant.value = pregnancyData.is_active !== undefined ? pregnancyData.is_active : true
     
-    console.log('[updatePregnancyInfo] 임신 상세 정보:', pregnancyData)
-    
     // 태명 찾기 (여러 필드 순서대로 확인)
     if (pregnancyData.baby_name) {
       babyNickname.value = pregnancyData.baby_name
@@ -1226,7 +1213,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       console.log('[updatePregnancyInfo] 임신 ID 설정 (id):', pregnancyId.value)
     } else if (pregnancyData.pregnancy_id) {
       pregnancyId.value = pregnancyData.pregnancy_id
-      console.log('[updatePregnancyInfo] 임신 ID 설정 (pregnancy_id):', pregnancyId.value)
+      console.log('[updatePregnancyInfo] 임신정보 업데이트성공')
     }
     
     // 자동 로그인 여부에 따라 적절한 스토리지에 저장

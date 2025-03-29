@@ -548,7 +548,7 @@ watch(() => calendarStore.babyDiaries, () => {
       const calendarApi = calendarRef.value.getApi()
       // 기존 이벤트 유지하면서 UI만 업데이트
       calendarApi.updateSize()
-      console.log('태교일기 변경 감지 - 날짜 표시만 업데이트')
+      console.log('태교일기 변경 감지 - 날짜 표시 업데이트')
     })
   }
 }, { deep: true })
