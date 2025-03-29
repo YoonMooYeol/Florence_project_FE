@@ -68,9 +68,12 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // 액세스 토큰 설정
-    setAccessToken (token) {
+    setAccessToken (token, explicitRememberMe = null) {
       this.accessToken = token
-      const rememberMe = localStorage.getItem('rememberMe') === 'true'
+      // explicitRememberMe 값이 전달되면 그 값을 우선 사용하고, 아니면 localStorage에서 확인
+      const rememberMe = explicitRememberMe !== null 
+        ? explicitRememberMe 
+        : localStorage.getItem('rememberMe') === 'true'
 
       if (rememberMe) {
         localStorage.setItem('accessToken', token)
@@ -84,9 +87,12 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // 리프레시 토큰 설정
-    setRefreshToken (token) {
+    setRefreshToken (token, explicitRememberMe = null) {
       this.refreshToken = token
-      const rememberMe = localStorage.getItem('rememberMe') === 'true'
+      // explicitRememberMe 값이 전달되면 그 값을 우선 사용하고, 아니면 localStorage에서 확인
+      const rememberMe = explicitRememberMe !== null 
+        ? explicitRememberMe 
+        : localStorage.getItem('rememberMe') === 'true'
 
       if (rememberMe) {
         localStorage.setItem('refreshToken', token)
@@ -139,27 +145,31 @@ export const useAuthStore = defineStore('auth', {
           password
         })
 
-        // 토큰 저장
+        // 토큰 저장 - 직접 저장하지 않고 메서드 활용
+        this.setAccessToken(response.data.access, rememberMe)
+        this.setRefreshToken(response.data.refresh, rememberMe)
+        
+        // rememberMe 상태 저장
         if (rememberMe) {
-          localStorage.setItem('accessToken', response.data.access)
-          localStorage.setItem('refreshToken', response.data.refresh)
           localStorage.setItem('rememberMe', 'true')
+          // 세션에서 제거
+          sessionStorage.removeItem('rememberMe')
         } else {
-          sessionStorage.setItem('accessToken', response.data.access)
-          sessionStorage.setItem('refreshToken', response.data.refresh)
           sessionStorage.setItem('rememberMe', 'false')
+          // 로컬에서 제거
+          localStorage.removeItem('rememberMe')
         }
 
         // 다시 보지 않기 상태 확인
-        const hideOnboarding = 
-          localStorage.getItem('hideOnboarding') === 'true' || 
-          sessionStorage.getItem('hideOnboarding') === 'true'
+        const onboardingCompleted = 
+          localStorage.getItem('onboardingCompleted') === 'true' || 
+          sessionStorage.getItem('onboardingCompleted') === 'true'
 
-        if (!hideOnboarding) {
-          // 다시 보지 않기를 선택하지 않은 경우 온보딩 페이지로 이동
+        if (!onboardingCompleted) {
+          // 온보딩을 완료하지 않은 경우 온보딩 페이지로 이동
           console.log('온보딩 페이지로 이동합니다.')
           if (!this.router) {
-            // 라우터가 없는 경우 새로고침
+            // 라우터가 없는 경우 URL 직접 변경
             window.location.href = '/onboarding'
             return false
           }
@@ -183,13 +193,28 @@ export const useAuthStore = defineStore('auth', {
             }
             await this.router.push('/pregnancy-info-register')
           } else {
-            // 모든 정보가 있는 경우 캘린더로 이동
-            console.log('캘린더로 이동')
-            if (!this.router) {
-              window.location.href = '/calendar'
-              return false
+            // 모든 정보가 있는 경우 온보딩 상태에 따라 이동
+            console.log('온보딩 상태에 따라 이동')
+            // 이미 온보딩이 완료된 경우에만 캘린더로 이동
+            const onboardingCompleted = 
+              localStorage.getItem('onboardingCompleted') === 'true' || 
+              sessionStorage.getItem('onboardingCompleted') === 'true'
+            
+            if (onboardingCompleted) {
+              console.log('온보딩이 완료되어 캘린더로 이동')
+              if (!this.router) {
+                window.location.href = '/calendar'
+                return false
+              }
+              await this.router.push('/calendar')
+            } else {
+              console.log('온보딩으로 이동')
+              if (!this.router) {
+                window.location.href = '/onboarding'
+                return false
+              }
+              await this.router.push('/onboarding')
             }
-            await this.router.push('/calendar')
           }
         } catch (error) {
           console.error('임신 정보 조회 오류:', error)

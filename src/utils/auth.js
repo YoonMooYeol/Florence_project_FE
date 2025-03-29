@@ -87,8 +87,8 @@ export const clearAuthData = () => {
   sessionStorage.removeItem('isPregnant')
   sessionStorage.removeItem('babyNickname')
   
-  // 온보딩 상태 초기화
-  localStorage.removeItem('onboardingCompleted')
+  // 온보딩 상태 - localStorage는 유지하고 sessionStorage만 초기화
+  // localStorage.removeItem('onboardingCompleted')  // 주석 처리하여 로그아웃해도 유지되도록 함
   sessionStorage.removeItem('onboardingCompleted')
   
   // 캘린더 및 태명 관련 정보 완전히 삭제

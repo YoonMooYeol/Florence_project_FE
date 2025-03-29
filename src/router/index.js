@@ -221,7 +221,7 @@ router.beforeEach((to, from, next) => {
     '/pregnancy-info-register'
   ]
   
-  // 현재 경로가 인증이 필요한지 확인
+  // 인증이 필요한 경로인지 확인
   const authRequired = !publicPages.includes(to.path)
   
   // 인증이 필요하고 토큰이 없는 경우 로그인 페이지로 리디렉션
@@ -231,6 +231,20 @@ router.beforeEach((to, from, next) => {
     sessionStorage.setItem('redirectAfterLogin', to.fullPath)
     next('/login')
     return
+  }
+
+  // 사용자가 로그인되어 있고 온보딩이 필요한 상태일 때 자동으로 온보딩 페이지로 이동
+  if (token && to.path !== '/onboarding' && to.path !== '/pregnancy-info-register') {
+    // 온보딩 완료 여부 확인
+    const onboardingCompleted = 
+      localStorage.getItem('onboardingCompleted') === 'true' || 
+      sessionStorage.getItem('onboardingCompleted') === 'true'
+    
+    if (!onboardingCompleted) {
+      console.log('온보딩이 완료되지 않았습니다. 온보딩 페이지로 이동합니다.')
+      next('/onboarding')
+      return
+    }
   }
 
   // 이미 로그인된 상태에서 로그인 페이지로 가려고 하면 홈으로 리다이렉트

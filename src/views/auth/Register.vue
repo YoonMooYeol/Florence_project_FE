@@ -311,7 +311,7 @@ const handleSubmit = async () => {
       if (formData.is_pregnant) {
         router.push('/pregnancy-info-register')
       } else {
-        router.push('/calendar')
+        router.push('/onboarding')
       }
     } catch (loginError) {
       console.error('자동 로그인 실패:', loginError)
