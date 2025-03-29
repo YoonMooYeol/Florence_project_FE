@@ -1184,7 +1184,7 @@ const closeBirthdayPhoto = () => {
           <!-- 일정 추가 플로팅 버튼 -->
           <div class="absolute bottom-6 right-6">
             <button
-              class="w-14 h-14 rounded-full bg-point shadow-lg flex items-center justify-center hover:bg-yellow-500 transition-colors transform hover:scale-105 focus:outline-none"
+              class="w-14 h-14 rounded-full bg-yellow-300 shadow-lg flex items-center justify-center hover:bg-yellow-400 transition-colors transform hover:scale-105 focus:outline-none"
               @click="addEvent"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-dark-gray" fill="none" viewBox="0 0 24 24" stroke="currentColor">
