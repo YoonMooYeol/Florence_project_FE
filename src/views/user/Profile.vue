@@ -199,8 +199,8 @@ const handleLogout = async () => {
   }
 }
 
-//준비중인 기능 안내
-const test =  () => {
+// 준비중인 기능 안내
+const test = () => {
   alert('준비중인 기능입니다.')
 }
 
@@ -248,7 +248,7 @@ const test =  () => {
               :src="`${userInfo.image}?t=${Date.now()}`"
               alt="프로필 사진"
               class="absolute inset-0 w-full h-full object-cover rounded-full"
-            />
+            >
             <!-- 기본 아이콘 -->
             <svg
               v-else
@@ -278,7 +278,10 @@ const test =  () => {
         <div class="bg-white rounded-lg shadow-md p-6 mb-4">
           <div class="flex justify-between items-center mb-4">
             <!-- 임신 정보가 있을 때만 표시 -->
-            <h2 v-if="userInfo.isPregnant" class="text-lg font-bold text-dark-gray">
+            <h2
+              v-if="userInfo.isPregnant"
+              class="text-lg font-bold text-dark-gray"
+            >
               ♥︎사랑스런 {{ userInfo.babyNickname }}{{ getJosa(userInfo.babyNickname, '과', '와') }} 만나기까지♥︎
             </h2>
           </div>
@@ -324,9 +327,11 @@ const test =  () => {
           >
             <!-- 말풍선 툴팁 추가 -->
             <div class="absolute -top-14 right-0 w-[200px] bg-point-yellow text-dark-gray p-2 rounded-lg shadow-md before:content-[''] before:absolute before:top-full before:right-4 before:border-8 before:border-transparent before:border-t-point-yellow">
-              <p class="text-sm font-medium">정보 등록 후 채팅 가능 😍</p>
+              <p class="text-sm font-medium">
+                정보 등록 후 채팅 가능 😍
+              </p>
             </div>
-            
+
             <button
               class="w-full px-4 py-3 text-dark-gray bg-base-yellow rounded-md hover:bg-point-yellow focus:outline-none focus:ring-2 focus:ring-point-yellow focus:ring-opacity-50 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold"
               @click="router.push('/pregnancy-info-register')"
@@ -375,76 +380,19 @@ const test =  () => {
             <span class="text-dark-gray">임신 정보 관리</span>
           </button>
 
+          <!-- 로그아웃 버튼 -->
           <button
-            class="w-full p-4 text-left flex items-center"
-            @click="test"
+            class="w-full p-4 bg-white rounded-lg shadow-md text-center text-red-500 font-medium"
+            @click="handleLogout"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-3 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <span class="text-dark-gray">공지사항</span>
-          </button>
-
-          <button
-            class="w-full p-4 text-left flex items-center"
-            @click="test"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-3 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <span class="text-dark-gray">자주 묻는 질문</span>
-          </button>
-
-          <button
-            class="w-full p-4 text-left flex items-center"
-            @click="test"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-3 text-gray-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            <span class="text-dark-gray">앱 정보</span>
+            로그아웃
           </button>
         </div>
+
+        <!-- 하단 네비게이션 바 -->
+        <BottomNavBar active-tab="profile" />
       </div>
-
-      <!-- 로그아웃 버튼 -->
-      <button
-        class="w-full p-4 bg-white rounded-lg shadow-md text-center text-red-500 font-medium"
-        @click="handleLogout"
-      >
-        로그아웃
-      </button>
     </div>
-
-    <!-- 하단 네비게이션 바 -->
-    <BottomNavBar active-tab="profile" />
   </div>
 </template>
 

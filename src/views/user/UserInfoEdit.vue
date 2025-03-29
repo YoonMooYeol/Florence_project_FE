@@ -701,7 +701,7 @@ const cancelWithdrawal = () => {
           class="text-gray-400 hover:underline text-sm font-medium"
           @click="showWithdrawalDialog"
         >
-          회원 탈퇴(기능 준비중)
+          회원 탈퇴
         </button>
       </div>
     </div>
