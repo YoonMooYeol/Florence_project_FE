@@ -43,11 +43,10 @@
   border-bottom-left-radius: 0 !important;
   margin-left: 0 !important;
   border-left: 0 !important;
-  padding-right: 6px !important;
-  width: calc(100% + 10px) !important;
   z-index: 5 !important;
   background-color: var(--event-color, #ffd600) !important;
   border-color: var(--event-color, #ffd600) !important;
+  padding-right: 115px !important;
 }
 
 /* 단일 일정 스타일 (시작과 종료가 같은 날짜) */
@@ -232,6 +231,7 @@
   width: 100%;
   height: 100%;
   text-align: left;
+  
 }
 
 /* 멀티데이 이벤트를 위한 스타일 */
