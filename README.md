@@ -100,7 +100,7 @@ BackEnd Github 링크 [ [Nooridal-BackEnd](https://github.com/YoonMooYeol/Floren
 ### (2) 설치
 ```bash
 # 프로젝트 클론
-git clone [repository-url]
+git clone https://github.com/YoonMooYeol/Florence_project_FE.git
 ```
 
 ### (3) 환경 변수 설정
