@@ -48,7 +48,7 @@
 
 ## 🔗 GitHub Link
 
-FrontEnd Github 링크 [ [Nooridal-FrontEnd](https://github.com/YoonMooYeol/Florence_project_FE.git) ]  
+BackEnd Github 링크 [ [Nooridal-BackEnd](https://github.com/YoonMooYeol/Florence_project.git) ]  
 
 ---
 
