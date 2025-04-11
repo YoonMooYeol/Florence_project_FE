@@ -303,7 +303,7 @@ const loadChatRoom = async (chatId, forceReset = true) => {
           // 채팅 목록 UI 업데이트 후 스크롤
           setTimeout(() => {
             scrollToBottom()
-          }, 100)
+          }, 50)
         }
 
         // 여기서 함수 종료 (메시지가 있는 경우)
@@ -349,7 +349,7 @@ const loadChatRoom = async (chatId, forceReset = true) => {
     // 채팅 목록 UI 업데이트 후 스크롤
     setTimeout(() => {
       scrollToBottom()
-    }, 100)
+    }, 50)
   } catch (error) {
     errorMessage.value = '채팅방 정보를 불러오는 중 오류가 발생했습니다.'
     logger.error(CONTEXT, '채팅방 상세 조회 오류:', error)
@@ -498,7 +498,7 @@ const forceScrollToBottom = () => {
       // 더 긴 지연 시간으로 스크롤 적용
       setTimeout(() => {
         chatContainer.value.scrollTop = chatContainer.value.scrollHeight + 1000
-      }, 100)
+      }, 50)
     }
   })
 }
@@ -512,7 +512,7 @@ watch(messages, () => {
   if (messages.value.length > 0) {
     setTimeout(() => {
       scrollToBottom()
-    }, 300)
+    }, 100)
   }
 }, { deep: true })
 

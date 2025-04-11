@@ -62,6 +62,6 @@ if (token) {
     // 페이지 로드 후 라우팅을 위해 setTimeout 사용
     setTimeout(() => {
       router.push('/onboarding')
-    }, 100)
+    }, 10)
   }
 }

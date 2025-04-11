@@ -340,7 +340,7 @@ onMounted(async () => {
     await calendarStore.initPregnancyInfo()
 
     // 임신 ID가 존재하는지 확인하기 전에 짧은 지연을 추가하여 모든 상태 업데이트가 완료되도록 함
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise(resolve => setTimeout(resolve, 50))
 
     // 임신 정보 초기화 성공 로깅
     if (calendarStore.pregnancyId && calendarStore.pregnancyId.value) {
@@ -363,7 +363,7 @@ onMounted(async () => {
           calendarApi.render()
         })
       }
-    }, 300)
+    }, 100)
 
     // 세션 스토리지에 저장된 모달 상태가 있는지 확인하고 복원
     const storedModalState = sessionStorage.getItem('modalState')

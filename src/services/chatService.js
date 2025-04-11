@@ -64,7 +64,7 @@ export const initChatService = (userId) => {
       if (typingUsers.value[data.conversationId] === data.username) {
         delete typingUsers.value[data.conversationId]
       }
-    }, 5000)
+    }, 3000)
   })
   
   // 타이핑 종료 이벤트 리스너

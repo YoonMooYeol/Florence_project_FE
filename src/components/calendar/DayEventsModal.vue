@@ -86,7 +86,7 @@ watch(() => props.show, async (newValue) => {
     setTimeout(() => {
       isClickable.value = true
       console.log('DayEventsModal - 이제 이벤트 클릭 가능')
-    }, 300)
+    }, 100)
 
     // 현재 모달 상태 및 날짜 저장
     sessionStorage.setItem('modalState', JSON.stringify({
