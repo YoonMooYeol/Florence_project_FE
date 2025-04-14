@@ -134,11 +134,11 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // 라우터 설정 함수 추가
-    setRouter(router) {
+    setRouter (router) {
       this.router = router
     },
 
-    async login(email, password, rememberMe = false) {
+    async login (email, password, rememberMe = false) {
       try {
         const response = await api.post('/accounts/login/', {
           email,

@@ -1239,15 +1239,8 @@ export const useCalendarStore = defineStore('calendar', () => {
   function updatePregnancyInfo(pregnancyData) {
     if (!pregnancyData) return
     
-    // 서버 정보 로깅 (디버깅용)
-    console.log('[updatePregnancyInfo] 서버에서 받은 임신 정보:', pregnancyData)
-    console.log('[updatePregnancyInfo] 처리 전 현재 상태 - isPregnant:', isPregnant.value, 'babyNickname:', babyNickname.value, 'pregnancyId:', pregnancyId.value)
-    
-    // ==== 1. 임신 상태(is_active) 설정 ====
-    // 명시적으로 boolean 타입으로 변환
-    const newIsPregnant = pregnancyData.is_active === true
-    console.log('[updatePregnancyInfo] 서버의 is_active:', pregnancyData.is_active, '변환된 isPregnant:', newIsPregnant)
-    isPregnant.value = newIsPregnant
+    // 임신 관련 정보 설정
+    isPregnant.value = pregnancyData.is_active !== undefined ? pregnancyData.is_active : true
     
     // ==== 2. 태명 설정: 가장 중요! ====
     // 서버에서 받은 태명을 찾음 (여러 필드 확인)
